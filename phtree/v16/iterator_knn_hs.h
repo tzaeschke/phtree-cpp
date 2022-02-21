@@ -96,7 +96,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
     void FindNextElement() {
         while (num_found_results_ < num_requested_results_ && !queue_.empty()) {
             auto& candidate = queue_.top();
-            auto o = candidate.second;
+            auto* o = candidate.second;
             if (!o->IsNode()) {
                 // data entry
                 ++num_found_results_;
@@ -134,11 +134,11 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
         SCALAR mask_min = MAX_MASK<SCALAR> << bits_to_ignore;
         SCALAR mask_max = ~mask_min;
         KeyInternal buf;
-        // The following calculates the point inside of the node that is closest to center_.
+        // The following calculates the point inside the node that is closest to center_.
         // If center is inside the node this returns center_, otherwise it finds a point on the
         // node's surface.
         for (dimension_t i = 0; i < DIM; ++i) {
-            // if center_[i] is outside the node, return distance to closest edge,
+            // if center_[i] is outside the node, return distance to the closest edge,
             // otherwise return center_[i] itself (assume possible distance=0)
             SCALAR min = prefix[i] & mask_min;
             SCALAR max = prefix[i] | mask_max;
@@ -149,7 +149,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
 
   private:
     const KeyInternal center_;
-    // center after post processing == the external representation
+    // center after post-processing == the external representation
     const KeyExternal center_post_;
     double current_distance_;
     std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance<EntryDistT>>
