@@ -171,6 +171,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "knn_d_hdim_benchmark",
+    testonly = True,
+    srcs = [
+        "knn_d_hdim_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree",
+        "//phtree/benchmark",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
     name = "query_benchmark",
     testonly = True,
     srcs = [

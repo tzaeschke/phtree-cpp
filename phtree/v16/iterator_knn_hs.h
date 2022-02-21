@@ -142,7 +142,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
             // otherwise return center_[i] itself (assume possible distance=0)
             SCALAR min = prefix[i] & mask_min;
             SCALAR max = prefix[i] | mask_max;
-            buf[i] = min > center_[i] ? min : (max < center_[i] ? max : center_[i]);
+            buf[i] = std::clamp(center_[i], min, max);
         }
         return distance_(center_post_, this->post(buf));
     }
@@ -154,8 +154,8 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
     double current_distance_;
     std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance<EntryDistT>>
         queue_;
-    int num_found_results_;
-    int num_requested_results_;
+    size_t num_found_results_;
+    size_t num_requested_results_;
     DISTANCE distance_;
 };
 
