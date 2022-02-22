@@ -27,6 +27,18 @@ namespace {
 
 const double GLOBAL_MAX = 10000;
 
+template <dimension_t DIM>
+struct DistanceEuclidean2 {
+    double operator()(const PhPointD<DIM>& p1, const PhPointD<DIM>& p2) const {
+        double sum2 = 0;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            double d2 = p1[i] - p2[i];
+            sum2 += d2 * d2;
+        }
+        return sum2;
+    };
+};
+
 /*
  * Benchmark for k-nearest-neighbour queries.
  */
@@ -74,9 +86,7 @@ void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
         CreateQuery(center);
         state.ResumeTiming();
 
-        for (int i = 0; i < 100000; i++) {
-            QueryWorld(state, center);
-        }
+        QueryWorld(state, center);
     }
 }
 
@@ -100,7 +110,7 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
 template <dimension_t DIM>
 void IndexBenchmark<DIM>::QueryWorld(benchmark::State& state, PhPointD<DIM>& center) {
     int n = 0;
-    for (auto q = tree_.begin_knn_query(knn_result_size_, center, DistanceEuclidean<DIM>());
+    for (auto q = tree_.begin_knn_query(knn_result_size_, center, DistanceEuclidean2<DIM>());
          q != tree_.end();
          ++q) {
         ++n;
