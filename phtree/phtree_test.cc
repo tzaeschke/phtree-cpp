@@ -76,6 +76,20 @@ struct Id {
         _i = other._i;
     }
 
+//    Id& operator=(const Id& other) = default;
+//    Id& operator=(Id&& other) = default;
+
+    Id& operator=(const Id& other) noexcept {
+        ++copy_assign_count_;
+        _i = other._i;
+        return *this;
+    }
+    Id& operator=(Id&& other)  noexcept {
+        ++move_assign_count_;
+        _i = other._i;
+        return *this;
+    }
+
     bool operator==(const Id& rhs) const {
         ++copy_assign_count_;
         return _i == rhs._i;
@@ -89,8 +103,6 @@ struct Id {
     ~Id() {
         ++destruct_count_;
     }
-
-    Id& operator=(Id const& rhs) = default;
 
     int _i;
 };
