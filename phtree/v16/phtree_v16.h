@@ -247,17 +247,14 @@ class PhTreeV16 {
         if (iterator.Finished()) {
             return 0;
         }
-        if (!iterator.GetParentNodeEntry()) {
-            // Why may there be no parent?
-            // - we are in the root node
-            // - the iterator did not set this value
-            // In either case, we need to start searching from the top.
-            return erase(iterator.GetCurrentResult()->GetKey());
+         if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
+             // There may be no entry because not every iterator sets it.
+             // Also, do _not_ use the root entry, see erase(key).
+             // Start searching from the top.
+             return erase(iterator.GetCurrentResult()->GetKey());
         }
         bool found = false;
         assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
-        // See erase()
-        assert(iterator.GetCurrentNodeEntry() != &root_);
         iterator.GetCurrentNodeEntry()->GetNode().Erase(
             iterator.GetCurrentResult()->GetKey(),
             iterator.GetCurrentNodeEntry(),
