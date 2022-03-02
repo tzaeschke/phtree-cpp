@@ -187,16 +187,13 @@ struct EntryVariant {
     : node_{std::move(node_ptr)}, type{NODE} {}
 
     explicit EntryVariant(std::optional<ValueT>&& value) : value_{std::move(value)}, type{VALUE} {
-        assert(IsValue());
         value.reset();  // TODO why???
         assert(!value.has_value());
     }
 
     template <typename... Args>
     explicit EntryVariant(std::in_place_t, Args&&... args)
-    : value_{std::in_place, std::forward<Args>(args)...}, type{VALUE} {
-        assert(IsValue());
-    }
+    : value_{std::in_place, std::forward<Args>(args)...}, type{VALUE} {}
 
     EntryVariant(const EntryVariant& other) = delete;
     EntryVariant& operator=(const EntryVariant& other) = delete;
@@ -205,16 +202,13 @@ struct EntryVariant {
         switch (type) {
         case VALUE:
             new (&value_) std::optional<ValueT>{std::move(other.value_)};
-            other.value_.reset();  // TODO why???
-            assert(!other.value_.has_value());
             break;
         case NODE:
             new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
             break;
         default:
-            assert(false);
+            assert(false && "Assigning from an EMPTY variant is a waste of time.");
         }
-        other.type = EMPTY;
         assert(type != EMPTY);
     }
 
@@ -222,43 +216,33 @@ struct EntryVariant {
         switch (other.type) {
         case VALUE:
             if (IsNode()) {
+                // 'other' may be referenced from the local node, so we need to move(other)
+                // before destructing the local node.
                 auto node = std::move(node_);
                 new (&value_) std::optional<ValueT>{std::move(other.value_)};
-                other.value_.reset();  // TODO why???
-                // other.value_.~optional();
-                other.type = EMPTY;
-                assert(!other.value_.has_value());
                 node.~unique_ptr();
-            } else if (IsValue()) {
-                value_ = std::move(other.value_);
             } else {
+                Destroy();
                 new (&value_) std::optional<ValueT>{std::move(other.value_)};
-                other.value_.reset();  // TODO why???
-                // other.value_.~optional();
-                assert(!other.value_.has_value());
-                other.type = EMPTY;
             }
             type = VALUE;
             break;
         case NODE:
             if (IsNode()) {
                 auto node = std::move(node_);
-                node_ = std::move(other.node_);
-                //new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
-                other.type = EMPTY;
+                new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
                 node.~unique_ptr();
             } else {
                 Destroy();
                 new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
-                other.type = EMPTY;
+                type = NODE;
             }
-            type = NODE;
             break;
         default:
-            assert(false);
+            Destroy();
+            assert(false && "Assigning from an EMPTY variant is a waste of time.");
         }
         assert(type != EMPTY);
-        // other.type = EMPTY;
         return *this;
     }
 
