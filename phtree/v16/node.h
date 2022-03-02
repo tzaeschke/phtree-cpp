@@ -63,16 +63,14 @@ namespace {
  * @param parent_node Current owner of the child node.
  */
 template <dimension_t DIM, typename T, typename SCALAR>
-void MergeIntoParent(Node<DIM, T, SCALAR>& child_node, Node<DIM, T, SCALAR>& parent) {
+void MergeIntoParent(Node<DIM, T, SCALAR>& child_node, Entry<DIM, T, SCALAR>& parent_entry) {
     assert(child_node.GetEntryCount() == 1);
+    assert(&parent_entry.GetNode() == &child_node);
     // At this point we have found an entry that needs to be removed. We also know that we need to
     // remove the child node because it contains at most one other entry and it is not the root
     // node.
     auto map_entry = child_node.Entries().begin();
     auto& entry = map_entry->second;
-
-    auto hc_pos_in_parent = CalcPosInArray(entry.GetKey(), parent.GetPostfixLen());
-    auto& parent_entry = parent.Entries().find(hc_pos_in_parent)->second;
 
     if (entry.IsNode()) {
         // connect sub to parent
@@ -202,18 +200,18 @@ class Node {
      * @param found This is and output parameter and will be set to 'true' if a value was removed.
      * @return A child node if the provided key leads to a child node.
      */
-    Node* Erase(const KeyT& key, Node* parent, bool& found) {
+    EntryT* Erase(const KeyT& key, EntryT* parent_entry, bool& found) {
         hc_pos_t hc_pos = CalcPosInArray(key, GetPostfixLen());
         auto it = entries_.find(hc_pos);
         if (it != entries_.end() && DoesEntryMatch(it->second, key)) {
             if (it->second.IsNode()) {
-                return &it->second.GetNode();
+                return &it->second;
             }
             entries_.erase(it);
 
             found = true;
-            if (parent && GetEntryCount() == 1) {
-                MergeIntoParent(*this, *parent);
+            if (parent_entry != nullptr && GetEntryCount() == 1) {
+                MergeIntoParent(*this, *parent_entry);
                 // WARNING: (this) is deleted here, do not refer to it beyond this point.
             }
         }

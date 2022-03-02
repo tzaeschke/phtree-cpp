@@ -135,8 +135,8 @@ class IteratorBase {
      * The parent entry contains the parent node. The parent node is the node ABOVE the current node
      * which contains the current entry.
      */
-    const EntryT* GetCurrentNodeEntry() const {
-        return current_node_;
+    EntryT* GetCurrentNodeEntry() const {
+        return const_cast<EntryT*>(current_node_);
     }
 
     const EntryT* GetParentNodeEntry() const {

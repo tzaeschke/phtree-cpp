@@ -57,7 +57,6 @@ class PhTreeV16 {
     using ScalarExternal = typename CONVERT::ScalarExternal;
     using ScalarInternal = typename CONVERT::ScalarInternal;
     using KeyT = typename CONVERT::KeyInternal;
-    using NodeT = Node<DIM, T, ScalarInternal>;
     using EntryT = Entry<DIM, T, ScalarInternal>;
 
   public:
@@ -216,13 +215,16 @@ class PhTreeV16 {
      * @return '1' if a value was found, otherwise '0'.
      */
     size_t erase(const KeyT& key) {
-        auto* current_node = &root_.GetNode();
-        NodeT* parent_node = nullptr;
+        auto* current_entry = &root_;
+        // We do not pass in the root entry as parent of a node because we do not want the
+        // root entry to be modified. The reason is simply that a lot of the code in this class
+        // becomes a lot simpler if we can assume the root entry to contain a node.
+        EntryT* non_root_current_entry = nullptr;
         bool found = false;
-        while (current_node) {
-            auto* child_node = current_node->Erase(key, parent_node, found);
-            parent_node = current_node;
-            current_node = child_node;
+        while (current_entry) {
+            auto* child_entry = current_entry->GetNode().Erase(key, non_root_current_entry, found);
+            current_entry = child_entry;
+            non_root_current_entry = child_entry;
         }
         num_entries_ -= found;
         return found;
@@ -254,9 +256,11 @@ class PhTreeV16 {
         }
         bool found = false;
         assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
+        // See erase()
+        assert(iterator.GetCurrentNodeEntry() != &root_);
         iterator.GetCurrentNodeEntry()->GetNode().Erase(
             iterator.GetCurrentResult()->GetKey(),
-            &iterator.GetParentNodeEntry()->GetNode(),
+            iterator.GetCurrentNodeEntry(),
             found);
 
         num_entries_ -= found;
