@@ -233,7 +233,9 @@ void SmokeTestBasicOps(size_t N) {
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 
-    ASSERT_EQ(construct_count_ + copy_construct_count_ + move_construct_count_, destruct_count_);
+    // Normal construction and destruction should be symmetric. Move-construction is ignored.
+    ASSERT_GE(construct_count_ + copy_construct_count_ + move_construct_count_, destruct_count_);
+    ASSERT_LE(construct_count_ + copy_construct_count_, destruct_count_);
     // The following assertions exist only as sanity checks and may need adjusting.
     // There is nothing fundamentally wrong if a change in the implementation violates
     // any of the following assertions, as long as performance/memory impact is observed.

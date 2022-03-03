@@ -46,15 +46,22 @@ class Entry {
     using ValueT = std::remove_const_t<T>;
     using NodeT = Node<DIM, T, SCALAR>;
 
+    enum {
+        VALUE = 0,
+        NODE = 1,
+        EMPTY = 2,
+    };
+
   public:
     /*
      * Construct entry with existing node.
      */
-    Entry(const KeyT& k, std::unique_ptr<NodeT>&& node_ptr)
+    Entry(const KeyT& k, std::unique_ptr<NodeT>&& node_ptr) noexcept
     : kd_key_{k}
-    , variant_{std::move(node_ptr)}
+    , node_{std::move(node_ptr)}
+    , type{NODE}
 #ifdef PH_TREE_ENTRY_POSTLEN
-    , postfix_len_{variant_.GetNode().GetPostfixLen()}
+    , postfix_len_{node_->GetPostfixLen()}
 #endif
     {
     }
@@ -62,9 +69,10 @@ class Entry {
     /*
      * Construct entry with a new node.
      */
-    Entry(bit_width_t infix_len, bit_width_t postfix_len)
+    Entry(bit_width_t infix_len, bit_width_t postfix_len) noexcept
     : kd_key_()
-    , variant_{std::make_unique<NodeT>(infix_len, postfix_len)}
+    , node_{std::make_unique<NodeT>(infix_len, postfix_len)}
+    , type{NODE}
 #ifdef PH_TREE_ENTRY_POSTLEN
     , postfix_len_{postfix_len}
 #endif
@@ -74,26 +82,53 @@ class Entry {
     /*
      * Construct entry with existing T.
      */
-    Entry(const KeyT& k, std::optional<ValueT>&& value)
+    Entry(const KeyT& k, std::optional<ValueT>&& value) noexcept
     : kd_key_{k}
-    , variant_{std::move(value)}
+    , value_{std::move(value)}
+    , type{VALUE}
 #ifdef PH_TREE_ENTRY_POSTLEN
     , postfix_len_{0}
 #endif
     {
+        //        value.reset();  // std::optional's move constructor does not destruct the previous
     }
 
     /*
      * Construct entry with new T or moved T.
      */
     template <typename... Args>
-    explicit Entry(const KeyT& k, Args&&... args)
+    explicit Entry(const KeyT& k, Args&&... args) noexcept
     : kd_key_{k}
-    , variant_{std::in_place, std::forward<Args>(args)...}
+    , value_{std::in_place, std::forward<Args>(args)...}
+    , type{VALUE}
 #ifdef PH_TREE_ENTRY_POSTLEN
     , postfix_len_{0}
 #endif
     {
+    }
+
+    Entry(const Entry& other) = delete;
+    Entry& operator=(const Entry& other) = delete;
+
+    Entry(Entry&& other) noexcept : kd_key_{std::move(other.kd_key_)}, type{std::move(other.type)} {
+#ifdef PH_TREE_ENTRY_POSTLEN
+        postfix_len_ = std::move(other.postfix_len_);
+#endif
+        AssignUnion(std::move(other));
+    }
+
+    Entry& operator=(Entry&& other) noexcept {
+        kd_key_ = std::move(other.kd_key_);
+#ifdef PH_TREE_ENTRY_POSTLEN
+        postfix_len_ = std::move(other.postfix_len_);
+#endif
+        DestroyUnion();
+        AssignUnion(std::move(other));
+        return *this;
+    }
+
+    ~Entry() noexcept {
+        DestroyUnion();
     }
 
     [[nodiscard]] const KeyT& GetKey() const {
@@ -101,192 +136,16 @@ class Entry {
     }
 
     [[nodiscard]] bool IsValue() const {
-        return variant_.IsValue();
-    }
-
-    [[nodiscard]] bool IsNode() const {
-        return variant_.IsNode();
-    }
-
-    [[nodiscard]] T& GetValue() const {
-        assert(IsValue());
-        return const_cast<T&>(variant_.GetValue());
-    }
-
-    [[nodiscard]] NodeT& GetNode() const {
-        assert(IsNode());
-        return variant_.GetNode();
-    }
-
-    void SetNode(std::unique_ptr<NodeT>&& node) {
-#ifdef PH_TREE_ENTRY_POSTLEN
-        postfix_len_ = node->GetPostfixLen();
-#endif
-        variant_.SetNode(std::move(node));
-    }
-
-    [[nodiscard]] bit_width_t GetNodePostfixLen() const {
-        assert(IsNode());
-#ifdef PH_TREE_ENTRY_POSTLEN
-        return postfix_len_;
-#else
-        return variant_.GetNode().GetPostfixLen();
-#endif
-    }
-
-    [[nodiscard]] std::optional<ValueT>&& ExtractValue() {
-        assert(IsValue());
-        return variant_.ExtractValue();
-    }
-
-    [[nodiscard]] std::unique_ptr<NodeT>&& ExtractNode() {
-        assert(IsNode());
-        return variant_.ExtractNode();
-    }
-
-    void ReplaceNodeWithDataFromEntry(Entry&& other) {
-        assert(IsNode());
-        kd_key_ = other.GetKey();
-        variant_ = std::move(other.variant_);
-#ifdef PH_TREE_ENTRY_POSTLEN
-        if (IsNode()) {
-            postfix_len_ = other.postfix_len_;
-        }
-#endif
-    }
-
-  private:
-    KeyT kd_key_;
-    EntryVariant<DIM, T, SCALAR> variant_;
-    // The length (number of bits) of post fixes (the part of the coordinate that is 'below' the
-    // current node). If a variable prefix_len would refer to the number of bits in this node's
-    // prefix, and if we assume 64 bit values, the following would always hold:
-    // prefix_len + 1 + postfix_len = 64.
-    // The '+1' accounts for the 1 bit that is represented by the local node's hypercube,
-    // i.e. the same bit that is used to create the lookup keys in entries_.
-#ifdef PH_TREE_ENTRY_POSTLEN
-    alignas(2) bit_width_t postfix_len_;
-#endif
-};
-
-//#pragma pack(push, 4)
-template <dimension_t DIM, typename T, typename SCALAR>
-struct EntryVariant {
-    using ValueT = std::remove_const_t<T>;
-    using NodeT = Node<DIM, T, SCALAR>;
-
-    enum {
-        VALUE = 0,
-        NODE = 1,
-        EMPTY = 2,
-    };
-
-    EntryVariant() = delete;
-
-    explicit EntryVariant(std::unique_ptr<NodeT>&& node_ptr)
-    : node_{std::move(node_ptr)}, type{NODE} {}
-
-    explicit EntryVariant(std::optional<ValueT>&& value) : value_{std::move(value)}, type{VALUE} {
-        value.reset();  // TODO why???
-        assert(!value.has_value());
-    }
-
-    template <typename... Args>
-    explicit EntryVariant(std::in_place_t, Args&&... args)
-    : value_{std::in_place, std::forward<Args>(args)...}, type{VALUE} {}
-
-    EntryVariant(const EntryVariant& other) = delete;
-    EntryVariant& operator=(const EntryVariant& other) = delete;
-
-    EntryVariant(EntryVariant&& other) noexcept : type{std::move(other.type)} {
-        switch (type) {
-        case VALUE:
-            new (&value_) std::optional<ValueT>{std::move(other.value_)};
-            break;
-        case NODE:
-            new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
-            break;
-        default:
-            assert(false && "Assigning from an EMPTY variant is a waste of time.");
-        }
-        assert(type != EMPTY);
-    }
-
-    EntryVariant& operator=(EntryVariant&& other) noexcept {
-        switch (other.type) {
-        case VALUE:
-            if (IsNode()) {
-                // 'other' may be referenced from the local node, so we need to move(other)
-                // before destructing the local node.
-                auto node = std::move(node_);
-                new (&value_) std::optional<ValueT>{std::move(other.value_)};
-                node.~unique_ptr();
-            } else {
-                Destroy();
-                new (&value_) std::optional<ValueT>{std::move(other.value_)};
-            }
-            type = VALUE;
-            break;
-        case NODE:
-            if (IsNode()) {
-                auto node = std::move(node_);
-                new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
-                node.~unique_ptr();
-            } else {
-                Destroy();
-                new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
-                type = NODE;
-            }
-            break;
-        default:
-            Destroy();
-            assert(false && "Assigning from an EMPTY variant is a waste of time.");
-        }
-        assert(type != EMPTY);
-        return *this;
-    }
-
-    ~EntryVariant() noexcept {
-        Destroy();
-    }
-
-    void Destroy() noexcept {
-        switch (type) {
-        case VALUE:
-            value_.~optional();
-            break;
-        case NODE:
-            node_.~unique_ptr();
-            break;
-        case EMPTY:
-            break;
-        default:
-            assert(false);
-        }
-        type = EMPTY;
-    }
-
-    void SetValue(std::optional<ValueT>&& value) noexcept {
-        Destroy();
-        type = VALUE;
-        new (&value_) std::optional<ValueT>{std::move(value)};
-        assert(!value);
-    }
-
-    void SetNode(std::unique_ptr<NodeT>&& node) noexcept {
-        Destroy();
-        type = NODE;
-        // move unique_ptr without calling destructor on previous value
-        new (&node_) std::unique_ptr<NodeT>{std::move(node)};
-        assert(!node);
+        return type == VALUE;
     }
 
     [[nodiscard]] bool IsNode() const {
         return type == NODE;
     }
 
-    [[nodiscard]] bool IsValue() const {
-        return type == VALUE;
+    [[nodiscard]] T& GetValue() const {
+        assert(type == VALUE);
+        return const_cast<T&>(*value_);
     }
 
     [[nodiscard]] NodeT& GetNode() const {
@@ -294,9 +153,26 @@ struct EntryVariant {
         return *node_;
     }
 
-    [[nodiscard]] T& GetValue() const {
-        assert(type == VALUE);
-        return const_cast<T&>(*value_);
+    void SetNode(std::unique_ptr<NodeT>&& node) noexcept {
+#ifdef PH_TREE_ENTRY_POSTLEN
+        postfix_len_ = node->GetPostfixLen();
+#endif
+        //        std::cout << "size EV : " << sizeof(kd_key_) << " +  " << sizeof(node_) << " +  "
+        //                  << sizeof(value_) << "+" << sizeof(type) << " = " << sizeof(*this) <<
+        //                  std::endl;
+        DestroyUnion();
+        type = NODE;
+        new (&node_) std::unique_ptr<NodeT>{std::move(node)};
+        assert(!node);
+    }
+
+    [[nodiscard]] bit_width_t GetNodePostfixLen() const {
+        assert(IsNode());
+#ifdef PH_TREE_ENTRY_POSTLEN
+        return postfix_len_;
+#else
+        return GetNode().GetPostfixLen();
+#endif
     }
 
     [[nodiscard]] std::optional<ValueT>&& ExtractValue() {
@@ -311,14 +187,58 @@ struct EntryVariant {
         return std::move(node_);
     }
 
+    void ReplaceNodeWithDataFromEntry(Entry&& other) {
+        assert(IsNode());
+        // 'other' may be referenced from the local node, so we need to do move(other)
+        // before destructing the local node.
+        auto node = std::move(node_);
+        type = EMPTY;
+        *this = std::move(other);
+        node.~unique_ptr();
+#ifdef PH_TREE_ENTRY_POSTLEN
+        postfix_len_ = std::move(other.postfix_len_);
+#endif
+    }
+
   private:
+    void AssignUnion(Entry&& other) noexcept {
+        type = std::move(other.type);
+        if (type == NODE) {
+            new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
+        } else if (type == VALUE) {
+            new (&value_) std::optional<ValueT>{std::move(other.value_)};
+        } else {
+            assert(false && "Assigning from an EMPTY variant is a waste of time.");
+        }
+    }
+
+    void DestroyUnion() noexcept {
+        if (type == VALUE) {
+            value_.~optional();
+        } else if (type == NODE) {
+            node_.~unique_ptr();
+        } else {
+            assert(EMPTY);
+        }
+        type = EMPTY;
+    }
+
+    KeyT kd_key_;
     union {
         std::unique_ptr<NodeT> node_;
         std::optional<ValueT> value_;
     };
     alignas(2) std::uint16_t type;
+    // The length (number of bits) of post fixes (the part of the coordinate that is 'below' the
+    // current node). If a variable prefix_len would refer to the number of bits in this node's
+    // prefix, and if we assume 64 bit values, the following would always hold:
+    // prefix_len + 1 + postfix_len = 64.
+    // The '+1' accounts for the 1 bit that is represented by the local node's hypercube,
+    // i.e. the same bit that is used to create the lookup keys in entries_.
+#ifdef PH_TREE_ENTRY_POSTLEN
+    alignas(2) bit_width_t postfix_len_;
+#endif
 };
-//#pragma pack(pop)
 
 }  // namespace improbable::phtree::v16
 

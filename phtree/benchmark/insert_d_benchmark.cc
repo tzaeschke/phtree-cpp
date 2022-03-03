@@ -31,6 +31,7 @@ const double GLOBAL_MAX = 10000;
  */
 template <dimension_t DIM>
 class IndexBenchmark {
+    using Index = PhTreeD<DIM, std::int32_t>;
   public:
     IndexBenchmark(benchmark::State& state, TestGenerator data_type, int num_entities);
 
@@ -39,7 +40,7 @@ class IndexBenchmark {
   private:
     void SetupWorld(benchmark::State& state);
 
-    void Insert(benchmark::State& state, PhTreeD<DIM, int>& tree);
+    void Insert(benchmark::State& state, Index& tree);
 
     const TestGenerator data_type_;
     const int num_entities_;
@@ -58,7 +59,7 @@ template <dimension_t DIM>
 void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
     for (auto _ : state) {
         state.PauseTiming();
-        auto* tree = new PhTreeD<DIM, int>();
+        auto* tree = new Index();
         state.ResumeTiming();
 
         Insert(state, *tree);
@@ -82,7 +83,7 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
 }
 
 template <dimension_t DIM>
-void IndexBenchmark<DIM>::Insert(benchmark::State& state, PhTreeD<DIM, int>& tree) {
+void IndexBenchmark<DIM>::Insert(benchmark::State& state, Index& tree) {
     for (int i = 0; i < num_entities_; ++i) {
         PhPointD<DIM>& p = points_[i];
         tree.emplace(p, i);
