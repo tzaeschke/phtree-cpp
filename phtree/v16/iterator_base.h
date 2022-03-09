@@ -108,7 +108,7 @@ class IteratorBase {
 
     [[nodiscard]] bool ApplyFilter(const EntryT& entry) const {
         return entry.IsNode()
-            ? filter_.IsNodeValid(entry.GetKey(), entry.GetNode().GetPostfixLen() + 1)
+            ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
             : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }
 

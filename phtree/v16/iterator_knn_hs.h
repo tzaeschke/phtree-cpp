@@ -114,8 +114,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
                     auto& e2 = entry.second;
                     if (this->ApplyFilter(e2)) {
                         if (e2.IsNode()) {
-                            auto& sub = e2.GetNode();
-                            double d = DistanceToNode(e2.GetKey(), sub.GetPostfixLen() + 1);
+                            double d = DistanceToNode(e2.GetKey(), e2.GetNodePostfixLen() + 1);
                             queue_.emplace(d, &e2);
                         } else {
                             double d = distance_(center_post_, this->post(e2.GetKey()));

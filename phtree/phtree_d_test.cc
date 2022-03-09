@@ -48,7 +48,10 @@ struct Id {
         return _i == rhs._i;
     }
 
+    Id(Id const& rhs) = default;
+    Id(Id && rhs) = default;
     Id& operator=(Id const& rhs) = default;
+    Id& operator=(Id && rhs) = default;
 
     int _i;
 };

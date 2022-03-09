@@ -29,32 +29,25 @@ namespace improbable::phtree::v16 {
 template <typename T, typename CONVERT, typename CALLBACK_FN, typename FILTER>
 class ForEach {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
-    using KeyExternal = typename CONVERT::KeyExternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = Entry<DIM, T, SCALAR>;
-    using NodeT = Node<DIM, T, SCALAR>;
 
   public:
     ForEach(const CONVERT& converter, CALLBACK_FN& callback, FILTER filter)
     : converter_{converter}, callback_{callback}, filter_(std::move(filter)) {}
 
-    void run(const EntryT& root) {
-        assert(root.IsNode());
-        TraverseNode(root.GetNode());
-    }
-
-  private:
-    void TraverseNode(const NodeT& node) {
-        auto iter = node.Entries().begin();
-        auto end = node.Entries().end();
+    void Traverse(const EntryT& entry) {
+        assert(entry.IsNode());
+        auto& entries = entry.GetNode().Entries();
+        auto iter = entries.begin();
+        auto end = entries.end();
         for (; iter != end; ++iter) {
             const auto& child = iter->second;
             const auto& child_key = child.GetKey();
             if (child.IsNode()) {
-                const auto& child_node = child.GetNode();
-                if (filter_.IsNodeValid(child_key, child_node.GetPostfixLen() + 1)) {
-                    TraverseNode(child_node);
+                if (filter_.IsNodeValid(child_key, child.GetNodePostfixLen() + 1)) {
+                    Traverse(child);
                 }
             } else {
                 T& value = child.GetValue();

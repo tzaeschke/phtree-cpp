@@ -100,7 +100,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
     auto& PrepareAndPush(const EntryT& entry) {
         assert(stack_size_ < stack_.size() - 1);
         auto& ni = stack_[stack_size_++];
-        ni.init(range_min_, range_max_, entry.GetNode(), entry.GetKey());
+        ni.Init(range_min_, range_max_, entry);
         return ni;
     }
 
@@ -132,12 +132,14 @@ class NodeIterator {
     using NodeT = Node<DIM, T, SCALAR>;
 
   public:
-    NodeIterator() : iter_{}, node_{nullptr}, mask_lower_{0}, mask_upper_(0) {}
+    NodeIterator() : iter_{}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}
 
-    void init(const KeyT& range_min, const KeyT& range_max, const NodeT& node, const KeyT& prefix) {
-        node_ = &node;
-        CalcLimits(node.GetPostfixLen(), range_min, range_max, prefix);
+    void Init(const KeyT& range_min, const KeyT& range_max, const EntryT& entry) {
+        auto& node = entry.GetNode();
+        CalcLimits(entry.GetNodePostfixLen(), range_min, range_max, entry.GetKey());
         iter_ = node.Entries().lower_bound(mask_lower_);
+        node_ = &node;
+        postfix_len_ = entry.GetNodePostfixLen();
     }
 
     /*
@@ -163,16 +165,16 @@ class NodeIterator {
             return IsInRange(candidate.GetKey(), range_min, range_max);
         }
 
-        auto& node = candidate.GetNode();
         // Check if node-prefix allows sub-node to contain any useful values.
         // An infix with len=0 implies that at least part of the child node overlaps with the query.
-        if (node.GetInfixLen() == 0) {
+        // Putting it differently, if the infix has len=0, then there is no point in validating it.
+        if (!candidate.HasNodeInfix(postfix_len_)) {
             return true;
         }
 
         // Mask for comparing the prefix with the query boundaries.
-        assert(node.GetPostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
-        SCALAR comparison_mask = MAX_MASK<SCALAR> << (node.GetPostfixLen() + 1);
+        assert(candidate.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
+        SCALAR comparison_mask = MAX_MASK<SCALAR> << (candidate.GetNodePostfixLen() + 1);
         auto& key = candidate.GetKey();
         for (dimension_t dim = 0; dim < DIM; ++dim) {
             SCALAR in = key[dim] & comparison_mask;
@@ -250,13 +252,17 @@ class NodeIterator {
         }
         mask_lower_ = lower_limit;
         mask_upper_ = upper_limit;
+//        std::cout << "size IT : " << sizeof(iter_) << " +  " << sizeof(node_) << " + "
+//                  << sizeof(mask_lower_) << " + " << sizeof(mask_lower_) << " + "
+//                  << sizeof(postfix_len_) << " = " << sizeof(*this) << std::endl;
     }
 
   private:
     EntryIteratorC<DIM, EntryT> iter_;
-    const NodeT* node_;
+    NodeT* node_;
     hc_pos_t mask_lower_;
     hc_pos_t mask_upper_;
+    bit_width_t postfix_len_;
 };
 }  // namespace
 }  // namespace improbable::phtree::v16

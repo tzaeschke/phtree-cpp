@@ -70,7 +70,7 @@ class PhTreeV16 {
 
     PhTreeV16(CONVERT& converter = ConverterNoOp<DIM, ScalarInternal>())
     : num_entries_{0}
-    , root_{0, MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , root_{MAX_BIT_WIDTH<ScalarInternal> - 1}
     , the_end_{converter}
     , converter_{converter} {}
 
@@ -93,8 +93,8 @@ class PhTreeV16 {
         auto* current_entry = &root_;
         bool is_inserted = false;
         while (current_entry->IsNode()) {
-            current_entry =
-                &current_entry->GetNode().Emplace(is_inserted, key, std::forward<Args>(args)...);
+            current_entry = &current_entry->GetNode().Emplace(
+                is_inserted, key, current_entry->GetNodePostfixLen(), std::forward<Args>(args)...);
         }
         num_entries_ += is_inserted;
         return {current_entry->GetValue(), is_inserted};
@@ -134,7 +134,7 @@ class PhTreeV16 {
 
         auto* parent_entry = iterator.GetParentNodeEntry();
         if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
-            parent_entry->GetNode().GetPostfixLen() + 1) {
+            parent_entry->GetNodePostfixLen() + 1) {
             // replace higher up in the tree
             return emplace(key, std::forward<Args>(args)...);
         }
@@ -143,8 +143,8 @@ class PhTreeV16 {
         auto* current_entry = parent_entry;
         bool is_inserted = false;
         while (current_entry->IsNode()) {
-            current_entry =
-                &current_entry->GetNode().Emplace(is_inserted, key, std::forward<Args>(args)...);
+            current_entry = &current_entry->GetNode().Emplace(
+                is_inserted, key, current_entry->GetNodePostfixLen(), std::forward<Args>(args)...);
         }
         num_entries_ += is_inserted;
         return {current_entry->GetValue(), is_inserted};
@@ -179,7 +179,7 @@ class PhTreeV16 {
         }
         auto* current_entry = &root_;
         while (current_entry && current_entry->IsNode()) {
-            current_entry = current_entry->GetNode().Find(key);
+            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
         }
         return current_entry ? 1 : 0;
     }
@@ -203,7 +203,7 @@ class PhTreeV16 {
         while (current_entry && current_entry->IsNode()) {
             parent_node = current_node;
             current_node = current_entry;
-            current_entry = current_entry->GetNode().Find(key);
+            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
         }
 
         return IteratorSimple<T, CONVERT>(current_entry, current_node, parent_node, converter_);
@@ -222,7 +222,8 @@ class PhTreeV16 {
         EntryT* non_root_current_entry = nullptr;
         bool found = false;
         while (current_entry) {
-            auto* child_entry = current_entry->GetNode().Erase(key, non_root_current_entry, found);
+            auto* child_entry = current_entry->GetNode().Erase(
+                key, non_root_current_entry, current_entry->GetNodePostfixLen(), found);
             current_entry = child_entry;
             non_root_current_entry = child_entry;
         }
@@ -247,17 +248,18 @@ class PhTreeV16 {
         if (iterator.Finished()) {
             return 0;
         }
-         if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
-             // There may be no entry because not every iterator sets it.
-             // Also, do _not_ use the root entry, see erase(key).
-             // Start searching from the top.
-             return erase(iterator.GetCurrentResult()->GetKey());
+        if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
+            // There may be no entry because not every iterator sets it.
+            // Also, do _not_ use the root entry, see erase(key).
+            // Start searching from the top.
+            return erase(iterator.GetCurrentResult()->GetKey());
         }
         bool found = false;
         assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
         iterator.GetCurrentNodeEntry()->GetNode().Erase(
             iterator.GetCurrentResult()->GetKey(),
             iterator.GetCurrentNodeEntry(),
+            iterator.GetCurrentNodeEntry()->GetNodePostfixLen(),
             found);
 
         num_entries_ -= found;
@@ -277,7 +279,7 @@ class PhTreeV16 {
      */
     template <typename CALLBACK_FN, typename FILTER = FilterNoOp>
     void for_each(CALLBACK_FN& callback, FILTER filter = FILTER()) const {
-        ForEach<T, CONVERT, CALLBACK_FN, FILTER>(converter_, callback, filter).run(root_);
+        ForEach<T, CONVERT, CALLBACK_FN, FILTER>(converter_, callback, filter).Traverse(root_);
     }
 
     /*
@@ -297,7 +299,7 @@ class PhTreeV16 {
         FILTER filter = FILTER()) const {
         ForEachHC<T, CONVERT, CALLBACK_FN, FILTER>(
             query_box.min(), query_box.max(), converter_, callback, filter)
-            .run(root_);
+            .Traverse(root_);
     }
 
     /*
@@ -363,7 +365,7 @@ class PhTreeV16 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT(0, MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT(MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*
@@ -385,7 +387,7 @@ class PhTreeV16 {
      * This function is only for debugging.
      */
     auto GetDebugHelper() const {
-        return DebugHelperV16(root_.GetNode(), num_entries_);
+        return DebugHelperV16(root_, num_entries_);
     }
 
   private:
