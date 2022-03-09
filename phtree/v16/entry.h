@@ -24,10 +24,15 @@
 #include <memory>
 #include <optional>
 
+//#define PH_TREE_ENTRY_POSTLEN 1
+
 namespace improbable::phtree::v16 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
+
+template <dimension_t DIM, typename T, typename SCALAR>
+struct EntryVariant;
 
 /*
  * Nodes in the PH-Tree contain up to 2^DIM Entries, one in each geometric quadrant.
@@ -204,6 +209,7 @@ class Entry {
     // i.e. the same bit that is used to create the lookup keys in entries_.
     alignas(2) bit_width_t postfix_len_;
 };
+
 }  // namespace improbable::phtree::v16
 
 #endif  // PHTREE_V16_ENTRY_H
