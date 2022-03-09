@@ -59,6 +59,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
     , stack_size_{0}
     , range_min_{range_min}
     , range_max_{range_max} {
+        stack_.reserve(8);
         PrepareAndPush(root);
         FindNextElement();
     }
@@ -98,7 +99,10 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
     }
 
     auto& PrepareAndPush(const EntryT& entry) {
-        assert(stack_size_ < stack_.size() - 1);
+        if (stack_.size() < stack_size_ + 1) {
+            stack_.emplace_back();
+        }
+        assert(stack_size_ < stack_.size());
         auto& ni = stack_[stack_size_++];
         ni.Init(range_min_, range_max_, entry);
         return ni;
@@ -118,7 +122,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         return stack_size_ == 0;
     }
 
-    std::array<NodeIterator<DIM, T, SCALAR>, MAX_BIT_WIDTH<SCALAR>> stack_;
+    std::vector<NodeIterator<DIM, T, SCALAR>> stack_;
     size_t stack_size_;
     const KeyInternal range_min_;
     const KeyInternal range_max_;
