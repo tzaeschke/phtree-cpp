@@ -20,11 +20,8 @@
 #include "../../phtree/common/common.h"
 #include "node.h"
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <optional>
-
-//#define PH_TREE_ENTRY_POSTLEN 1
 
 namespace improbable::phtree::v16 {
 
