@@ -5,12 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Added
-- kNN performance: setting PH_TREE_ENTRY_POSTLEN enables postlen being stored
-  in Entries. This avoids indirections and improves kNN performance by ~10%.
-  Unfortunately, it also slows down normal queries a bit and consumes mor memory, so it
-  is disabled by default.  [#11](https://github.com/tzaeschke/phtree-cpp/issues/11)
 ### Changed
+- postfix/infix field moved from Node to Entry. This avoids indirections and improves performance of most by ~10%.
+  operations by 5-15%.  [#11](https://github.com/tzaeschke/phtree-cpp/issues/11)
 - Entries now use 'union' to store children.  [#9](https://github.com/tzaeschke/phtree-cpp/issues/9)
 - Avoid unnecessary find() when removing a node. [#5](https://github.com/tzaeschke/phtree-cpp/issues/5)
 - Avoid unnecessary key copy when inserting a node. [#4](https://github.com/tzaeschke/phtree-cpp/issues/4)
