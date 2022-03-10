@@ -21,6 +21,7 @@
 #include <cassert>
 #include <tuple>
 #include <vector>
+#include <memory>
 
 /*
  * PLEASE do not include this file directly, it is included via common.h.
@@ -380,25 +381,29 @@ class BSTreePage;
 template <dimension_t DIM, typename ENTRY>
 struct BSTEntry {
     index_t key_;
-    ENTRY* value_;
-    BSTreePage<DIM, ENTRY>* node_;
+    std::optional<ENTRY> value_;
+    BSTreePage<DIM, ENTRY>* bstnode_;
 
-    BSTEntry(index_t key, ENTRY* entry) {
-        key_ = key;
-        kdKey = k;
-        value_ = v;
-    }
+    BSTEntry(index_t key, ENTRY* entry) : key_{key}, value_{entry}, bstnode_{nullptr} { }
 
     index_t getKey() {
-        return key;
+        return key_;
     }
 
-    PhPoint<DIM> getKdKey() {
-        return kdKey;
+    bool IsValue() const {
+        return bstnode_ == nullptr;
     }
 
-    void* getValue() {
-        return value;
+    bool IsBstNode() const {
+        return bstnode_ != nullptr;
+    }
+
+    ENTRY& GetValue() const {
+        return value_.value();
+    }
+
+    auto* GetBstNode() const {
+        return bstnode_;
     }
 
     void set(index_t key, PhPoint<DIM> kdKey, void* value) {
@@ -426,7 +431,8 @@ class BSTreePage {
     const int NO_POS = -1000;
 
     struct UpdateInfo {
-        static const int NO_INSERT_REQUIRED = Integer.MAX_VALUE;
+        // TODO
+        static const int NO_INSERT_REQUIRED = 0xFFFFFF;
         KeyT& newKey;
         int insertRequired = NO_INSERT_REQUIRED;
         UpdateInfo init(KeyT& newKey) {
@@ -448,14 +454,18 @@ class BSTreePage {
         if (isLeaf) {
             nEntries = 0;
             int initialPageSize = MAX_LEAF_N <= 8 ? 2 : INITIAL_PAGE_SIZE;
-            keys = tree.bstPool().arrayCreateLong(initialPageSize);
-            values = tree.bstPool().arrayCreateEntries(initialPageSize);
+            keys.reserve(initialPageSize);
+            values.reserve(initialPageSize);
+            //keys = tree.bstPool().arrayCreateLong(initialPageSize);
+            //values = tree.bstPool().arrayCreateEntries(initialPageSize);
             subPages = nullptr;
         } else {
             nEntries = -1;
-            keys = tree.bstPool().arrayCreateLong(MAX_INNER_N);
+            //keys = tree.bstPool().arrayCreateLong(MAX_INNER_N);
+            keys.reserve(MAX_INNER_N);
             values = nullptr;
-            subPages = tree.bstPool().arrayCreateNodes(MAX_INNER_N + 1);
+            //subPages = tree.bstPool().arrayCreateNodes(MAX_INNER_N + 1);
+            subPages.reserve(MAX_INNER_N + 1);
         }
 
         this.isLeaf = isLeaf;
@@ -490,8 +500,9 @@ class BSTreePage {
     }
 
   public:
-    static BSTreePage create(BSTreePage* parent, bool isLeaf, BSTreePage* leftPredecessor) {
-        return tree.bstPool().getNode(parent, isLeaf, leftPredecessor);
+    static BSTreePage* create(BSTreePage* parent, bool isLeaf, BSTreePage* leftPredecessor) {
+        //return tree.bstPool().getNode(parent, isLeaf, leftPredecessor);
+        return new BSTreePage();
     }
 
   public:
@@ -510,6 +521,8 @@ class BSTreePage {
 
   private:
     int maxInnerN() {
+        //return MAX_INNER_N;
+        // TODO?
         return keys.length;
     }
 
@@ -553,14 +566,14 @@ class BSTreePage {
         // The stored value[i] is the min-values of the according page[i+1}
         int pos = binarySearchInnerNode(key);
         // read page before that value
-        BSTreePage page = getPageByPos(pos);
-        if (page.IsLeaf()) {
-            BSTEntry o = page.getOrCreate(key, this, pos);
-            if (o.getKdKey() == nullptr && o.getValue() instanceof BSTreePage) {
+        BSTreePage* page = getPageByPos(pos);
+        if (page->IsLeaf()) {
+            BSTEntryT* o = page->getOrCreate(key, this, pos);
+            if (o.getKdKey() == nullptr && o->getValue() instanceof BSTreePage) {
                 // add page
-                BSTreePage newPage = (BSTreePage)o.getValue();
+                BSTreePage* newPage = (BSTreePage)o->getValue();
                 addSubPage(newPage, newPage.getMinKey(), pos, ind);
-                o.setValue(nullptr);
+                o->setValue(nullptr);
                 return o;
             }
             return o;
@@ -569,7 +582,7 @@ class BSTreePage {
     }
 
   public:
-    BSTEntryT* getValueFromLeaf(long key) {
+    BSTEntryT* getValueFromLeaf(index_t key) {
         int pos = binarySearch(key);
         if (pos >= 0) {
             return values[pos];
@@ -579,7 +592,7 @@ class BSTreePage {
     }
 
   public:
-    int binarySearchInnerNode(long key) {
+    int binarySearchInnerNode(index_t key) {
         if (nEntries <= 8) {
             for (int i = 0; i < nEntries; i++) {
                 if (key <= keys[i]) {
@@ -611,7 +624,7 @@ class BSTreePage {
      *
      * @param key search key
      */
-    int binarySearch(long key) {
+    int binarySearch(index_t key) {
         if (nEntries <= 8) {
             return linearSearch(key);
         }
@@ -1166,38 +1179,38 @@ class BSTreePage {
   private:
     void handleUnderflowSubInner(int pos) {
         BSTreePage* sub = getPageByPos(pos);
-        if (sub.nEntries < maxInnerN() >> 1) {
-            if (sub.nEntries >= 0) {
-                BSTreePage prev = getPrevInnerPage(pos);
+        if (sub->nEntries < maxInnerN() >> 1) {
+            if (sub->nEntries >= 0) {
+                BSTreePage* prev = getPrevInnerPage(pos);
                 if (prev != nullptr && !prev.isLeaf) {
                     // this is only good for merging inside the same parent.
-                    if ((sub.nEntries % 2 == 0) && (prev.nEntries + sub.nEntries < maxInnerN())) {
-                        System.arraycopy(sub.keys, 0, prev.keys, prev.nEntries + 1, sub.nEntries);
+                    if ((sub->nEntries % 2 == 0) && (prev->nEntries + sub->nEntries < maxInnerN())) {
+                        System.arraycopy(sub->keys, 0, prev->keys, prev->nEntries + 1, sub->nEntries);
                         System.arraycopy(
-                            sub.subPages, 0, prev.subPages, prev.nEntries + 1, sub.nEntries + 1);
+                            sub->subPages, 0, prev->subPages, prev->nEntries + 1, sub->nEntries + 1);
                         // find key for the first appended page -> go up or go down????? Up!
-                        prev.keys[prev.nEntries] = keys[pos - 1];
-                        prev.nEntries += sub.nEntries + 1;  // for the additional key
-                        prev.assignThisAsParentToLeaves();
+                        prev->keys[prev->nEntries] = keys[pos - 1];
+                        prev->nEntries += sub->nEntries + 1;  // for the additional key
+                        prev->assignThisAsParentToLeaves();
                         removePage(pos);
                     }
                     return;
                 }
 
-                if (sub.nEntries == 0) {
+                if (sub->nEntries == 0) {
                     // only one element left, no merging occurred -> move sub-page up to parent
-                    BSTreePage child = sub.getPageByPos(0);
+                    BSTreePage* child = sub->getPageByPos(0);
                     replaceChildPage(child, pos);
                     tree.bstPool().reportFreeNode(sub);
                 }
             } else {
                 // nEntries == 0
-                if (sub.parent != nullptr) {
+                if (sub->parent != nullptr) {
                     return;
                 }
                 // else : No root and this is a leaf page... -> we do nothing.
-                sub.subPages[0] = nullptr;
-                sub.nEntries--;  // down to -1 which indicates an empty root page
+                sub->subPages[0] = nullptr;
+                sub->nEntries--;  // down to -1 which indicates an empty root page
             }
         }
     }
@@ -1210,7 +1223,7 @@ class BSTreePage {
   private:
     void arraysRemoveChild(int pos) {
         System.arraycopy(subPages, pos + 1, subPages, pos, nEntries - pos);
-        subPages[nEntries] = null;
+        subPages[nEntries] = nullptr;
     }
 
     /**
@@ -1450,10 +1463,10 @@ class BSTree {
     using PageT = BSTreePage<DIM, ENTRY>;
 
   public:
-    BSTree() : root_{new BSTreePage<DIM, ENTRY>()}, size_{0} {}
+    BSTree() : root_{std::make_unique<BSTreePage<DIM, ENTRY>>()}, size_{0} {}
 
   private:
-    PageT* root_;
+    std::unique_ptr<PageT> root_;
     size_t size_;
 };
 
