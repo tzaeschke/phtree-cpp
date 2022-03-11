@@ -170,46 +170,50 @@ class b_plus_tree_node {
             if (parent_) {
                 // TODO
                 assert(false && "Implement overflow");
-//                auto split_pos = M >> 1;
-//                auto split_key = data_[split_pos].first;
-//                auto max_key = data_[M - 1].first;
-                auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key, this);
-                // TODO ensure we are not incrementally inserting here, see
-                //  https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
-                node2->data_.insert(node2->data_.end(), std::make_move_iterator(data_.begin() + split_pos),
-                          std::make_move_iterator(data_.end()));
-                // TODO: ensure we are not incrementally removing!
-                data_.erase(data_.begin() + split_pos, data_.end());
-
-                // insert entry
-                // TODO emplace directly w/o checking again in try_emplace...
-                return try_emplace_base(lower_bound(key), key, std::forward<Args>(args)...);
+                //                auto split_pos = M >> 1;
+                //                auto split_key = data_[split_pos].first;
+                //                auto max_key = data_[M - 1].first;
+                //                auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key,
+                //                this);
+                //                // TODO ensure we are not incrementally inserting here, see
+                //                //
+                //                https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
+                //                node2->data_.insert(node2->data_.end(),
+                //                std::make_move_iterator(data_.begin() + split_pos),
+                //                          std::make_move_iterator(data_.end()));
+                //                // TODO: ensure we are not incrementally removing!
+                //                data_.erase(data_.begin() + split_pos, data_.end());
+                //
+                //                // insert entry
+                //                // TODO emplace directly w/o checking again in try_emplace...
+                //                return try_emplace_base(lower_bound(key), key,
+                //                std::forward<Args>(args)...);
             } else {
                 assert(parent_ == nullptr);
                 auto* new_parent = new NodeT(false, nullptr, nullptr, nullptr);
                 new_parent->data_.emplace_back(max_key, this);
                 tree.root_ = new_parent;
                 parent_ = new_parent;
-
-
-                auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key, this);
-                // TODO ensure we are not incrementally inserting here, see
-                //  https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
-                node2->data_.insert(node2->data_.end(), std::make_move_iterator(data_.begin() + split_pos),
-                                    std::make_move_iterator(data_.end()));
-                // TODO: ensure we are not incrementally removing!
-                data_.erase(data_.begin() + split_pos, data_.end());
-
-                // insert entry
-                // TODO emplace directly w/o checking again in try_emplace...
-                return try_emplace_base(lower_bound(key), key, std::forward<Args>(args)...);
-
             }
+
+            auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key, this);
+            // TODO ensure we are not incrementally inserting here, see
+            //  https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
+            node2->data_.insert(
+                node2->data_.end(),
+                std::make_move_iterator(data_.begin() + split_pos),
+                std::make_move_iterator(data_.end()));
+            // TODO: ensure we are not incrementally removing!
+            data_.erase(data_.begin() + split_pos, data_.end());
+
+            // insert entry
+            // TODO emplace directly w/o checking again in try_emplace...
+            if (key <= split_key) {
+                return EmplaceNoCheck(lower_bound(key), key, std::forward<Args>(args)...);
+            }
+            return node2->EmplaceNoCheck(node2->lower_bound(key), key, std::forward<Args>(args)...);
         }
-        if (parent_ != nullptr && it == data_.end()) {
-            parent_->UpdateKey(data_[data_.size() - 1].first, key);
-        }
-        return try_emplace_base(it, key, std::forward<Args>(args)...);
+        return EmplaceNoCheck(it, key, std::forward<Args>(args)...);
     }
 
     // return 'true' iff an entry was erased
@@ -293,6 +297,21 @@ class b_plus_tree_node {
             auto x = data_.emplace(it, key, std::forward<Args>(args)...);
             return std::make_pair(x, true);
         }
+    }
+
+    template <typename... Args>
+    auto EmplaceNoCheck(const DataIteratorT& it, index_t key, Args&&... args) {
+        assert(it == data_.end() || it->first != key);
+        if (parent_ != nullptr && it == data_.end()) {
+            parent_->UpdateKey(data_[data_.size() - 1].first, key);
+        }
+        //            auto x = data_.emplace(
+        //                it,
+        //                std::piecewise_construct,
+        //                std::forward_as_tuple(key),
+        //                std::forward_as_tuple(std::forward<Args>(args)...));
+        auto x = data_.emplace(it, key, std::forward<Args>(args)...);
+        return std::make_pair(x, true);
     }
 
     std::vector<EntryT> data_;
@@ -560,11 +579,10 @@ class BstIterator {
         assert(AssertNotEnd());
         auto* se = &Peek();
         while (true) {
-            while (!se->node_->is_leaf()) {
-                if (se->node_->size() < se->pos_) {
-                    ++se->pos_;
-                    se = &Push(se->node_->data_[se->pos_].node_);
-                }
+            while (!se->node_->is_leaf() && se->node_->size() < se->pos_) {
+                ++se->pos_;
+                se = &Push(se->node_->data_[se->pos_].node_);
+
             }
             if (se->node_->size() < se->pos_) {
                 ++se->pos_;
