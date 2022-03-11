@@ -68,7 +68,7 @@ class BstIterator;
 template <typename Entry>
 using DataIterator = decltype(std::vector<BptEntry<Entry>>().begin());
 
-constexpr static size_t M = 88;
+constexpr static size_t M = 8;
 
 /*
  * Strategy:
@@ -165,7 +165,7 @@ class b_plus_tree_node {
         if (data_.size() == M) {
             // overflow
             auto split_pos = M >> 1;
-            auto split_key = data_[split_pos].first;
+            auto split_key = data_[split_pos - 1].first;
             auto max_key = data_[M - 1].first;
             if (parent_) {
                 // TODO
