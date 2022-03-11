@@ -100,7 +100,12 @@ class b_plus_tree_node {
 
     [[nodiscard]] auto find(index_t key) {
         auto it = lower_bound(key);
-        if (it != data_.end() && it->first == key) {
+        if (it == data_.end()) {
+            return it;
+        }
+        if (is_leaf_ && it->first == key) {
+            return it;
+        } else if (!is_leaf_ && it->first >= key) {
             return it;
         }
         return data_.end();
@@ -177,7 +182,8 @@ class b_plus_tree_node {
                 data_.erase(data_.begin() + split_pos, data_.end());
 
                 // insert entry
-                return try_emplace_base(data_.end(), key, std::forward<Args>(args)...);
+                // TODO emplace directly w/o checking again in try_emplace...
+                return try_emplace_base(lower_bound(key), key, std::forward<Args>(args)...);
             } else {
                 assert(parent_ == nullptr);
                 auto* new_parent = new NodeT(false, nullptr, nullptr, nullptr);
@@ -195,9 +201,13 @@ class b_plus_tree_node {
                 data_.erase(data_.begin() + split_pos, data_.end());
 
                 // insert entry
-                return try_emplace_base(data_.end(), key, std::forward<Args>(args)...);
+                // TODO emplace directly w/o checking again in try_emplace...
+                return try_emplace_base(lower_bound(key), key, std::forward<Args>(args)...);
 
             }
+        }
+        if (parent_ != nullptr && it == data_.end()) {
+            parent_->UpdateKey(data_[data_.size() - 1].first, key);
         }
         return try_emplace_base(it, key, std::forward<Args>(args)...);
     }
@@ -226,6 +236,14 @@ class b_plus_tree_node {
     }
 
   private:
+    void UpdateKey(index_t old_key, index_t new_key) {
+        assert(new_key > old_key);
+        auto it = lower_bound(old_key);
+        assert(it != data_.end());
+        assert(it->first == old_key);
+        it->first = new_key;
+    }
+
     /*
      * This method does two things:
      * - It changes the key of the node at 'old_key' to 'new_key'.
