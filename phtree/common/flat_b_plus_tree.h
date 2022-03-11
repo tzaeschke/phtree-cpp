@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,18 @@
 /*
  * PLEASE do not include this file directly, it is included via common.h.
  *
- * This file contains the sparse_map implementation, which is used in medium-dimensional nodes in
+ * This file contains the B+tree implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
 namespace improbable::phtree {
 
 /*
- * The sparse_map is a flat map implementation that uses an array of *at* *most* SIZE=2^DIM.
- * The array contains a list sorted by key.
+ * The b_plus_tree_map is a B+tree implementation that uses a hierarchy of horizontally
+ * connected nodes.
  *
- * It has O(log n) lookup and O(n) insertion/removal time complexity, space complexity is O(n).
+ * The individual nodes have at most M entries.
+ * The tree has O(log n) lookup and O(M log n) insertion/removal time complexity,
+ * space complexity is O(n).
  */
 
 template <typename T>
@@ -66,7 +68,7 @@ class BstIterator;
 template <typename Entry>
 using DataIterator = decltype(std::vector<BptEntry<Entry>>().begin());
 
-constexpr static size_t M = 888;
+constexpr static size_t M = 88;
 
 /*
  * Strategy:
@@ -154,16 +156,47 @@ class b_plus_tree_node {
     template <typename... Args>
     auto try_emplace(const DataIteratorT& it, index_t key, TreeT& tree, Args&&... args) {
         assert(is_leaf_);
+        assert(data_.size() <= M);
         if (data_.size() == M) {
             // overflow
+            auto split_pos = M >> 1;
+            auto split_key = data_[split_pos].first;
+            auto max_key = data_[M - 1].first;
             if (parent_) {
                 // TODO
                 assert(false && "Implement overflow");
+//                auto split_pos = M >> 1;
+//                auto split_key = data_[split_pos].first;
+//                auto max_key = data_[M - 1].first;
+                auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key, this);
+                // TODO ensure we are not incrementally inserting here, see
+                //  https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
+                node2->data_.insert(node2->data_.end(), std::make_move_iterator(data_.begin() + split_pos),
+                          std::make_move_iterator(data_.end()));
+                // TODO: ensure we are not incrementally removing!
+                data_.erase(data_.begin() + split_pos, data_.end());
+
+                // insert entry
+                return try_emplace_base(data_.end(), key, std::forward<Args>(args)...);
             } else {
                 assert(parent_ == nullptr);
                 auto* new_parent = new NodeT(false, nullptr, nullptr, nullptr);
-                new_parent->data_.emplace_back(key, this);
+                new_parent->data_.emplace_back(max_key, this);
                 tree.root_ = new_parent;
+                parent_ = new_parent;
+
+
+                auto node2 = parent_->UpdateKeyAndAddNode(max_key, split_key, this);
+                // TODO ensure we are not incrementally inserting here, see
+                //  https://stackoverflow.com/questions/15004517/moving-elements-from-stdvector-to-another-one
+                node2->data_.insert(node2->data_.end(), std::make_move_iterator(data_.begin() + split_pos),
+                                    std::make_move_iterator(data_.end()));
+                // TODO: ensure we are not incrementally removing!
+                data_.erase(data_.begin() + split_pos, data_.end());
+
+                // insert entry
+                return try_emplace_base(data_.end(), key, std::forward<Args>(args)...);
+
             }
         }
         return try_emplace_base(it, key, std::forward<Args>(args)...);
@@ -193,6 +226,32 @@ class b_plus_tree_node {
     }
 
   private:
+    /*
+     * This method does two things:
+     * - It changes the key of the node at 'old_key' to 'new_key'.
+     * - It inserts a new node after 'new_key' with value 'old_key'
+     * Invariants:
+     * - old_key > new_key
+     * - there is no other key between new_key and old_key
+     */
+    NodeT* UpdateKeyAndAddNode(index_t old_key, index_t new_key, NodeT* old_node) {
+        assert(old_key > new_key);
+        if (data_.size() < M) {
+            auto it = lower_bound(old_key);
+            assert(it != data_.end());
+            it->first = new_key;
+            ++it;
+            auto new_node = new NodeT(old_node->is_leaf_, this, old_node, old_node->next_node_);
+            data_.insert(it, {old_key, new_node});
+            if (old_node->next_node_) {
+                old_node->next_node_->prev_node_ = new_node;
+            }
+            return new_node;
+        }
+        assert(false && "TODO implement");
+        return nullptr;
+    }
+
     template <typename... Args>
     auto emplace_base(index_t key, Args&&... args) {
         auto it = lower_bound(key);
