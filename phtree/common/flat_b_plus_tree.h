@@ -44,6 +44,10 @@ class b_plus_tree_map;
 
 namespace {
 
+// TODO change these type.
+using key_t = scalar_64_t;
+using pos_t = std::uint16_t;  // rename to index_t?
+// remove this type
 using index_t = scalar_64_t;
 
 template <typename T>
@@ -344,7 +348,7 @@ class b_plus_tree_map {
         auto it = node->lower_bound(key);
         if (it != node->end() && it->first == key) {
             // TODO incomplete iterator, build stack?
-            return IterT(this, node, it - node->data_.begin());
+            return IterT(node, it - node->data_.begin());
         }
         return end();
     }
@@ -413,23 +417,23 @@ class b_plus_tree_map {
     }
 
     [[nodiscard]] auto begin() {
-        return IterT(this, root_);
+        return IterT(root_);
     }
 
     [[nodiscard]] auto begin() const {
-        return IterT(this, root_);
+        return IterT(root_);
     }
 
     [[nodiscard]] auto cbegin() const {
-        return IterT(this, root_);
+        return IterT(root_);
     }
 
     [[nodiscard]] auto end() {
-        return IterT(this, nullptr);
+        return IterT();
     }
 
     [[nodiscard]] auto end() const {
-        return IterT(this, nullptr);
+        return IterT();
     }
 
     template <typename... Args>
@@ -472,7 +476,7 @@ class b_plus_tree_map {
     //    }
 
     template <typename... Args>
-    auto try_emplace_base(index_t key, Args&&... args) {
+    auto try_emplace_base(key_t key, Args&&... args) {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound(key);
@@ -543,25 +547,93 @@ class BstIterator {
 
     friend b_plus_tree_map<T>;
 
+  public:
+    // TODO do we need this?
+    // Arbitrary position iterator
+    explicit BstIterator(NodeT* node, pos_t pos) : node_{node}, pos_{pos} {
+        assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
+    }
+
+    // begin() iterator
+    explicit BstIterator(NodeT* node) : node_{node}, pos_{0} {
+        assert(node->parent_ == nullptr && "must start with root node");
+        // move iterator to first value
+        while (!node_->is_leaf_) {
+            node_ = node_->data_[0].node_;
+        }
+    }
+
+    // end() iterator
+    explicit BstIterator() : node_{nullptr}, pos_{0} {}
+
+    auto& operator*() const {
+        assert(AssertNotEnd());
+        // TODO store pointer to entry?
+        return const_cast<EntryT&>(node_->data_[pos_]);
+    }
+
+    auto* operator->() const {
+        assert(AssertNotEnd());
+        return const_cast<EntryT*>(&node_->data_[pos_]);
+    }
+
+    auto& operator++() {
+        assert(AssertNotEnd());
+        ++pos_;
+        if (pos_ >= node_->data_.size()) {
+            pos_ = 0;
+            // this may be a nullptr -> end of data
+            node_ = node_->next_node_;
+        }
+        return *this;
+    }
+
+    auto operator++(int) {
+        IterT iterator(*this);
+        ++(*this);
+        return iterator;
+    }
+
+    friend bool operator==(const IterT& left, const IterT& right) {
+        return left.node_ == right.node_ && left.pos_ == right.pos_;
+    }
+
+    friend bool operator!=(const IterT& left, const IterT& right) {
+        return !(left == right);
+    }
+
+  private:
+    [[nodiscard]] bool AssertNotEnd() const {
+        return node_ != nullptr;
+    }
+    NodeT* node_;
+    pos_t pos_;
+};
+
+template <typename T>
+class BstIterator_Stack {
+    using IterT = BstIterator<T>;
+    using NodeT = b_plus_tree_node<T>;
+    using EntryT = BptEntry<T>;
+
+    friend b_plus_tree_map<T>;
+
     struct BstStackEntry {
-        BstStackEntry(NodeT* node, size_t pos) : node_{node}, pos_{pos} {};
+        BstStackEntry(NodeT* node, pos_t pos) : node_{node}, pos_{pos} {};
 
         bool operator==(const BstStackEntry& other) const {
             return node_ == other.node_ && pos_ == other.pos_;
         }
 
         NodeT* node_;
-        size_t pos_;
+        pos_t pos_;
     };
 
   public:
-    // BstIterator() : first{0}, owner_{nullptr} {};
-
     // node=nullptr indicates end()
-    explicit BstIterator(const b_plus_tree_map<T>* owner, NodeT* node, index_t index = 0)
-    : owner_{owner} {
+    explicit BstIterator_Stack(NodeT* node, pos_t pos = 0) {
         if (node != nullptr) {
-            Push(node, index);
+            Push(node, pos);
         }
     }
 
@@ -582,7 +654,6 @@ class BstIterator {
             while (!se->node_->is_leaf() && se->node_->size() < se->pos_) {
                 ++se->pos_;
                 se = &Push(se->node_->data_[se->pos_].node_);
-
             }
             if (se->node_->size() < se->pos_) {
                 ++se->pos_;
@@ -638,7 +709,7 @@ class BstIterator {
         return nullptr;
     }
 
-    BstStackEntry& Push(NodeT* node, size_t pos = 0) {
+    BstStackEntry& Push(NodeT* node, pos_t pos = 0) {
         if (stack_size_ + 1 > stack_.size()) {
             ++stack_size_;
             return stack_.emplace_back(node, pos);
@@ -651,10 +722,8 @@ class BstIterator {
     }
 
     bool AssertNotEnd() const {
-        // TODO
-        return true;
+        return stack_size_ > 0;
     }
-    const b_plus_tree_map<T>* owner_;
     std::vector<BstStackEntry> stack_{};
     size_t stack_size_{0};
 };
