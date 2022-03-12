@@ -173,7 +173,7 @@ class b_plus_tree_node {
             auto max_key = data_[M - 1].first;
             if (parent_) {
                 // TODO
-                assert(false && "Implement overflow");
+                //assert(false && "Implement overflow");
                 //                auto split_pos = M >> 1;
                 //                auto split_key = data_[split_pos].first;
                 //                auto max_key = data_[M - 1].first;
@@ -262,6 +262,7 @@ class b_plus_tree_node {
      */
     NodeT* UpdateKeyAndAddNode(index_t old_key, index_t new_key, NodeT* old_node) {
         assert(old_key > new_key);
+        assert(!is_leaf());
         if (data_.size() < M) {
             auto it = lower_bound(old_key);
             assert(it != data_.end());
@@ -480,6 +481,10 @@ class b_plus_tree_map {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound(key);
+            if (it == node->end()) {
+                // insert into last node
+                --it;
+            }
             assert(it != node->end());
             node = it->node_;
         }
