@@ -343,73 +343,29 @@ class b_plus_tree_node {
             // Add node to parent
             parent_->UpdateKeyAndAddNode(
                 max_key, split_key, std::max(max_key, key2), sibbling2, tree);
+
             // insert entry
-            if (key2 <= split_key) {
-                std::cout << "UKAAN0: " << key1_old << "-> " << key1_new << " / " << key2
-                          << std::endl;  // TODO
-                                         //                auto it = lower_bound(key2);
-                //                assert(it == data_.end() || it->first != key2);
-                //                data_.emplace(it, key2, child2);
-                // TODO remove all this
-                assert(dest->data_.size() < M);
-                auto it = dest->lower_bound(key1_old);
-                assert(it != dest->data_.end());
-                it->first = key1_new;
-                ++it;
-                // auto new_node = new NodeT(old_node->is_leaf_, this, old_node,
-                // old_node->next_node_);
-                // TODO emplace?
-                dest->data_.insert(it, {key2, child2});
-                //        if (old_node->next_node_) {
-                //            old_node->next_node_->prev_node_ = new_node;
-                //        }
-                //        return new_node;
-                if (parent_ != nullptr) {
-                    auto max_key = dest->data_[dest->data_.size() - 1].first;
-                    if (key2 > max_key) {
-                        parent_->UpdateKey(dest->data_[dest->data_.size() - 1].first, key2);
-                    }
-                }
-                return;
-            } else {
-                std::cout << "UKAAN1: " << key1_old << "-> " << key1_new << " / " << key2
-                          << std::endl;  // TODO
+            if (key2 > split_key) {
                 dest = sibbling2;
                 child2->parent_ = dest;
                 if (key1_old <= split_key) {
-                    std::cout << "UKAAN11111: " << key1_old << "-> " << key1_new << " / " << key2
-                              << std::endl;  // TODO
-                                             // Special case: old child in current node and new
-                                             // child in new node
                     assert(data_.size() < M);
                     auto it = lower_bound(key1_old);
                     assert(it != data_.end());
                     it->first = key1_new;
                     assert(++it == data_.end());
-
-                    assert(dest->data_.size() < M);
-                    auto it2 = dest->lower_bound(key2);
-                    // TODO use begin() above
-                    assert(it2 == dest->data_.begin());
-                    dest->data_.insert(it2, {key2, child2});
-
+                    assert(dest->lower_bound(key2) == dest->data_.begin());
+                    dest->data_.emplace(dest->data_.begin(), key2, child2);
                     return;
                 }
-                std::cout << "UKAAN12222: " << key1_old << "-> " << key1_new << " / " << key2
-                          << std::endl;  // TODO
             }
         }
-        std::cout << "UKAAN: " << key1_old << "-> " << key1_new << " / " << key2
-                  << std::endl;  // TODO
-
         assert(dest->data_.size() < M);
         auto it = dest->lower_bound(key1_old);
         assert(it != dest->data_.end());
         it->first = key1_new;
         ++it;
-
-        // TODO emplace?
-        dest->data_.insert(it, {key2, child2});
+        dest->data_.emplace(it, key2, child2);
         assert(child2->parent_ == dest);
         if (parent_ != nullptr && key2 > key1_old) {
             parent_->UpdateKey(key1_old, key2);
