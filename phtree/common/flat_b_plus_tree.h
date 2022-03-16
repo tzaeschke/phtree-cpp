@@ -229,7 +229,7 @@ class b_plus_tree_node {
         return false;
     }
 
-    void erase(const typename std::vector<EntryT>::iterator& iterator) {
+    void erase(const DataIteratorT& iterator) {
         data_.erase(iterator);
     }
 
@@ -541,17 +541,28 @@ class b_plus_tree_map {
     }
 
     void erase(index_t key) {
-        // TODO
-        auto it = find(key);
-
-        //        auto it = lower_bound(key);
-        //        if (it != end() && it->first == key) {
-        //            data_.erase(it);
-        //        }
+        auto node = root_;
+        while (!node->is_leaf()) {
+            auto it = node->lower_bound(key);
+            if (it == node->end()) {
+                // insert into last node
+                --it;
+            }
+            assert(it != node->end());
+            node = it->node_;
+        }
+        // TODO move code into try_emplace(), or use find() ?
+        auto it = node->lower_bound(key);
+        if (it == node->end()) {
+            // not found
+            return;
+        }
+        --size_;
+        node->erase(it);
     }
 
     void erase(const IterT& iterator) {
-        iterator.node_.erase(iterator.pos_);
+        iterator.node_->erase(iterator.pos_);
     }
 
     [[nodiscard]] size_t size() const {
