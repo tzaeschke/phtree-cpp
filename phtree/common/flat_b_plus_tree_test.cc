@@ -21,7 +21,7 @@
 using namespace improbable::phtree;
 
 TEST(PhTreeFlatSparseMapTest, SmokeTest) {
-    const int max_size = 8;
+    const int max_size = 200;
 
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
@@ -37,6 +37,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTest) {
             if (!hasVal) {
                 reference_map.emplace(val, val);
                 test_map.emplace(val, val);
+                test_map._check();
             }
             ASSERT_EQ(test_map.size(), reference_map.size());
             for (auto it : reference_map) {
@@ -55,7 +56,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTest) {
 }
 
 TEST(PhTreeFlatSparseMapTest, SmokeTestWithTryEmplace) {
-    const int max_size = 8;
+    const int max_size = 80;
 
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
@@ -84,6 +85,54 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestWithTryEmplace) {
                 size_t vMap = test_map.find(v)->second;
                 ASSERT_EQ(vMap, vRef);
             }
+        }
+    }
+}
+
+
+TEST(PhTreeFlatSparseMapTest, SmokeTestWithErase) {
+    const int max_size = 80;
+
+    std::default_random_engine random_engine{0};
+    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
+
+    for (int i = 0; i < 10; i++) {
+        b_plus_tree_map<size_t> test_map;
+        std::unordered_map<size_t, size_t> reference_map;
+        for (int j = 0; j < 2 * max_size; j++) {
+            size_t val = cube_distribution(random_engine);
+            bool hasVal = test_map.find(val) != test_map.end();
+            bool hasValRef = reference_map.find(val) != reference_map.end();
+            ASSERT_EQ(hasVal, hasValRef);
+            if (!hasVal) {
+                reference_map.emplace(val, val);
+                test_map.try_emplace(val, val);
+            }
+        }
+        while (!reference_map.empty()) {
+            auto entry = reference_map.begin();
+            if (entry->second % 2 == 0) {
+                test_map.erase(entry->first);
+            } else {
+                auto it = test_map.find(entry->first);
+                ASSERT_NE(it, test_map.end());
+                ASSERT_EQ(it->second, entry->second);
+                test_map.erase(it);
+            }
+            test_map._check();
+            reference_map.erase(entry->first);
+            for (auto it : reference_map) {
+                size_t vRef = it.first;
+                size_t vMap = test_map.find(vRef)->second;
+                ASSERT_EQ(vMap, vRef);
+            }
+            for (auto it : test_map) {
+                size_t v = it.first;
+                size_t vRef = reference_map.find(v)->second;
+                size_t vMap = test_map.find(v)->second;
+                ASSERT_EQ(vMap, vRef);
+            }
+            ASSERT_EQ(test_map.size(), reference_map.size());
         }
     }
 }
