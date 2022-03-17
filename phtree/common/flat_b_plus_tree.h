@@ -73,7 +73,8 @@ class BstIterator;
 template <typename Entry>
 using DataIterator = decltype(std::vector<BptEntry<Entry>>().begin());
 
-constexpr static size_t M = 4;
+constexpr static size_t M = 8;
+constexpr static size_t M_min = std::max((size_t)2, M >> 2);
 
 /*
  * Strategy:
@@ -219,7 +220,7 @@ class b_plus_tree_node {
     }
 
     // return 'true' iff an entry was erased
-    bool erase(index_t key) {
+    bool erase_key(index_t key) {
         assert(is_leaf_);
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
@@ -229,8 +230,58 @@ class b_plus_tree_node {
         return false;
     }
 
-    void erase(const DataIteratorT& iterator) {
-        data_.erase(iterator);
+    // return 'true' iff an entry was erased
+    bool erase_pos(pos_t pos, TreeT& tree) {
+        if (pos < data_.size()) {
+            // TODO verify value????
+            Erase(pos, tree);
+            return true;
+        }
+        return false;
+    }
+
+    void erase_it(const DataIteratorT& iterator, TreeT& tree) {
+        Erase(iterator - data_.begin(), tree);
+    }
+
+    // TODO private
+    void Erase(pos_t pos, TreeT& tree) {
+        assert(is_leaf_);
+        assert(pos < data_.size());
+        if (parent_ != nullptr && data_.size() <= M_min) {
+            // merge
+            if (next_node_ != nullptr) {
+                next_node_->prev_node_ = prev_node_;
+            }
+            if (prev_node_ != nullptr) {
+                prev_node_->next_node_ = next_node_;
+            }
+
+            auto keep_pos = pos == 0 ? 1 : 0;
+            key_t key_remove = data_[pos].first;
+            if (prev_node_ != nullptr && prev_node_->data_.size() < M) {
+                assert(prev_node_->parent_ == parent_);
+                auto& prev_data = prev_node_->data_;
+                prev_data.emplace_back(std::move(data_[keep_pos]));
+                key_t old1 = prev_data[prev_data.size() - 2].first;
+                key_t new1 = prev_data[prev_data.size() - 1].first;
+                parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+            } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
+                assert(next_node_->parent_ == parent_);
+                auto& next_data = next_node_->data_;
+                next_data.emplace(next_data.begin(), std::move(data_[keep_pos]));
+                parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+            } else {
+                assert(false && "No sibbling nodes left...");
+            }
+            data_.erase(data_.begin(), data_.end());
+            return;
+        }
+
+        if (parent_ != nullptr && pos == data_.size() - 1) {
+            parent_->UpdateKey(data_[pos].first, data_[pos - 1].first);
+        }
+        data_.erase(data_.begin() + pos);
     }
 
     [[nodiscard]] size_t size() const {
@@ -243,7 +294,7 @@ class b_plus_tree_node {
 
     void _check(
         size_t& count, NodeT* parent, NodeT*& prev_leaf, key_t& known_min, key_t known_max) {
-        assert(parent_ == nullptr || data_.size() >= 2);
+        assert(parent_ == nullptr || data_.size() >= M_min);
         assert(parent_ == parent);
         if (data_.empty()) {
             assert(parent == nullptr);
@@ -277,7 +328,7 @@ class b_plus_tree_node {
 
   private:
     void UpdateKey(index_t old_key, index_t new_key) {
-        assert(new_key > old_key);
+        assert(new_key != old_key);
         auto it = lower_bound(old_key);
         assert(it != data_.end());
         // TODO This should work !!!
@@ -372,6 +423,75 @@ class b_plus_tree_node {
         }
     }
 
+    /*
+     * key_old1==key_new1 signifies that they can/will be ignored.
+     */
+    void UpdateKeyAndRemoveNode(key_t key_old1, key_t key_new1, key_t key_remove, TreeT& tree) {
+        assert(!is_leaf_);
+
+        // remove node
+        auto it_to_erase = lower_bound(key_remove);
+
+        // merge?
+        if (parent_ != nullptr && data_.size() <= M_min) {
+            // TODO move code into Merge() function
+            // merge
+            if (next_node_ != nullptr) {
+                next_node_->prev_node_ = prev_node_;
+            }
+            if (prev_node_ != nullptr) {
+                prev_node_->next_node_ = next_node_;
+            }
+
+            key_t pos = it_to_erase - data_.begin();
+            auto keep_pos = pos == 0 ? 1 : 0;
+            key_t key_remove = data_[pos].first;
+            if (prev_node_ != nullptr && prev_node_->data_.size() < M) {
+                assert(prev_node_->parent_ == parent_);
+                auto& prev_data = prev_node_->data_;
+                data_[keep_pos].node_->parent_ = prev_node_;
+                prev_data.emplace_back(std::move(data_[keep_pos]));
+                key_t old1 = prev_data[prev_data.size() - 2].first;
+                key_t new1 = prev_data[prev_data.size() - 1].first;
+                parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+            } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
+                assert(next_node_->parent_ == parent_);
+                auto& next_data = next_node_->data_;
+                data_[keep_pos].node_->parent_ = next_node_;
+                next_data.emplace(next_data.begin(), std::move(data_[keep_pos]));
+                parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+            } else {
+                assert(false && "No sibbling nodes left...");
+            }
+            data_.erase(data_.begin(), data_.end());
+            return;
+        }
+
+        auto it = data_.erase(it_to_erase);
+        if (parent_ == nullptr && data_.size() < 2) {
+            auto remaining_node = data_.begin()->node_;
+            data_.begin()->node_ = nullptr;
+            remaining_node->parent_ = nullptr;
+            tree.root_ = remaining_node;
+            delete this;
+            return;
+        }
+
+        // update other keys?
+        if (key_old1 != key_new1) {
+            assert(key_old1 < key_remove);
+            assert(key_new1 != key_remove);
+            if (parent_ != nullptr && key_remove > key_new1 && it == data_.end()) {
+                parent_->UpdateKey(key_remove, key_new1);
+            }
+
+            // update key
+            assert(it != data_.begin());
+            --it;
+            it->first = key_new1;
+        }
+    }
+
     template <typename... Args>
     auto emplace_base(index_t key, Args&&... args) {
         auto it = lower_bound(key);
@@ -461,11 +581,6 @@ class b_plus_tree_map {
             return it;
         }
         return end();
-        //        auto it = lower_bound(key);
-        //        if (it != data_.end() && it->first == key) {
-        //            return it;
-        //        }
-        //        return data_.end();
     }
 
     [[nodiscard]] auto lower_bound(index_t key) {
@@ -482,11 +597,6 @@ class b_plus_tree_map {
             return it;
         }
         return end();
-        //        return std::lower_bound(
-        //            data_.begin(), data_.end(), key, [](PhFlatMapPair<T>& left, const size_t key)
-        //            {
-        //                return left.first < key;
-        //            });
     }
 
     [[nodiscard]] auto lower_bound(index_t key) const {
@@ -503,14 +613,12 @@ class b_plus_tree_map {
             return it;
         }
         return end();
-        //        return std::lower_bound(
-        //            data_.cbegin(), data_.cend(), key, [](const PhFlatMapPair<T>& left, const
-        //            size_t key) {
-        //                return left.first < key;
-        //            });
     }
 
     [[nodiscard]] auto begin() {
+        if (size() == 0) {
+            return end();
+        }
         return IterT(root_);
     }
 
@@ -558,11 +666,11 @@ class b_plus_tree_map {
             return;
         }
         --size_;
-        node->erase(it);
+        node->erase_it(it, *this);
     }
 
     void erase(const IterT& iterator) {
-        iterator.node_->erase(iterator.pos_);
+        size_ -= iterator.node_->erase_pos(iterator.pos_, *this);
     }
 
     [[nodiscard]] size_t size() const {
@@ -578,16 +686,6 @@ class b_plus_tree_map {
     }
 
   private:
-    //    template <typename... Args>
-    //    auto emplace_base(size_t key, Args&&... args) {
-    //        auto it = lower_bound(key);
-    //        if (it != end() && it->first == key) {
-    //            return std::make_pair(it, false);
-    //        } else {
-    //            return std::make_pair(data_.emplace(it, key, std::forward<Args>(args)...), true);
-    //        }
-    //    }
-
     template <typename... Args>
     auto try_emplace_base(key_t key, Args&&... args) {
         auto node = root_;
@@ -606,51 +704,8 @@ class b_plus_tree_map {
             return std::make_pair(it, false);
         }
         ++size_;
-        // auto x = node->try_emplace(it, key, *this, std::forward<Args>(args)...);
-        // return std::make_pair(x, true);
         return node->try_emplace(it, key, *this, std::forward<Args>(args)...);
-        //        auto it = lower_bound(key);
-        //        if (it != end() && it->first == key) {
-        //            return std::make_pair(it, false);
-        //        } else {
-        //            auto x = data_.emplace(
-        //                it,
-        //                std::piecewise_construct,
-        //                std::forward_as_tuple(key),
-        //                std::forward_as_tuple(std::forward<Args>(args)...));
-        //            return std::make_pair(x, true);
-        //        }
     }
-
-    //    template <typename... Args>
-    //    auto try_emplace_base_inner(size_t key, Args&&... args) {
-    //        auto it = lower_bound(key);
-    //        if (it != end() && it->first == key) {
-    //            return std::make_pair(it, false);
-    //        } else {
-    //            auto x = data_.emplace(
-    //                it,
-    //                std::piecewise_construct,
-    //                std::forward_as_tuple(key),
-    //                std::forward_as_tuple(std::forward<Args>(args)...));
-    //            return std::make_pair(x, true);
-    //        }
-    //    }
-    //
-    //    template <typename... Args>
-    //    auto try_emplace_base_leaf(size_t key, Args&&... args) {
-    //        auto it = lower_bound(key);
-    //        if (it != end() && it->first == key) {
-    //            return std::make_pair(it, false);
-    //        } else {
-    //            auto x = data_.emplace(
-    //                it,
-    //                std::piecewise_construct,
-    //                std::forward_as_tuple(key),
-    //                std::forward_as_tuple(std::forward<Args>(args)...));
-    //            return std::make_pair(x, true);
-    //        }
-    //    }
 
     NodeT* root_;
     size_t size_;
