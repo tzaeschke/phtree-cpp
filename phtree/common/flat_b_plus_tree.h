@@ -260,12 +260,17 @@ class b_plus_tree_node {
             auto keep_pos = pos == 0 ? 1 : 0;
             key_t key_remove = data_[pos].first;
             if (prev_node_ != nullptr && prev_node_->data_.size() < M) {
-                assert(prev_node_->parent_ == parent_);
+             //   assert(prev_node_->parent_ == parent_);
                 auto& prev_data = prev_node_->data_;
                 prev_data.emplace_back(std::move(data_[keep_pos]));
                 key_t old1 = prev_data[prev_data.size() - 2].first;
                 key_t new1 = prev_data[prev_data.size() - 1].first;
-                parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+                if (prev_node_->parent_ == parent_) {
+                    parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+                } else {
+                    parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+                    prev_node_->parent_->UpdateKey(old1, new1);
+                }
             } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_;
@@ -453,7 +458,12 @@ class b_plus_tree_node {
                 prev_data.emplace_back(std::move(data_[keep_pos]));
                 key_t old1 = prev_data[prev_data.size() - 2].first;
                 key_t new1 = prev_data[prev_data.size() - 1].first;
-                parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+                if (prev_node_->parent_ == parent_) {
+                    parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
+                } else {
+                    parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+                    prev_node_->parent_->UpdateKey(old1, new1);
+                }
             } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_;
@@ -481,14 +491,23 @@ class b_plus_tree_node {
         if (key_old1 != key_new1) {
             assert(key_old1 < key_remove);
             assert(key_new1 != key_remove);
-            if (parent_ != nullptr && key_remove > key_new1 && it == data_.end()) {
-                parent_->UpdateKey(key_remove, key_new1);
-            }
 
             // update key
-            assert(it != data_.begin());
-            --it;
-            it->first = key_new1;
+            if (it == data_.begin()) {
+                // need to update last entry in previous node
+                assert(prev_node_ != nullptr);
+                assert(prev_node_->data_[prev_node_->size() - 1].first == key_old1);
+                prev_node_->data_[prev_node_->size() - 1].first = key_new1;
+                if (prev_node_->parent_ != nullptr) {//} && key_remove > key_new1 && it == data_.end()) {
+                    prev_node_->parent_->UpdateKey(key_old1, key_new1);
+                }
+            } else {
+                if (parent_ != nullptr && key_remove > key_new1 && it == data_.end()) {
+                    parent_->UpdateKey(key_remove, key_new1);
+                }
+                --it;
+                it->first = key_new1;
+            }
         }
     }
 
