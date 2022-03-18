@@ -46,10 +46,8 @@ class b_plus_tree_map;
 namespace {
 
 // TODO change these type.
-using key_t = scalar_64_t;
-using pos_t = std::uint16_t;  // rename to index_t?
-// remove this type
-using index_t = scalar_64_t;
+using key_t = std::uint64_t;
+using pos_t = std::uint16_t;
 
 template <typename T>
 class b_plus_tree_node;
@@ -58,13 +56,13 @@ using BptNode = b_plus_tree_node<T>;
 
 template <typename T>
 struct BptEntry {
-    BptEntry(index_t key, BptNode<T>* node) : node_{node}, second{}, first{key} {};
+    BptEntry(key_t key, BptNode<T>* node) : node_{node}, second{}, first{key} {};
     template <typename... Args>
-    BptEntry(index_t key, Args... args)
+    BptEntry(key_t key, Args... args)
     : node_{nullptr}, second{std::forward<Args>(args)...}, first{key} {};
     BptNode<T>* node_;
     T second;
-    index_t first;
+    key_t first;
 };
 
 template <typename T>
@@ -104,7 +102,7 @@ class b_plus_tree_node {
     explicit b_plus_tree_node(bool is_leaf, NodeT* parent, NodeT* prev, NodeT* next)
     : data_{}, is_leaf_{is_leaf}, parent_{parent}, prev_node_{prev}, next_node_{next} {};
 
-    [[nodiscard]] auto find(index_t key) {
+    [[nodiscard]] auto find(key_t key) {
         auto it = lower_bound(key);
         if (it == data_.end()) {
             return it;
@@ -117,7 +115,7 @@ class b_plus_tree_node {
         return data_.end();
     }
 
-    [[nodiscard]] auto find(index_t key) const {
+    [[nodiscard]] auto find(key_t key) const {
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
             return it;
@@ -125,16 +123,15 @@ class b_plus_tree_node {
         return data_.end();
     }
 
-    [[nodiscard]] auto lower_bound(index_t key) {
-        return std::lower_bound(
-            data_.begin(), data_.end(), key, [](EntryT& left, const index_t key) {
-                return left.first < key;
-            });
+    [[nodiscard]] auto lower_bound(key_t key) {
+        return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const key_t key) {
+            return left.first < key;
+        });
     }
 
-    [[nodiscard]] auto lower_bound(index_t key) const {
+    [[nodiscard]] auto lower_bound(key_t key) const {
         return std::lower_bound(
-            data_.cbegin(), data_.cend(), key, [](const EntryT& left, const index_t key) {
+            data_.cbegin(), data_.cend(), key, [](const EntryT& left, const key_t key) {
                 return left.first < key;
             });
     }
@@ -148,7 +145,7 @@ class b_plus_tree_node {
     }
 
     template <typename... Args>
-    auto try_emplace(const DataIteratorT& it, index_t key, TreeT& tree, Args&&... args) {
+    auto try_emplace(const DataIteratorT& it, key_t key, TreeT& tree, Args&&... args) {
         assert(is_leaf_);
         assert(data_.size() <= M);
         if (data_.size() == M) {
@@ -203,7 +200,7 @@ class b_plus_tree_node {
     }
 
     // return 'true' iff an entry was erased
-    bool erase_key(index_t key) {
+    bool erase_key(key_t key) {
         assert(is_leaf_);
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
@@ -316,7 +313,7 @@ class b_plus_tree_node {
     }
 
   private:
-    void UpdateKey(index_t old_key, index_t new_key) {
+    void UpdateKey(key_t old_key, key_t new_key) {
         assert(new_key != old_key);
         auto it = lower_bound(old_key);
         assert(it != data_.end());
@@ -341,7 +338,7 @@ class b_plus_tree_node {
      * - there is no other key between key1_new and key1_old
      */
     void UpdateKeyAndAddNode(
-        index_t key1_old, index_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
+        key_t key1_old, key_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
         assert(key2 > key1_new);
         assert(key1_old >= key1_new);
         assert(!is_leaf());
@@ -474,7 +471,7 @@ class b_plus_tree_node {
     }
 
     template <typename... Args>
-    auto emplace_base(index_t key, Args&&... args) {
+    auto emplace_base(key_t key, Args&&... args) {
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
             return std::make_pair(it, false);
@@ -484,7 +481,7 @@ class b_plus_tree_node {
     }
 
     template <typename... Args>
-    auto try_emplace_base(const DataIteratorT& it, index_t key, Args&&... args) {
+    auto try_emplace_base(const DataIteratorT& it, key_t key, Args&&... args) {
         if (it != data_.end() && it->first == key) {
             return std::make_pair(it, false);
         } else {
@@ -499,7 +496,7 @@ class b_plus_tree_node {
     }
 
     template <typename... Args>
-    auto EmplaceNoCheck(const DataIteratorT& it, index_t key, Args&&... args) {
+    auto EmplaceNoCheck(const DataIteratorT& it, key_t key, Args&&... args) {
         assert(it == data_.end() || it->first != key);
         //        if (parent_ != nullptr && it == data_.end()) {
         //            parent_->UpdateKey(data_[data_.size() - 1].first, key);
@@ -531,7 +528,7 @@ class b_plus_tree_map {
   public:
     explicit b_plus_tree_map() : root_{new NodeT(true, nullptr, nullptr, nullptr)}, size_{0} {};
 
-    [[nodiscard]] auto find(index_t key) {
+    [[nodiscard]] auto find(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->find(key);
@@ -548,39 +545,41 @@ class b_plus_tree_map {
         return end();
     }
 
-    [[nodiscard]] auto find(index_t key) const {
+    [[nodiscard]] auto find(key_t key) const {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->find(key);
             if (it == node->end()) {
                 return end();
             }
-            node = it->second.node_;
+            node = it->node_;
         }
         auto it = node->lower_bound(key);
         if (it != node->end() && it->first == key) {
-            return it;
+            // return it;
+            return IterT(node, it - node->data_.begin());
         }
         return end();
     }
 
-    [[nodiscard]] auto lower_bound(index_t key) {
+    [[nodiscard]] auto lower_bound(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound(key);
             if (it == node->end()) {
                 return end();
             }
-            node = it->second.node_;
+            node = it->node_;
         }
         auto it = node->lower_bound(key);
         if (it != node->end() && it->first == key) {
-            return it;
+            // return it;
+            return IterT(node, it - node->data_.begin());
         }
         return end();
     }
 
-    [[nodiscard]] auto lower_bound(index_t key) const {
+    [[nodiscard]] auto lower_bound(key_t key) const {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound(key);
@@ -597,9 +596,6 @@ class b_plus_tree_map {
     }
 
     [[nodiscard]] auto begin() {
-        if (size() == 0) {
-            return end();
-        }
         return IterT(root_);
     }
 
@@ -625,11 +621,11 @@ class b_plus_tree_map {
     }
 
     template <typename... Args>
-    auto try_emplace(index_t key, Args&&... args) {
+    auto try_emplace(key_t key, Args&&... args) {
         return try_emplace_base(key, std::forward<Args>(args)...);
     }
 
-    void erase(index_t key) {
+    void erase(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound(key);
@@ -702,15 +698,19 @@ class BstIterator {
     friend b_plus_tree_map<T>;
 
   public:
-    // TODO do we need this?
     // Arbitrary position iterator
-    explicit BstIterator(NodeT* node, pos_t pos) : node_{node}, pos_{pos} {
+    explicit BstIterator(NodeT* node, pos_t pos) noexcept : node_{node}, pos_{pos} {
         assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
     }
 
     // begin() iterator
-    explicit BstIterator(NodeT* node) : node_{node}, pos_{0} {
+    explicit BstIterator(NodeT* node) noexcept : node_{node}, pos_{0} {
         assert(node->parent_ == nullptr && "must start with root node");
+        if (node_->size() == 0) {
+            node_ = nullptr;
+            return;
+        }
+
         // move iterator to first value
         while (!node_->is_leaf_) {
             node_ = node_->data_[0].node_;
@@ -718,7 +718,7 @@ class BstIterator {
     }
 
     // end() iterator
-    explicit BstIterator() : node_{nullptr}, pos_{0} {}
+    BstIterator() noexcept : node_{nullptr}, pos_{0} {}
 
     auto& operator*() const {
         assert(AssertNotEnd());
@@ -762,124 +762,6 @@ class BstIterator {
     }
     NodeT* node_;
     pos_t pos_;
-};
-
-template <typename T>
-class BstIterator_Stack {
-    using IterT = BstIterator<T>;
-    using NodeT = b_plus_tree_node<T>;
-    using EntryT = BptEntry<T>;
-
-    friend b_plus_tree_map<T>;
-
-    struct BstStackEntry {
-        BstStackEntry(NodeT* node, pos_t pos) : node_{node}, pos_{pos} {};
-
-        bool operator==(const BstStackEntry& other) const {
-            return node_ == other.node_ && pos_ == other.pos_;
-        }
-
-        NodeT* node_;
-        pos_t pos_;
-    };
-
-  public:
-    // node=nullptr indicates end()
-    explicit BstIterator_Stack(NodeT* node, pos_t pos = 0) {
-        if (node != nullptr) {
-            Push(node, pos);
-        }
-    }
-
-    auto& operator*() const {
-        assert(AssertNotEnd());
-        return const_cast<EntryT&>(PeekValue());
-    }
-
-    auto* operator->() const {
-        assert(AssertNotEnd());
-        return const_cast<EntryT*>(&PeekValue());
-    }
-
-    auto& operator++() {
-        assert(AssertNotEnd());
-        auto* se = &Peek();
-        while (true) {
-            while (!se->node_->is_leaf() && se->node_->size() < se->pos_) {
-                ++se->pos_;
-                se = &Push(se->node_->data_[se->pos_].node_);
-            }
-            if (se->node_->size() < se->pos_) {
-                ++se->pos_;
-                return *this;
-            }
-            se = Pop();
-            if (se == nullptr) {
-                // finished
-                return *this;
-            }
-            ++se->pos_;
-        }
-    }
-
-    auto operator++(int) {
-        IterT iterator(*this);
-        ++(*this);
-        return iterator;
-    }
-
-    friend bool operator==(const IterT& left, const IterT& right) {
-        return left.stack_size_ == right.stack_size_ &&
-            (left.stack_size_ == 0 || (left.Peek() == right.Peek()));
-    }
-
-    friend bool operator!=(const IterT& left, const IterT& right) {
-        return !(left == right);
-    }
-
-  private:
-    const EntryT& PeekValue() const {
-        assert(stack_size_ > 0);
-        auto& stack_entry = stack_[stack_size_ - 1];
-        return stack_entry.node_->data_[stack_entry.pos_];
-    }
-
-    const BstStackEntry& Peek() const {
-        assert(stack_size_ > 0);
-        return stack_[stack_size_ - 1];
-    }
-
-    BstStackEntry& Peek() {
-        assert(stack_size_ > 0);
-        return stack_[stack_size_ - 1];
-    }
-
-    BstStackEntry* Pop() {
-        assert(stack_size_ > 0);
-        --stack_size_;
-        if (stack_size_ > 0) {
-            return &stack_[stack_size_ - 1];
-        }
-        return nullptr;
-    }
-
-    BstStackEntry& Push(NodeT* node, pos_t pos = 0) {
-        if (stack_size_ + 1 > stack_.size()) {
-            ++stack_size_;
-            return stack_.emplace_back(node, pos);
-        }
-        auto& e = stack_[stack_size_];
-        e.node_ = node;
-        e.pos_ = pos;
-        ++stack_size_;
-        return e;
-    }
-
-    bool AssertNotEnd() const {
-        return stack_size_ > 0;
-    }
-    std::vector<BstStackEntry> stack_{};
-    size_t stack_size_{0};
 };
 }  // namespace
 

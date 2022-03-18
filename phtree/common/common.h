@@ -23,6 +23,7 @@
 #include "distance.h"
 #include "filter.h"
 #include "flat_array_map.h"
+#include "flat_b_plus_tree.h"
 #include "flat_sparse_map.h"
 #include "tree_stats.h"
 #include <cassert>
