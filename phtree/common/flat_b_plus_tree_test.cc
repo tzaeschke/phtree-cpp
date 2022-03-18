@@ -91,7 +91,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestWithTryEmplace) {
 
 
 TEST(PhTreeFlatSparseMapTest, SmokeTestWithErase) {
-    const int max_size = 80;
+    const int max_size = 200;
 
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);

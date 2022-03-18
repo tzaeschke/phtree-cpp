@@ -139,18 +139,6 @@ class b_plus_tree_node {
             });
     }
 
-    //    [[nodiscard]] auto begin() {
-    //        return data_.begin();
-    //    }
-    //
-    //    [[nodiscard]] auto begin() const {
-    //        return cbegin();
-    //    }
-    //
-    //    [[nodiscard]] auto cbegin() const {
-    //        return data_.cbegin();
-    //    }
-    //
     [[nodiscard]] auto end() {
         return data_.end();
     }
@@ -158,11 +146,6 @@ class b_plus_tree_node {
     [[nodiscard]] auto end() const {
         return data_.end();
     }
-    //
-    //    template <typename... Args>
-    //    auto emplace(Args&&... args) {
-    //        return try_emplace_base(std::forward<Args>(args)...);
-    //    }
 
     template <typename... Args>
     auto try_emplace(const DataIteratorT& it, index_t key, TreeT& tree, Args&&... args) {
@@ -248,7 +231,13 @@ class b_plus_tree_node {
     void Erase(pos_t pos, TreeT& tree) {
         assert(is_leaf_);
         assert(pos < data_.size());
-        if (parent_ != nullptr && data_.size() <= M_min) {
+        key_t max_key_old = data_[data_.size() - 1].first;
+        data_.erase(data_.begin() + pos);
+        if (parent_ == nullptr) {
+            return;
+        }
+
+        if (data_.size() < M_min) {
             // merge
             if (next_node_ != nullptr) {
                 next_node_->prev_node_ = prev_node_;
@@ -257,36 +246,31 @@ class b_plus_tree_node {
                 prev_node_->next_node_ = next_node_;
             }
 
-            auto keep_pos = pos == 0 ? 1 : 0;
-            key_t key_remove = data_[pos].first;
-            if (prev_node_ != nullptr && prev_node_->data_.size() < M) {
-             //   assert(prev_node_->parent_ == parent_);
+            if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
+                prev_node_->data_.size() < M) {
+                //   assert(prev_node_->parent_ == parent_);
                 auto& prev_data = prev_node_->data_;
-                prev_data.emplace_back(std::move(data_[keep_pos]));
+                prev_data.emplace_back(std::move(data_[0]));
+                auto prev_node = prev_node_;  // create copy because (this) will be deleted
+                parent_->RemoveNode(max_key_old, tree);
                 key_t old1 = prev_data[prev_data.size() - 2].first;
                 key_t new1 = prev_data[prev_data.size() - 1].first;
-                if (prev_node_->parent_ == parent_) {
-                    parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
-                } else {
-                    parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
-                    prev_node_->parent_->UpdateKey(old1, new1);
+                if (prev_node->parent_ != nullptr) {
+                    prev_node->parent_->UpdateKey(old1, new1);
                 }
-            } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
+            } else if (
+                next_node_ != nullptr && next_node_->parent_ == parent_ &&
+                next_node_->data_.size() < M) {
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_;
-                next_data.emplace(next_data.begin(), std::move(data_[keep_pos]));
-                parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+                next_data.emplace(next_data.begin(), std::move(data_[0]));
+                parent_->RemoveNode(max_key_old, tree);
             } else {
                 assert(false && "No sibbling nodes left...");
             }
-            data_.erase(data_.begin(), data_.end());
-            return;
+        } else if (pos == data_.size()) {
+            parent_->UpdateKey(max_key_old, data_[pos - 1].first);
         }
-
-        if (parent_ != nullptr && pos == data_.size() - 1) {
-            parent_->UpdateKey(data_[pos].first, data_[pos - 1].first);
-        }
-        data_.erase(data_.begin() + pos);
     }
 
     [[nodiscard]] size_t size() const {
@@ -431,14 +415,26 @@ class b_plus_tree_node {
     /*
      * key_old1==key_new1 signifies that they can/will be ignored.
      */
-    void UpdateKeyAndRemoveNode(key_t key_old1, key_t key_new1, key_t key_remove, TreeT& tree) {
+    void RemoveNode(key_t key_remove, TreeT& tree) {
         assert(!is_leaf_);
 
         // remove node
+        key_t max_key_old = data_[data_.size() - 1].first;
         auto it_to_erase = lower_bound(key_remove);
+        data_.erase(it_to_erase);
+        if (parent_ == nullptr) {
+            if (data_.size() < 2) {
+                auto remaining_node = data_.begin()->node_;
+                data_.begin()->node_ = nullptr;
+                remaining_node->parent_ = nullptr;
+                tree.root_ = remaining_node;
+                delete this;
+            }
+            return;
+        }
 
         // merge?
-        if (parent_ != nullptr && data_.size() <= M_min) {
+        if (data_.size() < M_min) {
             // TODO move code into Merge() function
             // merge
             if (next_node_ != nullptr) {
@@ -448,66 +444,32 @@ class b_plus_tree_node {
                 prev_node_->next_node_ = next_node_;
             }
 
-            key_t pos = it_to_erase - data_.begin();
-            auto keep_pos = pos == 0 ? 1 : 0;
-            key_t key_remove = data_[pos].first;
-            if (prev_node_ != nullptr && prev_node_->data_.size() < M) {
+            if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
+                prev_node_->data_.size() < M) {
                 assert(prev_node_->parent_ == parent_);
                 auto& prev_data = prev_node_->data_;
-                data_[keep_pos].node_->parent_ = prev_node_;
-                prev_data.emplace_back(std::move(data_[keep_pos]));
-                key_t old1 = prev_data[prev_data.size() - 2].first;
-                key_t new1 = prev_data[prev_data.size() - 1].first;
-                if (prev_node_->parent_ == parent_) {
-                    parent_->UpdateKeyAndRemoveNode(old1, new1, key_remove, tree);
-                } else {
-                    parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
-                    prev_node_->parent_->UpdateKey(old1, new1);
+                data_[0].node_->parent_ = prev_node_;
+                prev_data.emplace_back(std::move(data_[0]));
+                auto prev_node = prev_node_;  // (this) will be removed before we need the field
+                parent_->RemoveNode(max_key_old, tree);  // remove (this)
+                if (prev_node->parent_ != nullptr) {
+                    key_t old1 = prev_data[prev_data.size() - 2].first;
+                    key_t new1 = prev_data[prev_data.size() - 1].first;
+                    prev_node->parent_->UpdateKey(old1, new1);
                 }
-            } else if (next_node_ != nullptr && next_node_->data_.size() < M) {
+            } else if (
+                next_node_ != nullptr && next_node_->parent_ == parent_ &&
+                next_node_->data_.size() < M) {
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_;
-                data_[keep_pos].node_->parent_ = next_node_;
-                next_data.emplace(next_data.begin(), std::move(data_[keep_pos]));
-                parent_->UpdateKeyAndRemoveNode(0, 0, key_remove, tree);
+                data_[0].node_->parent_ = next_node_;
+                next_data.emplace(next_data.begin(), std::move(data_[0]));
+                parent_->RemoveNode(max_key_old, tree);
             } else {
                 assert(false && "No sibbling nodes left...");
             }
-            data_.erase(data_.begin(), data_.end());
-            return;
-        }
-
-        auto it = data_.erase(it_to_erase);
-        if (parent_ == nullptr && data_.size() < 2) {
-            auto remaining_node = data_.begin()->node_;
-            data_.begin()->node_ = nullptr;
-            remaining_node->parent_ = nullptr;
-            tree.root_ = remaining_node;
-            delete this;
-            return;
-        }
-
-        // update other keys?
-        if (key_old1 != key_new1) {
-            assert(key_old1 < key_remove);
-            assert(key_new1 != key_remove);
-
-            // update key
-            if (it == data_.begin()) {
-                // need to update last entry in previous node
-                assert(prev_node_ != nullptr);
-                assert(prev_node_->data_[prev_node_->size() - 1].first == key_old1);
-                prev_node_->data_[prev_node_->size() - 1].first = key_new1;
-                if (prev_node_->parent_ != nullptr) {//} && key_remove > key_new1 && it == data_.end()) {
-                    prev_node_->parent_->UpdateKey(key_old1, key_new1);
-                }
-            } else {
-                if (parent_ != nullptr && key_remove > key_new1 && it == data_.end()) {
-                    parent_->UpdateKey(key_remove, key_new1);
-                }
-                --it;
-                it->first = key_new1;
-            }
+        } else {
+            parent_->UpdateKey(key_remove, data_[data_.size() - 1].first);
         }
     }
 
