@@ -304,3 +304,63 @@ cc_binary(
         "@spdlog",
     ],
 )
+
+cc_binary(
+    name = "hd_insert_d_benchmark",
+    testonly = True,
+    srcs = [
+        "hd_insert_d_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree",
+        "//phtree/benchmark",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "hd_erase_d_benchmark",
+    testonly = True,
+    srcs = [
+        "hd_erase_d_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree",
+        "//phtree/benchmark",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "hd_query_d_benchmark",
+    testonly = True,
+    srcs = [
+        "hd_query_d_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree",
+        "//phtree/benchmark",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "hd_knn_d_benchmark",
+    testonly = True,
+    srcs = [
+        "hd_knn_d_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree",
+        "//phtree/benchmark",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
