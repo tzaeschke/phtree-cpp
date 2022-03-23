@@ -269,9 +269,10 @@ class b_plus_tree_node {
                 return EmplaceNoCheck(it, key, std::forward<Args>(args)...);
             }
             // TODO Optimize populating new node: move 1st part, insert new value, move 2nd part...?
-            // TODO insertion pos can be calculated: (pos - split_pos + node2.size()
-            return node2->EmplaceNoCheck(
-                node2->lower_bound_l(key), key, std::forward<Args>(args)...);
+            // The insertion pos in node2 can be calculated:
+            auto old_pos = it - data_.begin();
+            auto it2 = node2->data_leaf_.begin() + old_pos - split_pos;
+            return node2->EmplaceNoCheck(it2, key, std::forward<Args>(args)...);
         }
         if (parent_ != nullptr) {
             auto max_key = data_[data_.size() - 1].first;
@@ -296,7 +297,6 @@ class b_plus_tree_node {
     // return 'true' iff an entry was erased
     bool erase_pos(pos_t pos, TreeT& tree) {
         if (pos < data_leaf_.size()) {
-            // TODO verify value????
             Erase(pos, tree);
             return true;
         }
@@ -305,59 +305,6 @@ class b_plus_tree_node {
 
     void erase_it(const LeafIteratorT& iterator, TreeT& tree) {
         Erase(iterator - data_leaf_.begin(), tree);
-    }
-
-    // TODO private
-    void Erase(pos_t pos, TreeT& tree) {
-        assert(is_leaf_);
-        auto& data_ = data_leaf_;
-        assert(pos < data_.size());
-        key_t max_key_old = data_[data_.size() - 1].first;
-        data_.erase(data_.begin() + pos);
-        if (parent_ == nullptr) {
-            return;
-        }
-
-        if (data_.size() == 0) {
-            // Nothing to merge, just remove node.
-            // This should be rare, i.e. only happens when a rare 1-entry node has another entry
-            // removed.
-            RemoveFromSiblings();
-            parent_->RemoveNode(max_key_old, tree);
-            return;
-        }
-
-        if (data_.size() < M_leaf_min) {
-            // merge
-            if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
-                prev_node_->data_leaf_.size() < M_leaf) {
-                RemoveFromSiblings();
-                auto& prev_data = prev_node_->data_leaf_;
-                prev_data.emplace_back(std::move(data_[0]));
-                auto prev_node = prev_node_;  // create copy because (this) will be deleted
-                parent_->RemoveNode(max_key_old, tree);
-                if (prev_node->parent_ != nullptr) {
-                    key_t old1 = prev_data[prev_data.size() - 2].first;
-                    key_t new1 = prev_data[prev_data.size() - 1].first;
-                    prev_node->parent_->UpdateKey(old1, new1);
-                }
-            } else if (
-                next_node_ != nullptr && next_node_->parent_ == parent_ &&
-                next_node_->data_leaf_.size() < M_leaf) {
-                RemoveFromSiblings();
-                assert(next_node_->parent_ == parent_);
-                auto& next_data = next_node_->data_leaf_;
-                next_data.emplace(next_data.begin(), std::move(data_[0]));
-                parent_->RemoveNode(max_key_old, tree);
-            } else {
-                // This node is to small! Well... .
-                if (pos == data_.size()) {
-                    parent_->UpdateKey(max_key_old, data_[pos - 1].first);
-                }
-            }
-        } else if (pos == data_.size()) {
-            parent_->UpdateKey(max_key_old, data_[pos - 1].first);
-        }
     }
 
     [[nodiscard]] size_t size() const {
@@ -497,7 +444,7 @@ class b_plus_tree_node {
                     auto it = lower_bound_n(key1_old);
                     assert(it != data_.end());
                     it->first = key1_new;
-                    assert(++it == data_.end());
+                    assert((it++) == data_.end());
                     assert(dest->lower_bound_n(key2) == dest->data_node_.begin());
                     dest->data_node_.emplace(dest->data_node_.begin(), key2, child2);
                     return;
@@ -516,6 +463,57 @@ class b_plus_tree_node {
         }
     }
 
+    void Erase(pos_t pos, TreeT& tree) {
+        assert(is_leaf_);
+        auto& data_ = data_leaf_;
+        assert(pos < data_.size());
+        key_t max_key_old = data_[data_.size() - 1].first;
+        data_.erase(data_.begin() + pos);
+        if (parent_ == nullptr) {
+            return;
+        }
+
+        if (data_.size() == 0) {
+            // Nothing to merge, just remove node.
+            // This should be rare, i.e. only happens when a rare 1-entry node has another entry
+            // removed.
+            RemoveFromSiblings();
+            parent_->RemoveNode(max_key_old, tree);
+            return;
+        }
+
+        if (data_.size() < M_leaf_min) {
+            // merge
+            if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
+                prev_node_->data_leaf_.size() < M_leaf) {
+                RemoveFromSiblings();
+                auto& prev_data = prev_node_->data_leaf_;
+                prev_data.emplace_back(std::move(data_[0]));
+                auto prev_node = prev_node_;  // create copy because (this) will be deleted
+                parent_->RemoveNode(max_key_old, tree);
+                if (prev_node->parent_ != nullptr) {
+                    key_t old1 = prev_data[prev_data.size() - 2].first;
+                    key_t new1 = prev_data[prev_data.size() - 1].first;
+                    prev_node->parent_->UpdateKey(old1, new1);
+                }
+            } else if (
+                next_node_ != nullptr && next_node_->parent_ == parent_ &&
+                next_node_->data_leaf_.size() < M_leaf) {
+                RemoveFromSiblings();
+                assert(next_node_->parent_ == parent_);
+                auto& next_data = next_node_->data_leaf_;
+                next_data.emplace(next_data.begin(), std::move(data_[0]));
+                parent_->RemoveNode(max_key_old, tree);
+            } else {
+                // This node is to small! Well... .
+                if (pos == data_.size()) {
+                    parent_->UpdateKey(max_key_old, data_[pos - 1].first);
+                }
+            }
+        } else if (pos == data_.size()) {
+            parent_->UpdateKey(max_key_old, data_[pos - 1].first);
+        }
+    }
     /*
      * key_old1==key_new1 signifies that they can/will be ignored.
      */
@@ -644,7 +642,6 @@ class b_plus_tree_map {
         }
         auto it = node->lower_bound_l(key);
         if (it != node->end_l() && it->first == key) {
-            // TODO incomplete iterator, build stack?
             return IterT(node, it - node->begin_l());
         }
         return end();
@@ -733,16 +730,12 @@ class b_plus_tree_map {
         while (!node->is_leaf()) {
             auto it = node->lower_bound_n(key);
             if (it == node->end_n()) {
-                // insert into last node
-                --it;
+                return;
             }
-            assert(it != node->end_n());
             node = it->node_;
         }
-        // TODO move code into try_emplace(), or use find() ?
         auto it = node->lower_bound_l(key);
         if (it == node->end_l()) {
-            // not found
             return;
         }
         --size_;
@@ -760,7 +753,7 @@ class b_plus_tree_map {
     void _check() {
         size_t count = 0;
         NodeT* prev_leaf = nullptr;
-        key_t known_min = 3423412;
+        key_t known_min = std::numeric_limits<key_t>::max();
         if (root_->is_leaf()) {
             root_->_check_l(count, nullptr, prev_leaf, known_min, 0);
         } else {
