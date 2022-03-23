@@ -61,7 +61,7 @@ class b_plus_tree_map;
 namespace {
 
 using key_t = std::uint64_t;
-using pos_t = std::uint16_t;
+using pos_t = std::uint32_t;
 
 template <typename T>
 class b_plus_tree_node;
@@ -86,8 +86,6 @@ struct BptEntryLeaf {
 template <typename T>
 class BstIterator;
 
-template <typename Entry>
-using NodeIterator = decltype(std::vector<BptEntryNode<Entry>>().begin());
 template <typename Entry>
 using LeafIterator = decltype(std::vector<BptEntryLeaf<Entry>>().begin());
 
