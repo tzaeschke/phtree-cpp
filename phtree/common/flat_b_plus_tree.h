@@ -91,8 +91,8 @@ using LeafIterator = decltype(std::vector<BptEntryLeaf<Entry>>().begin());
 
 constexpr static size_t M_leaf = 32;
 constexpr static size_t M_inner = 32;
-constexpr static size_t M_leaf_min = 2; //std::max((size_t)2, M_leaf >> 2);
-constexpr static size_t M_inner_min = 2; //std::max((size_t)2, M_inner >> 2);
+constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
+constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
 
 /*
  * Strategy:
@@ -132,7 +132,7 @@ class b_plus_tree_node {
         } else {
             data_node_.reserve(4);
         }
-      }
+    }
 
     ~b_plus_tree_node() {
         if (!is_leaf_) {
@@ -142,15 +142,6 @@ class b_plus_tree_node {
         }
     }
 
-    [[nodiscard]] auto find_n(key_t key) {
-        assert(!is_leaf_);
-        auto it = lower_bound_n(key);
-        if (it == data_node_.end() || it->first >= key) {
-            return it;
-        }
-        return data_node_.end();
-    }
-
     [[nodiscard]] auto find_l(key_t key) {
         assert(is_leaf_);
         auto it = lower_bound_l(key);
@@ -158,15 +149,6 @@ class b_plus_tree_node {
             return it;
         }
         return data_leaf_.end();
-    }
-
-    [[nodiscard]] auto find_n(key_t key) const {
-        assert(!is_leaf_);
-        auto it = lower_bound_n(key);
-        if (it != data_node_.end() && it->first == key) {
-            return it;
-        }
-        return data_node_.end();
     }
 
     [[nodiscard]] auto find_l(key_t key) const {
@@ -623,26 +605,6 @@ class b_plus_tree_node {
     }
 
     template <typename... Args>
-    auto emplace_base(key_t key, Args&&... args) {
-        auto it = lower_bound_l(key);
-        if (it != data_leaf_.end() && it->first == key) {
-            return std::make_pair(it, false);
-        } else {
-            return std::make_pair(data_leaf_.emplace(it, key, std::forward<Args>(args)...), true);
-        }
-    }
-
-    template <typename... Args>
-    auto try_emplace_base(const LeafIteratorT& it, key_t key, Args&&... args) {
-        if (it != data_leaf_.end() && it->first == key) {
-            return std::make_pair(it, false);
-        } else {
-            auto x = data_leaf_.emplace(it, key, std::forward<Args>(args)...);
-            return std::make_pair(x, true);
-        }
-    }
-
-    template <typename... Args>
     auto EmplaceNoCheck(const LeafIteratorT& it, key_t key, Args&&... args) {
         assert(it == data_leaf_.end() || it->first != key);
         auto x = data_leaf_.emplace(it, key, std::forward<Args>(args)...);
@@ -675,7 +637,7 @@ class b_plus_tree_map {
     [[nodiscard]] auto find(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->find_n(key);
+            auto it = node->lower_bound_n(key);
             if (it == node->end_n()) {
                 return end();
             }
@@ -692,7 +654,7 @@ class b_plus_tree_map {
     [[nodiscard]] auto find(key_t key) const {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->find_n(key);
+            auto it = node->lower_bound_n(key);
             if (it == node->end_n()) {
                 return end();
             }
@@ -700,7 +662,6 @@ class b_plus_tree_map {
         }
         auto it = node->lower_bound_l(key);
         if (it != node->end_l() && it->first == key) {
-            // return it;
             return IterT(node, it - node->begin_l());
         }
         return end();
