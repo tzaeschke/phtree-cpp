@@ -91,8 +91,10 @@ using NodeIterator = decltype(std::vector<BptEntryNode<Entry>>().begin());
 template <typename Entry>
 using LeafIterator = decltype(std::vector<BptEntryLeaf<Entry>>().begin());
 
-constexpr static size_t M = 8;
-constexpr static size_t M_min = std::max((size_t)2, M >> 2);
+constexpr static size_t M_leaf = 32;
+constexpr static size_t M_inner = 32;
+constexpr static size_t M_leaf_min = 2; //std::max((size_t)2, M_leaf >> 2);
+constexpr static size_t M_inner_min = 2; //std::max((size_t)2, M_inner >> 2);
 
 /*
  * Strategy:
@@ -126,7 +128,13 @@ class b_plus_tree_node {
     , is_leaf_{is_leaf}
     , parent_{parent}
     , prev_node_{prev}
-    , next_node_{next} {};
+    , next_node_{next} {
+        if (is_leaf_) {
+            data_leaf_.reserve(4);
+        } else {
+            data_node_.reserve(4);
+        }
+      }
 
     ~b_plus_tree_node() {
         if (!is_leaf_) {
@@ -241,12 +249,12 @@ class b_plus_tree_node {
     auto try_emplace(const LeafIteratorT& it, key_t key, TreeT& tree, Args&&... args) {
         assert(is_leaf_);
         auto& data_ = data_leaf_;
-        assert(data_.size() <= M);
-        if (data_.size() == M) {
+        assert(data_.size() <= M_leaf);
+        if (data_.size() == M_leaf) {
             // overflow
-            auto split_pos = M >> 1;
+            auto split_pos = M_leaf >> 1;
             auto split_key = data_[split_pos - 1].first;
-            auto max_key = data_[M - 1].first;
+            auto max_key = data_[M_leaf - 1].first;
             if (parent_ == nullptr) {
                 // special root node handling
                 assert(parent_ == nullptr);
@@ -339,11 +347,10 @@ class b_plus_tree_node {
             return;
         }
 
-        if (data_.size() < M_min) {
+        if (data_.size() < M_leaf_min) {
             // merge
-
             if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
-                prev_node_->data_leaf_.size() < M) {
+                prev_node_->data_leaf_.size() < M_leaf) {
                 RemoveFromSiblings();
                 auto& prev_data = prev_node_->data_leaf_;
                 prev_data.emplace_back(std::move(data_[0]));
@@ -356,7 +363,7 @@ class b_plus_tree_node {
                 }
             } else if (
                 next_node_ != nullptr && next_node_->parent_ == parent_ &&
-                next_node_->data_leaf_.size() < M) {
+                next_node_->data_leaf_.size() < M_leaf) {
                 RemoveFromSiblings();
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_leaf_;
@@ -468,11 +475,11 @@ class b_plus_tree_node {
         auto& data_ = data_node_;
         NodeT* dest = this;
         bool split = false;
-        if (data_.size() >= M) {
+        if (data_.size() >= M_inner) {
             split = true;
-            auto split_pos = M >> 1;
+            auto split_pos = M_inner >> 1;
             auto split_key = data_[split_pos - 1].first;
-            auto max_key = data_[M - 1].first;
+            auto max_key = data_[M_inner - 1].first;
             if (parent_ == nullptr) {
                 auto* new_parent = new NodeT(false, nullptr, nullptr, nullptr);
                 new_parent->data_node_.emplace_back(max_key, this);
@@ -510,7 +517,7 @@ class b_plus_tree_node {
                 dest = sibling2;
                 child2->parent_ = dest;
                 if (key1_old <= split_key) {
-                    assert(data_.size() < M);
+                    assert(data_.size() < M_inner);
                     auto it = lower_bound_n(key1_old);
                     assert(it != data_.end());
                     it->first = key1_new;
@@ -521,7 +528,7 @@ class b_plus_tree_node {
                 }
             }
         }
-        assert(dest->data_node_.size() < M);
+        assert(dest->data_node_.size() < M_inner);
         auto it = dest->lower_bound_n(key1_old);
         assert(it != dest->data_node_.end());
         it->first = key1_new;
@@ -566,11 +573,11 @@ class b_plus_tree_node {
         }
 
         // merge?
-        if (data_.size() < M_min) {
+        if (data_.size() < M_inner_min) {
             // TODO move code into Merge() function
             // merge
             if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
-                prev_node_->data_node_.size() < M) {
+                prev_node_->data_node_.size() < M_inner) {
                 assert(prev_node_->parent_ == parent_);
                 RemoveFromSiblings();
                 auto& prev_data = prev_node_->data_node_;
@@ -587,7 +594,7 @@ class b_plus_tree_node {
                 }
             } else if (
                 next_node_ != nullptr && next_node_->parent_ == parent_ &&
-                next_node_->data_node_.size() < M) {
+                next_node_->data_node_.size() < M_inner) {
                 assert(next_node_->parent_ == parent_);
                 RemoveFromSiblings();
                 auto& next_data = next_node_->data_node_;
