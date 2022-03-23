@@ -391,6 +391,7 @@ class b_plus_tree_node {
         }
         prev_leaf = this;
     }
+
     void _check_n(
         size_t& count, NodeT* parent, NodeT*& prev_leaf, key_t& known_min, key_t known_max) {
         (void)parent;
@@ -427,12 +428,7 @@ class b_plus_tree_node {
         assert(new_key != old_key);
         auto it = lower_bound_n(old_key);
         assert(it != data_node_.end());
-        // TODO This should work !!!
-        // TODO This should work !!!
-        // TODO This should work !!!
-        // TODO This should work !!!
-        // assert(it->first == old_key);
-        assert(it->first == old_key || it->first == new_key);  // TODO remove!!!
+        assert(it->first == old_key);
         it->first = new_key;
         if (parent_ != nullptr && ++it == data_node_.end()) {
             parent_->UpdateKey(old_key, new_key);
@@ -591,7 +587,10 @@ class b_plus_tree_node {
                 }
             }
         } else {
-            parent_->UpdateKey(key_remove, data_[data_.size() - 1].first);
+            auto new_max = data_[data_.size() - 1].first;
+            if (key_remove >= new_max) {
+                parent_->UpdateKey(key_remove, new_max);
+            }
         }
     }
 
