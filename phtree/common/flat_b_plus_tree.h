@@ -161,7 +161,7 @@ class b_plus_tree_node {
     }
 
     // TODO use templates?
-    [[nodiscard]] auto lower_bound_n(key_t key) {
+    [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
         assert(!is_leaf_);
         return std::lower_bound(
             data_node_.begin(), data_node_.end(), key, [](EntryNodeT& left, const key_t key) {
@@ -169,7 +169,7 @@ class b_plus_tree_node {
             });
     }
 
-    [[nodiscard]] auto lower_bound_l(key_t key) {
+    [[nodiscard]] auto lower_bound_l(key_t key) noexcept {
         assert(is_leaf_);
         return std::lower_bound(
             data_leaf_.begin(), data_leaf_.end(), key, [](EntryLeafT& left, const key_t key) {
@@ -195,32 +195,32 @@ class b_plus_tree_node {
             [](const EntryLeafT& left, const key_t key) { return left.first < key; });
     }
 
-    [[nodiscard]] auto begin_l() {
+    [[nodiscard]] auto begin_l() noexcept {
         assert(is_leaf_);
         return data_leaf_.begin();
     }
 
-    [[nodiscard]] auto begin_l() const {
+    [[nodiscard]] auto begin_l() const noexcept {
         assert(is_leaf_);
         return data_leaf_.begin();
     }
 
-    [[nodiscard]] auto end_n() {
+    [[nodiscard]] auto end_n() noexcept {
         assert(!is_leaf_);
         return data_node_.end();
     }
 
-    [[nodiscard]] auto end_l() {
+    [[nodiscard]] auto end_l() noexcept {
         assert(is_leaf_);
         return data_leaf_.end();
     }
 
-    [[nodiscard]] auto end_n() const {
+    [[nodiscard]] auto end_n() const noexcept {
         assert(!is_leaf_);
         return data_node_.end();
     }
 
-    [[nodiscard]] auto end_l() const {
+    [[nodiscard]] auto end_l() const noexcept {
         assert(is_leaf_);
         return data_leaf_.end();
     }
@@ -307,11 +307,11 @@ class b_plus_tree_node {
         Erase(iterator - data_leaf_.begin(), tree);
     }
 
-    [[nodiscard]] size_t size() const {
+    [[nodiscard]] size_t size() const noexcept {
         return is_leaf_ ? data_leaf_.size() : data_node_.size();
     }
 
-    [[nodiscard]] bool is_leaf() const {
+    [[nodiscard]] bool is_leaf() const noexcept {
         return is_leaf_;
     }
 
@@ -631,7 +631,7 @@ class b_plus_tree_map {
         delete root_;
     }
 
-    [[nodiscard]] auto find(key_t key) {
+    [[nodiscard]] auto find(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound_n(key);
@@ -647,7 +647,7 @@ class b_plus_tree_map {
         return end();
     }
 
-    [[nodiscard]] auto find(key_t key) const {
+    [[nodiscard]] auto find(key_t key) const noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound_n(key);
@@ -699,19 +699,19 @@ class b_plus_tree_map {
         return IterT(root_);
     }
 
-    [[nodiscard]] auto begin() const {
+    [[nodiscard]] auto begin() const noexcept {
         return IterT(root_);
     }
 
-    [[nodiscard]] auto cbegin() const {
+    [[nodiscard]] auto cbegin() const noexcept {
         return IterT(root_);
     }
 
-    [[nodiscard]] auto end() {
+    [[nodiscard]] auto end() noexcept {
         return IterT();
     }
 
-    [[nodiscard]] auto end() const {
+    [[nodiscard]] auto end() const noexcept {
         return IterT();
     }
 
@@ -746,7 +746,7 @@ class b_plus_tree_map {
         size_ -= iterator.node_->erase_pos(iterator.pos_, *this);
     }
 
-    [[nodiscard]] size_t size() const {
+    [[nodiscard]] size_t size() const noexcept {
         return size_;
     }
 
