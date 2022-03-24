@@ -113,7 +113,6 @@ class b_plus_tree_node {
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
     friend IterT;
-    friend b_plus_tree_map<T, SIZE_MAX>;
 
     constexpr static size_t M_leaf = 32;
     constexpr static size_t M_inner = 32;
@@ -138,12 +137,33 @@ class b_plus_tree_node {
         }
     }
 
-    ~b_plus_tree_node() {
+    ~b_plus_tree_node() noexcept {
         if (!is_leaf_) {
             for (auto& e : data_node_) {
                 delete e.node_;
             }
         }
+    }
+
+    [[nodiscard]] NodeT* find_n(key_t key) noexcept {
+        auto it = lower_bound_n(key);
+        return it != data_node_.end() ? it->node_ : nullptr;
+    }
+
+    [[nodiscard]] IterT find_l(key_t key) noexcept {
+        auto it = lower_bound_l(key);
+        if (it != data_leaf_.end() && it->first == key) {
+            return IterT(this, it - data_leaf_.begin());
+        }
+        return IterT();
+    }
+
+    [[nodiscard]] IterT lower_bound_to_it(key_t key) noexcept {
+        auto it = lower_bound_l(key);
+        if (it != data_leaf_.end()) {
+            return IterT(this, it - data_leaf_.begin());
+        }
+        return IterT();
     }
 
     [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
@@ -578,49 +598,34 @@ class b_plus_tree_map {
     [[nodiscard]] auto find(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->lower_bound_n(key);
-            if (it == node->end_n()) {
+            node = node->find_n(key);
+            if (node == nullptr) {
                 return end();
             }
-            node = it->node_;
         }
-        auto it = node->lower_bound_l(key);
-        if (it != node->end_l() && it->first == key) {
-            return IterT(node, it - node->begin_l());
-        }
-        return end();
+        return node->find_l(key);
     }
 
     [[nodiscard]] auto find(key_t key) const noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->lower_bound_n(key);
-            if (it == node->end_n()) {
+            node = node->find_n(key);
+            if (node == nullptr) {
                 return end();
             }
-            node = it->node_;
         }
-        auto it = node->lower_bound_l(key);
-        if (it != node->end_l() && it->first == key) {
-            return IterT(node, it - node->begin_l());
-        }
-        return end();
+        return node->find_l(key);
     }
 
     [[nodiscard]] auto lower_bound(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->lower_bound_n(key);
-            if (it == node->end_n()) {
+            node = node->find_n(key);
+            if (node == nullptr) {
                 return end();
             }
-            node = it->node_;
         }
-        auto it = node->lower_bound_l(key);
-        if (it != node->end_l()) {
-            return IterT(node, it - node->begin_l());
-        }
-        return end();
+        return node->lower_bound_to_it(key);
     }
 
     [[nodiscard]] auto begin() noexcept {
@@ -656,11 +661,10 @@ class b_plus_tree_map {
     void erase(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
-            auto it = node->lower_bound_n(key);
-            if (it == node->end_n()) {
+            node = node->find_n(key);
+            if (node == nullptr) {
                 return;
             }
-            node = it->node_;
         }
         size_ -= node->erase_key(key, *this);
     }
@@ -697,7 +701,6 @@ class b_plus_tree_map {
                 // insert into last node
                 --it;
             }
-            assert(it != node->end_n());
             node = it->node_;
         }
         // TODO move code into try_emplace(), or use find() ?
