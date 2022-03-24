@@ -123,7 +123,7 @@ class b_plus_tree_node {
     constexpr static size_t M_inner_init = 4;
 
   public:
-    explicit b_plus_tree_node(bool is_leaf, NodeT* parent, NodeT* prev, NodeT* next)
+    explicit b_plus_tree_node(bool is_leaf, NodeT* parent, NodeT* prev, NodeT* next) noexcept
     : data_node_{}
     , data_leaf_{}
     , is_leaf_{is_leaf}
