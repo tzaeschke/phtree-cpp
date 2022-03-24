@@ -26,15 +26,18 @@
 namespace improbable::phtree::v16 {
 
 /*
- * We provide different implementations of the node's internal entry set:
+ * We provide different implementations of the node's internal entry set.
+ * All implementations are equivalent to "std::map<hc_pos_t, Entry>" which can be used as
+ * a plugin example for verification.
+ *
  * - `array_map` is the fastest, but has O(2^DIM) space complexity. This can be very wasteful
  *   because many nodes may have only 2 entries.
  *   Also, iteration depends on some bit operations and is also O(DIM) per step if the CPU/compiler
  *   does not support CTZ (count trailing bits).
  * - `sparse_map` is slower, but requires only O(n) memory (n = number of entries/children).
  *   However, insertion/deletion is O(n), i.e. O(2^DIM) time complexity in the worst case.
- * - 'std::map` is the least efficient for small node sizes but scales best with larger nodes and
- *   dimensionality. Remember that n_max = 2^DIM.
+ * - 'b_plus_tree_map` is the least efficient for small node sizes but scales best with larger
+ *   nodes and dimensionality. Remember that n_max = 2^DIM.
  */
 template <dimension_t DIM, typename Entry>
 using EntryMap = typename std::conditional<

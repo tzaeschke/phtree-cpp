@@ -55,7 +55,7 @@ namespace improbable::phtree {
  * - The tree is not balanced
  */
 
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 class b_plus_tree_map;
 
 namespace {
@@ -63,36 +63,32 @@ namespace {
 using key_t = std::uint64_t;
 using pos_t = std::uint32_t;
 
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 class b_plus_tree_node;
-template <typename T>
-using BptNode = b_plus_tree_node<T>;
+template <typename T, size_t COUNT_MAX>
+using BptNode = b_plus_tree_node<T, COUNT_MAX>;
 
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 struct BptEntryNode {
-    BptEntryNode(key_t key, BptNode<T>* node) : node_{node}, first{key} {};
-    BptNode<T>* node_;
+    BptEntryNode(key_t key, BptNode<T, COUNT_MAX>* node) noexcept : node_{node}, first{key} {};
+    BptNode<T, COUNT_MAX>* node_;
     key_t first;
 };
 
 template <typename T>
 struct BptEntryLeaf {
     template <typename... Args>
-    BptEntryLeaf(key_t key, Args... args) : second{std::forward<Args>(args)...}, first{key} {};
+    BptEntryLeaf(key_t key, Args... args) noexcept
+    : second{std::forward<Args>(args)...}, first{key} {};
     T second;
     key_t first;
 };
 
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 class BstIterator;
 
 template <typename Entry>
 using LeafIterator = decltype(std::vector<BptEntryLeaf<Entry>>().begin());
-
-constexpr static size_t M_leaf = 32;
-constexpr static size_t M_inner = 32;
-constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
-constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
 
 /*
  * Strategy:
@@ -107,17 +103,25 @@ constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
  *  - the key represents the highest key in the child nodes
  *
  */
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 class b_plus_tree_node {
-    using EntryNodeT = BptEntryNode<T>;
+    using EntryNodeT = BptEntryNode<T, COUNT_MAX>;
     using EntryLeafT = BptEntryLeaf<T>;
-    using NodeT = b_plus_tree_node<T>;
-    using IterT = BstIterator<T>;
+    using NodeT = b_plus_tree_node<T, COUNT_MAX>;
+    using IterT = BstIterator<T, COUNT_MAX>;
     using LeafIteratorT = LeafIterator<T>;
-    using TreeT = b_plus_tree_map<T>;
+    using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
     friend IterT;
-    friend b_plus_tree_map<T>;
+    friend b_plus_tree_map<T, SIZE_MAX>;
+
+    constexpr static size_t M_leaf = 32;
+    constexpr static size_t M_inner = 32;
+    constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
+    constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
+    // There is no point in allocating more leaf space than the max amount of entries.
+    constexpr static size_t M_leaf_init = std::min(size_t(4), SIZE_MAX);
+    constexpr static size_t M_inner_init = 4;
 
   public:
     explicit b_plus_tree_node(bool is_leaf, NodeT* parent, NodeT* prev, NodeT* next)
@@ -128,9 +132,9 @@ class b_plus_tree_node {
     , prev_node_{prev}
     , next_node_{next} {
         if (is_leaf_) {
-            data_leaf_.reserve(4);
+            data_leaf_.reserve(M_leaf_init);
         } else {
-            data_node_.reserve(4);
+            data_node_.reserve(M_inner_init);
         }
     }
 
@@ -142,65 +146,24 @@ class b_plus_tree_node {
         }
     }
 
-    [[nodiscard]] auto find_l(key_t key) {
-        assert(is_leaf_);
-        auto it = lower_bound_l(key);
-        if (it == data_leaf_.end() || it->first == key) {
-            return it;
-        }
-        return data_leaf_.end();
-    }
-
-    [[nodiscard]] auto find_l(key_t key) const {
-        assert(is_leaf_);
-        auto it = lower_bound_l(key);
-        if (it != data_leaf_.end() && it->first == key) {
-            return it;
-        }
-        return data_leaf_.end();
-    }
-
-    // TODO use templates?
     [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
         assert(!is_leaf_);
-        return std::lower_bound(
-            data_node_.begin(), data_node_.end(), key, [](EntryNodeT& left, const key_t key) {
-                return left.first < key;
-            });
+        return lower_bound(key, data_node_);
     }
 
     [[nodiscard]] auto lower_bound_l(key_t key) noexcept {
         assert(is_leaf_);
-        return std::lower_bound(
-            data_leaf_.begin(), data_leaf_.end(), key, [](EntryLeafT& left, const key_t key) {
-                return left.first < key;
-            });
+        return lower_bound(key, data_leaf_);
     }
 
-    [[nodiscard]] auto lower_bound_n(key_t key) const {
-        assert(!is_leaf_);
-        return std::lower_bound(
-            data_node_.cbegin(),
-            data_node_.cend(),
-            key,
-            [](const EntryNodeT& left, const key_t key) { return left.first < key; });
-    }
-
-    [[nodiscard]] auto lower_bound_l(key_t key) const {
-        assert(is_leaf_);
-        return std::lower_bound(
-            data_leaf_.cbegin(),
-            data_leaf_.cend(),
-            key,
-            [](const EntryLeafT& left, const key_t key) { return left.first < key; });
+    template <typename E>
+    [[nodiscard]] auto lower_bound(key_t key, std::vector<E>& data) noexcept {
+        return std::lower_bound(data.begin(), data.end(), key, [](E& left, const key_t key) {
+            return left.first < key;
+        });
     }
 
     [[nodiscard]] auto begin_l() noexcept {
-        assert(is_leaf_);
-        return data_leaf_.begin();
-    }
-
-    [[nodiscard]] auto begin_l() const noexcept {
         assert(is_leaf_);
         return data_leaf_.begin();
     }
@@ -211,16 +174,6 @@ class b_plus_tree_node {
     }
 
     [[nodiscard]] auto end_l() noexcept {
-        assert(is_leaf_);
-        return data_leaf_.end();
-    }
-
-    [[nodiscard]] auto end_n() const noexcept {
-        assert(!is_leaf_);
-        return data_node_.end();
-    }
-
-    [[nodiscard]] auto end_l() const noexcept {
         assert(is_leaf_);
         return data_leaf_.end();
     }
@@ -617,10 +570,10 @@ class b_plus_tree_node {
 };
 }  // namespace
 
-template <typename T>
+template <typename T, size_t COUNT_MAX>
 class b_plus_tree_map {
-    using IterT = BstIterator<T>;
-    using NodeT = b_plus_tree_node<T>;
+    using IterT = BstIterator<T, COUNT_MAX>;
+    using NodeT = b_plus_tree_node<T, COUNT_MAX>;
 
     friend NodeT;
 
@@ -663,7 +616,7 @@ class b_plus_tree_map {
         return end();
     }
 
-    [[nodiscard]] auto lower_bound(key_t key) {
+    [[nodiscard]] auto lower_bound(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
             auto it = node->lower_bound_n(key);
@@ -679,23 +632,7 @@ class b_plus_tree_map {
         return end();
     }
 
-    [[nodiscard]] auto lower_bound(key_t key) const {
-        auto node = root_;
-        while (!node->is_leaf()) {
-            auto it = node->lower_bound_n(key);
-            if (it == node->end()) {
-                return end();
-            }
-            node = it->second.node_;
-        }
-        auto it = node->lower_bound_l(key);
-        if (it != node->end()) {
-            return it;
-        }
-        return end();
-    }
-
-    [[nodiscard]] auto begin() {
+    [[nodiscard]] auto begin() noexcept {
         return IterT(root_);
     }
 
@@ -789,13 +726,17 @@ class b_plus_tree_map {
 };
 
 namespace {
-template <typename T>
-class BstIterator {
-    using IterT = BstIterator<T>;
-    using NodeT = b_plus_tree_node<T>;
+template <typename T, size_t COUNT_MAX>
+class BstIterator : public std::iterator<
+                        std::input_iterator_tag,  // iterator_category
+                        T,                        // value_type
+                        pos_t                     // difference_type
+                        > {
+    using IterT = BstIterator<T, COUNT_MAX>;
+    using NodeT = b_plus_tree_node<T, COUNT_MAX>;
     using EntryT = BptEntryLeaf<T>;
 
-    friend b_plus_tree_map<T>;
+    friend b_plus_tree_map<T, COUNT_MAX>;
 
   public:
     // Arbitrary position iterator
@@ -820,18 +761,18 @@ class BstIterator {
     // end() iterator
     BstIterator() noexcept : node_{nullptr}, pos_{0} {}
 
-    auto& operator*() const {
+    auto& operator*() const noexcept {
         assert(AssertNotEnd());
         // TODO store pointer to entry?
         return const_cast<EntryT&>(node_->data_leaf_[pos_]);
     }
 
-    auto* operator->() const {
+    auto* operator->() const noexcept {
         assert(AssertNotEnd());
         return const_cast<EntryT*>(&node_->data_leaf_[pos_]);
     }
 
-    auto& operator++() {
+    auto& operator++() noexcept {
         assert(AssertNotEnd());
         ++pos_;
         if (pos_ >= node_->data_leaf_.size()) {
@@ -842,22 +783,22 @@ class BstIterator {
         return *this;
     }
 
-    auto operator++(int) {
+    auto operator++(int) noexcept {
         IterT iterator(*this);
         ++(*this);
         return iterator;
     }
 
-    friend bool operator==(const IterT& left, const IterT& right) {
+    friend bool operator==(const IterT& left, const IterT& right) noexcept {
         return left.node_ == right.node_ && left.pos_ == right.pos_;
     }
 
-    friend bool operator!=(const IterT& left, const IterT& right) {
+    friend bool operator!=(const IterT& left, const IterT& right) noexcept {
         return !(left == right);
     }
 
   private:
-    [[nodiscard]] bool AssertNotEnd() const {
+    [[nodiscard]] bool AssertNotEnd() const noexcept {
         return node_ != nullptr;
     }
     NodeT* node_;
