@@ -27,7 +27,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTest) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t> test_map;
+        b_plus_tree_map<size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -62,7 +62,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestWithTryEmplace) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t> test_map;
+        b_plus_tree_map<size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -96,7 +96,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestWithErase) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t> test_map{};
+        b_plus_tree_map<size_t, max_size> test_map{};
         std::unordered_map<size_t, size_t> reference_map{};
         std::vector<size_t> key_list{};
         for (int j = 0; j < 2 * max_size; j++) {
@@ -146,7 +146,7 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestLowerBound) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t> test_map;
+        b_plus_tree_map<size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -176,11 +176,10 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestLowerBound) {
                     ASSERT_EQ(itMap, test_map.end());
                 } else {
                     ASSERT_NE(itMap, test_map.end());
-                    //ASSERT_EQ(v, itRef->second);
+                    // ASSERT_EQ(v, itRef->second);
                     ASSERT_EQ(itRef->second, itMap->second);
                 }
             }
         }
     }
 }
-

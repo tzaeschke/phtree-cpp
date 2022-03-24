@@ -236,28 +236,18 @@ class b_plus_tree_node {
         return EmplaceNoCheck(it, key, std::forward<Args>(args)...);
     }
 
-    // return 'true' iff an entry was erased
-    bool erase_key(key_t key) {
+    bool erase_key(key_t key, TreeT& tree) {
         assert(is_leaf_);
         auto it = lower_bound_l(key);
         if (it != data_leaf_.end() && it->first == key) {
-            data_leaf_.erase(it);
+            Erase(it - data_leaf_.begin(), tree);
             return true;
         }
         return false;
     }
 
-    // return 'true' iff an entry was erased
-    bool erase_pos(pos_t pos, TreeT& tree) {
-        if (pos < data_leaf_.size()) {
-            Erase(pos, tree);
-            return true;
-        }
-        return false;
-    }
-
-    void erase_it(const LeafIteratorT& iterator, TreeT& tree) {
-        Erase(iterator - data_leaf_.begin(), tree);
+    void erase_pos(pos_t pos, TreeT& tree) {
+        Erase(pos, tree);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -467,6 +457,7 @@ class b_plus_tree_node {
             parent_->UpdateKey(max_key_old, data_[pos - 1].first);
         }
     }
+
     /*
      * key_old1==key_new1 signifies that they can/will be ignored.
      */
@@ -671,16 +662,13 @@ class b_plus_tree_map {
             }
             node = it->node_;
         }
-        auto it = node->lower_bound_l(key);
-        if (it == node->end_l()) {
-            return;
-        }
-        --size_;
-        node->erase_it(it, *this);
+        size_ -= node->erase_key(key, *this);
     }
 
     void erase(const IterT& iterator) {
-        size_ -= iterator.node_->erase_pos(iterator.pos_, *this);
+        assert(iterator != end());
+        --size_;
+        iterator.node_->erase_pos(iterator.pos_, *this);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -763,7 +751,6 @@ class BstIterator : public std::iterator<
 
     auto& operator*() const noexcept {
         assert(AssertNotEnd());
-        // TODO store pointer to entry?
         return const_cast<EntryT&>(node_->data_leaf_[pos_]);
     }
 
