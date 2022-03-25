@@ -389,13 +389,13 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
         return it != data_.end() ? it->second : nullptr;
     }
 
-    [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
-        return this->lower_bound(key, data_);
+    [[nodiscard]] NodeT* find_or_last(key_t key) noexcept {
+        auto it = this->lower_bound_n(key);
+        return it != data_.end() ? it->second : data_.back().second;
     }
 
-    // TODO fix n
-    [[nodiscard]] auto end_n() noexcept {
-        return data_.end();
+    [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
+        return this->lower_bound(key, data_);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -734,13 +734,7 @@ class b_plus_tree_map {
     auto try_emplace_base(key_t key, Args&&... args) {
         auto node = root_;
         while (!node->is_leaf()) {
-            NodeNT* node_n = node->as_inner();
-            auto it = node_n->lower_bound_n(key);
-            if (it == node_n->end_n()) {
-                // insert into last node
-                --it;
-            }
-            node = it->second;
+            node = node->as_inner()->find_or_last(key);
         }
         return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
     }
