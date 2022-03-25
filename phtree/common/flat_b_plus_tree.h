@@ -76,13 +76,7 @@ struct BptEntryNode {
 };
 
 template <typename T>
-struct BptEntryLeaf {
-    template <typename... Args>
-    BptEntryLeaf(key_t key, Args... args) noexcept
-    : second{std::forward<Args>(args)...}, first{key} {};
-    T second;
-    key_t first;
-};
+using BptEntryLeaf = std::pair<key_t, T>;
 
 template <typename T, size_t COUNT_MAX>
 class BstIterator;
@@ -563,7 +557,11 @@ class b_plus_tree_node {
     template <typename... Args>
     auto EmplaceNoCheck(const LeafIteratorT& it, key_t key, Args&&... args) {
         assert(it == data_leaf_.end() || it->first != key);
-        auto x = data_leaf_.emplace(it, key, std::forward<Args>(args)...);
+        auto x = data_leaf_.emplace(
+            it,
+            std::piecewise_construct,
+            std::forward_as_tuple(key),
+            std::forward_as_tuple(std::forward<Args>(args)...));
         return std::make_pair(x, true);
     }
 
