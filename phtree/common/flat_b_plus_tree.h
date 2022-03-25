@@ -183,11 +183,6 @@ class b_plus_tree_node {
         });
     }
 
-    [[nodiscard]] auto begin_l() noexcept {
-        assert(is_leaf_);
-        return data_leaf_.begin();
-    }
-
     [[nodiscard]] auto end_n() noexcept {
         assert(!is_leaf_);
         return data_node_.end();
@@ -718,11 +713,7 @@ class b_plus_tree_map {
 
 namespace {
 template <typename T, size_t COUNT_MAX>
-class BstIterator : public std::iterator<
-                        std::input_iterator_tag,  // iterator_category
-                        T,                        // value_type
-                        pos_t                     // difference_type
-                        > {
+class BstIterator {
     using IterT = BstIterator<T, COUNT_MAX>;
     using NodeT = b_plus_tree_node<T, COUNT_MAX>;
     using EntryT = BptEntryLeaf<T>;
@@ -730,6 +721,12 @@ class BstIterator : public std::iterator<
     friend b_plus_tree_map<T, COUNT_MAX>;
 
   public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = T;
+    using difference_type = pos_t;
+    using pointer = T*;
+    using reference = T&;
+
     // Arbitrary position iterator
     explicit BstIterator(NodeT* node, pos_t pos) noexcept : node_{node}, pos_{pos} {
         assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
