@@ -71,21 +71,13 @@ template <typename T, size_t COUNT_MAX>
 class b_plus_tree_node_node;
 
 template <typename T, size_t COUNT_MAX>
-struct BptEntryNode {
-    BptEntryNode(key_t key, b_plus_tree_node<T, COUNT_MAX>* node) noexcept
-    : node_{node}, first{key} {};
-    b_plus_tree_node<T, COUNT_MAX>* node_;
-    key_t first;
-};
+using BptEntryNode = std::pair<key_t, b_plus_tree_node<T, COUNT_MAX>*>;
 
 template <typename T>
 using BptEntryLeaf = std::pair<key_t, T>;
 
 template <typename T, size_t COUNT_MAX>
 class BstIterator;
-
-template <typename Entry>
-using LeafIterator = decltype(std::vector<BptEntryLeaf<Entry>>().begin());
 
 /*
  * Strategy:
@@ -157,7 +149,7 @@ class b_plus_tree_node_leaf : public b_plus_tree_node<T, COUNT_MAX> {
     using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
     using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
     using IterT = BstIterator<T, COUNT_MAX>;
-    using LeafIteratorT = LeafIterator<T>;
+    using LeafIteratorT = decltype(std::vector<BptEntryLeaf<T>>().begin());
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
     friend IterT;
@@ -237,7 +229,7 @@ class b_plus_tree_node_leaf : public b_plus_tree_node<T, COUNT_MAX> {
             return node2->EmplaceNoCheck(it2, key, std::forward<Args>(args)...);
         }
         if (parent_ != nullptr) {
-            auto max_key = data_[data_.size() - 1].first;
+            auto max_key = data_.back().first;
             if (key > max_key) {
                 parent_->UpdateKey(max_key, key);
             }
@@ -273,7 +265,7 @@ class b_plus_tree_node_leaf : public b_plus_tree_node<T, COUNT_MAX> {
             assert(parent == nullptr);
             return;
         }
-        assert(this->parent_ == nullptr || known_max == data_[data_.size() - 1].first);
+        assert(this->parent_ == nullptr || known_max == data_.back().first);
         assert(prev_leaf == prev_node_);
         for (auto& e : data_) {
             assert(count == 0 || e.first > known_min);
@@ -287,7 +279,7 @@ class b_plus_tree_node_leaf : public b_plus_tree_node<T, COUNT_MAX> {
   private:
     void Erase(pos_t pos, TreeT& tree) {
         assert(pos < data_.size());
-        key_t max_key_old = data_[data_.size() - 1].first;
+        key_t max_key_old = data_.back().first;
         data_.erase(data_.begin() + pos);
         auto& parent_ = this->parent_;
         if (parent_ == nullptr) {
@@ -382,25 +374,26 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
 
     ~b_plus_tree_node_node() noexcept {
         for (auto& e : data_) {
-            if (e.node_ != nullptr) {
-                if (e.node_->is_leaf()) {
-                    delete e.node_->as_leaf();
+            if (e.second != nullptr) {
+                if (e.second->is_leaf()) {
+                    delete e.second->as_leaf();
                 } else {
-                    delete e.node_->as_inner();
+                    delete e.second->as_inner();
                 }
             }
         }
     }
 
-    [[nodiscard]] NodeT* find_n(key_t key) noexcept {
+    [[nodiscard]] NodeT* find(key_t key) noexcept {
         auto it = this->lower_bound_n(key);
-        return it != data_.end() ? it->node_ : nullptr;
+        return it != data_.end() ? it->second : nullptr;
     }
 
     [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
         return this->lower_bound(key, data_);
     }
 
+    // TODO fix n
     [[nodiscard]] auto end_n() noexcept {
         return data_.end();
     }
@@ -425,13 +418,13 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
             return;
         }
         assert(count == 0 || known_min < data_[0].first);
-        assert(this->parent_ == nullptr || known_max == data_[data_.size() - 1].first);
+        assert(this->parent_ == nullptr || known_max == data_.back().first);
         auto prev_key = data_[0].first;
 
         int n = 0;
         for (auto& e : data_) {
             assert(n == 0 || e.first > prev_key);
-            e.node_->_check(count, this, prev_leaf, known_min, e.first);
+            e.second->_check(count, this, prev_leaf, known_min, e.first);
             assert(this->parent_ == nullptr || e.first <= known_max);
             prev_key = e.first;
             ++n;
@@ -494,7 +487,7 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
             // TODO: ensure we are not incrementally removing!
             data_.erase(data_.begin() + split_pos, data_.end());
             for (auto& e : sibling2->data_) {
-                e.node_->parent_ = sibling2;
+                e.second->parent_ = sibling2;
             }
 
             // Add node to parent
@@ -536,14 +529,14 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
         auto& parent_ = this->parent_;
 
         // remove node
-        key_t max_key_old = data_[data_.size() - 1].first;
+        key_t max_key_old = data_.back().first;
         auto it_to_erase = lower_bound_n(key_remove);
-        delete it_to_erase->node_;
+        delete it_to_erase->second;
         data_.erase(it_to_erase);
         if (parent_ == nullptr) {
             if (data_.size() < 2) {
-                auto remaining_node = data_.begin()->node_;
-                data_.begin()->node_ = nullptr;
+                auto remaining_node = data_.begin()->second;
+                data_.begin()->second = nullptr;
                 remaining_node->parent_ = nullptr;
                 tree.root_ = remaining_node;
                 delete this;
@@ -569,10 +562,10 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
                 assert(prev_node_->parent_ == parent_);
                 RemoveFromSiblings();
                 auto& prev_data = prev_node_->data_;
-                data_[0].node_->parent_ = prev_node_;
+                data_[0].second->parent_ = prev_node_;
                 prev_data.emplace_back(std::move(data_[0]));
                 // TODO necessary?
-                data_[0].node_ = nullptr;
+                data_[0].second = nullptr;
                 auto prev_node = prev_node_;  // (this) will be removed before we need the field
                 parent_->RemoveNode(max_key_old, tree);  // remove (this)
                 if (prev_node->parent_ != nullptr) {
@@ -586,20 +579,20 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
                 assert(next_node_->parent_ == parent_);
                 RemoveFromSiblings();
                 auto& next_data = next_node_->data_;
-                data_[0].node_->parent_ = next_node_;
+                data_[0].second->parent_ = next_node_;
                 next_data.emplace(next_data.begin(), std::move(data_[0]));
                 // TODO necessary?
-                data_[0].node_ = nullptr;
+                data_[0].second = nullptr;
                 parent_->RemoveNode(max_key_old, tree);
             } else {
                 // Accept to have small nodes, we can merge them later.
-                auto new_max = data_[data_.size() - 1].first;
+                auto new_max = data_.back().first;
                 if (key_remove >= new_max) {
                     parent_->UpdateKey(key_remove, new_max);
                 }
             }
         } else {
-            auto new_max = data_[data_.size() - 1].first;
+            auto new_max = data_.back().first;
             if (key_remove >= new_max) {
                 parent_->UpdateKey(key_remove, new_max);
             }
@@ -647,7 +640,7 @@ class b_plus_tree_map {
     [[nodiscard]] auto find(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            node = node->as_inner()->find_n(key);
+            node = node->as_inner()->find(key);
             if (node == nullptr) {
                 return end();
             }
@@ -658,7 +651,7 @@ class b_plus_tree_map {
     [[nodiscard]] auto find(key_t key) const noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            node = node->as_inner()->find_n(key);
+            node = node->as_inner()->find(key);
             if (node == nullptr) {
                 return end();
             }
@@ -669,7 +662,7 @@ class b_plus_tree_map {
     [[nodiscard]] auto lower_bound(key_t key) noexcept {
         auto node = root_;
         while (!node->is_leaf()) {
-            node = node->as_inner()->find_n(key);
+            node = node->as_inner()->find(key);
             if (node == nullptr) {
                 return end();
             }
@@ -710,7 +703,7 @@ class b_plus_tree_map {
     void erase(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
-            node = node->as_inner()->find_n(key);
+            node = node->as_inner()->find(key);
             if (node == nullptr) {
                 return;
             }
@@ -747,7 +740,7 @@ class b_plus_tree_map {
                 // insert into last node
                 --it;
             }
-            node = it->node_;
+            node = it->second;
         }
         return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
     }
@@ -783,7 +776,7 @@ class BstIterator {
         assert(node->parent_ == nullptr && "must start with root node");
         // move iterator to first value
         while (!node->is_leaf_) {
-            node = node->as_inner()->data_[0].node_;
+            node = node->as_inner()->data_[0].second;
         }
         node_ = node->as_leaf();
         pos_ = 0;
@@ -833,7 +826,7 @@ class BstIterator {
     }
 
   private:
-    [[nodiscard]] bool AssertNotEnd() const noexcept {
+    [[nodiscard]] inline bool AssertNotEnd() const noexcept {
         return node_ != nullptr;
     }
     NodeLT* node_;
