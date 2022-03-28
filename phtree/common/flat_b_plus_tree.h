@@ -307,8 +307,8 @@ class b_plus_tree_node_leaf : public b_plus_tree_node<T, COUNT_MAX> {
                 auto prev_node = prev_node_;  // create copy because (this) will be deleted
                 parent_->RemoveNode(max_key_old, tree);
                 if (prev_node->parent_ != nullptr) {
-                    key_t old1 = prev_data[prev_data.size() - 2].first;
-                    key_t new1 = prev_data[prev_data.size() - 1].first;
+                    key_t old1 = (prev_data.end() - 2)->first;
+                    key_t new1 = (prev_data.end() - 1)->first;
                     prev_node->parent_->UpdateKey(old1, new1);
                 }
             } else if (
@@ -569,8 +569,8 @@ class b_plus_tree_node_node : public b_plus_tree_node<T, COUNT_MAX> {
                 auto prev_node = prev_node_;  // (this) will be removed before we need the field
                 parent_->RemoveNode(max_key_old, tree);  // remove (this)
                 if (prev_node->parent_ != nullptr) {
-                    key_t old1 = prev_data[prev_data.size() - 2].first;
-                    key_t new1 = prev_data[prev_data.size() - 1].first;
+                    key_t old1 = (prev_data.end() - 2)->first;
+                    key_t new1 = (prev_data.end() - 1)->first;
                     prev_node->parent_->UpdateKey(old1, new1);
                 }
             } else if (
