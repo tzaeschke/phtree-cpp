@@ -350,7 +350,7 @@ class b_plus_tree_node_leaf
         return IterT();
     }
 
-    [[nodiscard]] IterT lower_bound_to_it(key_t key) noexcept {
+    [[nodiscard]] IterT lower_bound_as_iter(key_t key) noexcept {
         auto it = this->lower_bound(key);
         if (it != data_.end()) {
             return IterT(this, it - data_.begin());
@@ -366,8 +366,6 @@ class b_plus_tree_node_leaf
         }
         ++entry_count;
 
-        assert(data_.size() <= this->M_max());
-        auto& parent_ = this->parent_;
         if (data_.size() == this->M_max()) {
             key_t split_key;
             pos_t split_pos;
@@ -377,16 +375,16 @@ class b_plus_tree_node_leaf
             auto it_insert = it;
             if (dest != this) {
                 // TODO Optimize populating new node: move 1st part, insert new value, move 2nd
-                // part...? The insertion pos in node2 can be calculated:
+                //   part...? The insertion pos in node2 can be calculated:
                 auto old_pos = it - data_.begin();
                 it_insert = dest->data_.begin() + old_pos - split_pos;
             }
             return dest->EmplaceNoCheck(it_insert, key, std::forward<Args>(args)...);
         }
-        if (parent_ != nullptr) {
+        if (this->parent_ != nullptr) {
             auto max_key = data_.back().first;
             if (key > max_key) {
-                parent_->UpdateKey(max_key, key);
+                this->parent_->UpdateKey(max_key, key);
             }
         }
         return EmplaceNoCheck(it, key, std::forward<Args>(args)...);
@@ -477,17 +475,13 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
     }
 
     [[nodiscard]] NodeT* find(key_t key) noexcept {
-        auto it = lower_bound_n(key);
+        auto it = this->lower_bound(key);
         return it != data_.end() ? it->second : nullptr;
     }
 
     [[nodiscard]] NodeT* find_or_last(key_t key) noexcept {
-        auto it = lower_bound_n(key);
+        auto it = this->lower_bound(key);
         return it != data_.end() ? it->second : data_.back().second;
-    }
-
-    [[nodiscard]] auto lower_bound_n(key_t key) noexcept {
-        return this->lower_bound(key);
     }
 
     void emplace_back(key_t key, NodeT* node) {
@@ -521,7 +515,7 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
 
     void UpdateKey(key_t old_key, key_t new_key) {
         assert(new_key != old_key);
-        auto it = lower_bound_n(old_key);
+        auto it = this->lower_bound(old_key);
         assert(it != data_.end());
         assert(it->first == old_key);
         it->first = new_key;
@@ -543,7 +537,7 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
         assert(key2 > key1_new);
         assert(key1_old >= key1_new);
         NodeNT* dest = this;
-        auto& parent_ = this->parent_;
+
         if (data_.size() >= this->M_max()) {
             key_t split_key;
             pos_t split_pos;
@@ -551,26 +545,24 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
 
             // insert entry
             if (dest != this) { // if (key2 > split_key) { TODO remove
-                // dest = sibling2; // TODO remove
                 child2->parent_ = dest;
                 if (key1_old <= split_key) {
-                    assert(data_.size() < this->M_max());
                     auto it = data_.end() - 1;
                     it->first = key1_new; // TODO don't we need to parent_->UpdateKey(key1_old, key1_new);
-                    assert(dest->lower_bound_n(key2) == dest->data_.begin());
+                    assert(dest->lower_bound(key2) == dest->data_.begin());
                     dest->EmplaceNoCheck(dest->data_.begin(), key2, child2);
                     return;
                 }
             }
         }
-        auto it = dest->lower_bound_n(key1_old);
+        auto it = dest->lower_bound(key1_old);
         assert(it != dest->data_.end());
         it->first = key1_new;
         ++it;
         dest->EmplaceNoCheck(it, key2, child2);
         assert(child2->parent_ == dest);
-        if (parent_ != nullptr && key2 > key1_old) {
-            parent_->UpdateKey(key1_old, key2);
+        if (this->parent_ != nullptr && key2 > key1_old) {
+            this->parent_->UpdateKey(key1_old, key2);
         }
     }
 
@@ -578,7 +570,7 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
      * key_old1==key_new1 signifies that they can/will be ignored.
      */
     void RemoveNode(key_t key_remove, TreeT& tree) {
-        auto it_to_erase = lower_bound_n(key_remove);
+        auto it_to_erase = this->lower_bound(key_remove);
         delete it_to_erase->second;
         this->EraseEntry(it_to_erase - data_.begin(), tree);
     }
@@ -639,7 +631,7 @@ class b_plus_tree_map {
                 return end();
             }
         }
-        return node->as_leaf()->lower_bound_to_it(key);
+        return node->as_leaf()->lower_bound_as_iter(key);
     }
 
     [[nodiscard]] auto begin() noexcept {
