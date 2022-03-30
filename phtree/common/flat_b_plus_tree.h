@@ -265,15 +265,15 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
         }
     }
 
-    auto prepare_emplace(key_t key, key_t old_max_key, TreeT& tree, DataIteratorT& it_in_out) {
+    auto prepare_emplace(key_t key, TreeT& tree, DataIteratorT& it_in_out) {
         if (data_.size() < this->M_max()) {
-            if (this->parent_ != nullptr && key > old_max_key) {
-                this->parent_->update_key(old_max_key, key);
+            if (this->parent_ != nullptr && key > data_.back().first) {
+                this->parent_->update_key(data_.back().first, key);
             }
             return static_cast<ThisT*>(this);
         }
 
-        ThisT* dest = this->split_node(key, old_max_key, tree);
+        ThisT* dest = this->split_node(key, tree);
         if (dest != this) {
             // The insertion pos in node2 can be calculated:
             auto old_pos = it_in_out - data_.begin();
@@ -295,13 +295,14 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
     }
 
   private:
-    ThisT* split_node(key_t key, key_t old_max_key, TreeT& tree) {
+    ThisT* split_node(key_t key, TreeT& tree) {
         auto& parent_ = this->parent_;
+        auto max_key = data_.back().first;
         if (parent_ == nullptr) {
             // special root node handling
             assert(parent_ == nullptr);
             auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
-            new_parent->emplace_back(old_max_key, this);
+            new_parent->emplace_back(max_key, this);
             tree.root_ = new_parent;
             parent_ = new_parent;
         }
@@ -331,11 +332,11 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
         // Add node to parent
         auto split_key = data_[split_pos - 1].first;
         if (key > split_key && key < node2->data_[0].first) {
+            // This is a bit hacky:
             // Add new entry at END of first node when possible -> avoids some shifting
             split_key = key;
         }
-        parent_->update_key_and_add_node(
-            old_max_key, split_key, std::max(old_max_key, key), node2, tree);
+        parent_->update_key_and_add_node(max_key, split_key, std::max(max_key, key), node2, tree);
 
         // Return node for insertion of new value
         return key > split_key ? node2 : static_cast<ThisT*>(this);
@@ -397,8 +398,7 @@ class bpt_node_leaf
         }
         ++entry_count;
 
-        auto old_max_key = this->data_.empty() ? 0 : this->data_.back().first;
-        auto dest = this->prepare_emplace(key, old_max_key, tree, it);
+        auto dest = this->prepare_emplace(key, tree, it);
 
         auto x = dest->data_.emplace(
             it,
@@ -513,11 +513,12 @@ class bpt_node_inner
         key_t key1_old, key_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
         assert(key2 > key1_new);
         assert(key1_old >= key1_new);
-        auto old_max_key = this->data_.back().first;
         auto it2 = this->lower_bound(key1_old) + 1;
-        (it2 - 1)->first = key1_new;
 
-        auto dest = this->prepare_emplace(key2, old_max_key, tree, it2);
+        auto dest = this->prepare_emplace(key2, tree, it2);
+        // prepare_emplace() guarantees that child2 is in the same node as child1
+        assert(it2 != dest->data_.begin());
+        (it2 - 1)->first = key1_new;
         child2->parent_ = dest;
         dest->data_.emplace(it2, key2, child2);
     }
