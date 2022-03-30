@@ -46,7 +46,9 @@ using index_t = std::int32_t;
 template <typename T>
 class sparse_map {
   public:
-    explicit sparse_map() : data_{} {};
+    explicit sparse_map() : data_{} {
+        data_.reserve(4);
+    }
 
     [[nodiscard]] auto find(size_t key) {
         auto it = lower_bound(key);

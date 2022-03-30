@@ -64,7 +64,7 @@ struct Id {
 
     explicit Id(const size_t i) : _i{static_cast<int>(i)} {
         ++construct_count_;
-    };
+    }
 
     Id(const Id& other) {
         ++copy_construct_count_;
