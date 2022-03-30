@@ -77,7 +77,6 @@ class bpt_node_inner;
 
 template <typename T, size_t COUNT_MAX>
 using bpt_entry_inner = std::pair<key_t, bpt_node_base<T, COUNT_MAX>*>;
-
 template <typename T>
 using bpt_entry_leaf = std::pair<key_t, T>;
 
@@ -90,12 +89,11 @@ class bpt_iterator;
  *
  * Inner nodes:
  *  - have other nodes as children
- *  - the key represents the key of the value
+ *  - the key of an entry represents the highest key of any subnode in that entry
  *
  * Leaf nodes:
  *  - have values as children.
- *  - the key represents the highest key in the child nodes
- *
+ *  - the key represents the key of a key/value pair
  */
 template <typename T, size_t COUNT_MAX>
 class bpt_node_base {
@@ -503,11 +501,10 @@ class bpt_node_inner
 
     /*
      * This method does two things:
-     * - It changes the key of the node (node 1) at 'key1_old' to 'key1_new' (they may be the same).
+     * - It changes the key of the node (node 1) at 'key1_old' to 'key1_new'.
      * - It inserts a new node (node 2) after 'new_key1' with value 'key2'
      * Invariants:
-     * - Node1: key1_old >= key1_new; Node 1 vs 2: key2 > new_key1
-     * - there is no other key between key1_new and key1_old
+     * - Node1: key1_old > key1_new; Node 1 vs 2: key2 > new_key1
      */
     void update_key_and_add_node(
         key_t key1_old, key_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
@@ -523,9 +520,6 @@ class bpt_node_inner
         dest->data_.emplace(it2, key2, child2);
     }
 
-    /*
-     * key_old1==key_new1 signifies that they can/will be ignored.
-     */
     void remove_node(key_t key_remove, TreeT& tree) {
         auto it_to_erase = this->lower_bound(key_remove);
         delete it_to_erase->second;
