@@ -67,22 +67,22 @@ using key_t = std::uint64_t;
 using pos_t = std::uint32_t;
 
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_base;
-template <typename T, size_t COUNT_MAX, typename NodeSiblingT, typename EntryT>
-class b_plus_tree_node_data;
+class bpt_node_base;
+template <typename T, size_t COUNT_MAX, typename ThisT, typename EntryT>
+class bpt_node_data;
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_leaf;
+class bpt_node_leaf;
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_node;
+class bpt_node_inner;
 
 template <typename T, size_t COUNT_MAX>
-using BptEntryNode = std::pair<key_t, b_plus_tree_node_base<T, COUNT_MAX>*>;
+using bpt_entry_inner = std::pair<key_t, bpt_node_base<T, COUNT_MAX>*>;
 
 template <typename T>
-using BptEntryLeaf = std::pair<key_t, T>;
+using bpt_entry_leaf = std::pair<key_t, T>;
 
 template <typename T, size_t COUNT_MAX>
-class BstIterator;
+class bpt_iterator;
 
 /*
  * Strategy:
@@ -98,13 +98,14 @@ class BstIterator;
  *
  */
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_base {
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
+class bpt_node_base {
+  public:
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using NInnerT = bpt_node_inner<T, COUNT_MAX>;
 
     // TODO test with 8 again
-    constexpr static size_t M_leaf = 4;       // 8;
-    constexpr static size_t M_inner = 4;      // 16;
+    constexpr static size_t M_leaf = 8;       // 8;
+    constexpr static size_t M_inner = 8;      // 16;
     constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
     constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
     // There is no point in allocating more leaf space than the max amount of entries.
@@ -112,10 +113,10 @@ class b_plus_tree_node_base {
     constexpr static size_t M_inner_init = 4;
 
   public:
-    explicit b_plus_tree_node_base(bool is_leaf, NodeNT* parent) noexcept
+    explicit bpt_node_base(bool is_leaf, NInnerT* parent) noexcept
     : is_leaf_{is_leaf}, parent_{parent} {}
 
-    virtual ~b_plus_tree_node_base() noexcept = default;
+    virtual ~bpt_node_base() noexcept = default;
 
     template <typename E>
     [[nodiscard]] auto lower_bound(key_t key, std::vector<E>& data) noexcept {
@@ -129,16 +130,16 @@ class b_plus_tree_node_base {
     }
 
     virtual void _check(
-        size_t& count, NodeNT* parent, NodeLT*& prev_leaf, key_t& known_min, key_t known_max) = 0;
+        size_t& count, NInnerT* parent, NLeafT*& prev_leaf, key_t& known_min, key_t known_max) = 0;
 
-    [[nodiscard]] inline NodeNT* as_inner() noexcept {
+    [[nodiscard]] inline NInnerT* as_inner() noexcept {
         assert(!is_leaf_);
-        return static_cast<NodeNT*>(this);
+        return static_cast<NInnerT*>(this);
     }
 
-    [[nodiscard]] inline NodeLT* as_leaf() noexcept {
+    [[nodiscard]] inline NLeafT* as_leaf() noexcept {
         assert(is_leaf_);
-        return static_cast<NodeLT*>(this);
+        return static_cast<NLeafT*>(this);
     }
 
     [[nodiscard]] inline size_t M_min() {
@@ -155,29 +156,26 @@ class b_plus_tree_node_base {
 
   public:
     const bool is_leaf_;
-    NodeNT* parent_;
+    NInnerT* parent_;
 };
 
 template <typename T, size_t COUNT_MAX, typename ThisT, typename EntryT>
-class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
-    using IterT = BstIterator<T, COUNT_MAX>;
+class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using NInnerT = bpt_node_inner<T, COUNT_MAX>;
+    using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
     using DataIteratorT = decltype(std::vector<EntryT>().begin());
 
     friend IterT;
 
   public:
-    explicit b_plus_tree_node_data(bool is_leaf, NodeNT* parent, ThisT* prev, ThisT* next) noexcept
-    : b_plus_tree_node_base<T, COUNT_MAX>(is_leaf, parent)
-    , data_{}
-    , prev_node_{prev}
-    , next_node_{next} {
+    explicit bpt_node_data(bool is_leaf, NInnerT* parent, ThisT* prev, ThisT* next) noexcept
+    : bpt_node_base<T, COUNT_MAX>(is_leaf, parent), data_{}, prev_node_{prev}, next_node_{next} {
         data_.reserve(this->M_init());
     }
 
-    virtual ~b_plus_tree_node_data() noexcept = default;
+    virtual ~bpt_node_data() noexcept = default;
 
     [[nodiscard]] auto lower_bound(key_t key) noexcept {
         return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const key_t key) {
@@ -197,7 +195,7 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
         auto it_to_erase = data_.begin() + pos;
         data_.erase(it_to_erase);
         if (parent_ == nullptr) {
-            if constexpr (std::is_same_v<ThisT, NodeNT>) {
+            if constexpr (std::is_same_v<ThisT, NInnerT>) {
                 if (data_.size() < 2) {
                     auto remaining_node = data_.begin()->second;
                     data_.begin()->second = nullptr;
@@ -226,7 +224,7 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
                 prev_node_->data_.size() < this->M_max()) {
                 remove_from_siblings();
                 auto& prev_data = prev_node_->data_;
-                if constexpr (std::is_same_v<ThisT, NodeLT>) {
+                if constexpr (std::is_same_v<ThisT, NLeafT>) {
                     prev_data.emplace_back(std::move(data_[0]));
                 } else {
                     data_[0].second->parent_ = prev_node_;
@@ -247,7 +245,7 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
                 assert(next_node_->parent_ == parent_);
                 auto& next_data = next_node_->data_;
 
-                if constexpr (std::is_same_v<ThisT, NodeLT>) {
+                if constexpr (std::is_same_v<ThisT, NLeafT>) {
                     next_data.emplace(next_data.begin(), std::move(data_[0]));
                 } else {
                     data_[0].second->parent_ = next_node_;
@@ -284,13 +282,25 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
         return dest;
     }
 
+    void _check_data(NInnerT* parent, key_t known_max) {
+        (void)parent;
+        (void)known_max;
+        // assert(parent_ == nullptr || data_.size() >= M_min);
+        assert(this->parent_ == parent);
+        if (this->data_.empty()) {
+            assert(parent == nullptr);
+            return;
+        }
+        assert(this->parent_ == nullptr || known_max == this->data_.back().first);
+    }
+
   private:
     ThisT* split_node(key_t key, key_t old_max_key, TreeT& tree) {
         auto& parent_ = this->parent_;
         if (parent_ == nullptr) {
             // special root node handling
             assert(parent_ == nullptr);
-            auto* new_parent = new NodeNT(nullptr, nullptr, nullptr);
+            auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
             new_parent->emplace_back(old_max_key, this);
             tree.root_ = new_parent;
             parent_ = new_parent;
@@ -312,7 +322,7 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
             std::make_move_iterator(data_.end()));
         data_.erase(data_.begin() + split_pos, data_.end());
 
-        if constexpr (std::is_same_v<ThisT, NodeNT>) {
+        if constexpr (std::is_same_v<ThisT, NInnerT>) {
             for (auto& e : node2->data_) {
                 e.second->parent_ = node2;
             }
@@ -344,23 +354,21 @@ class b_plus_tree_node_data : public b_plus_tree_node_base<T, COUNT_MAX> {
 };
 
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_leaf
-: public b_plus_tree_node_data<T, COUNT_MAX, b_plus_tree_node_leaf<T, COUNT_MAX>, BptEntryLeaf<T>> {
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
-    using Node2T = b_plus_tree_node_data<T, COUNT_MAX, NodeLT, BptEntryLeaf<T>>;
-    using IterT = BstIterator<T, COUNT_MAX>;
-    using LeafIteratorT = decltype(std::vector<BptEntryLeaf<T>>().begin());
+class bpt_node_leaf
+: public bpt_node_data<T, COUNT_MAX, bpt_node_leaf<T, COUNT_MAX>, bpt_entry_leaf<T>> {
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using NInnerT = bpt_node_inner<T, COUNT_MAX>;
+    using NodeDataT = bpt_node_data<T, COUNT_MAX, NLeafT, bpt_entry_leaf<T>>;
+    using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
     friend IterT;
-    friend Node2T;
 
   public:
-    explicit b_plus_tree_node_leaf(NodeNT* parent, NodeLT* prev, NodeLT* next) noexcept
-    : Node2T(true, parent, prev, next) {}
+    explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
+    : NodeDataT(true, parent, prev, next) {}
 
-    ~b_plus_tree_node_leaf() noexcept = default;
+    ~bpt_node_leaf() noexcept = default;
 
     [[nodiscard]] IterT find(key_t key) noexcept {
         auto it = this->lower_bound(key);
@@ -388,7 +396,13 @@ class b_plus_tree_node_leaf
 
         auto old_max_key = this->data_.empty() ? 0 : this->data_.back().first;
         auto dest = this->prepare_emplace(key, old_max_key, tree, it);
-        return dest->emplace_no_check(it, key, std::forward<Args>(args)...);
+
+        auto x = dest->data_.emplace(
+            it,
+            std::piecewise_construct,
+            std::forward_as_tuple(key),
+            std::forward_as_tuple(std::forward<Args>(args)...));
+        return std::make_pair(x, true);
     }
 
     bool erase_key(key_t key, TreeT& tree) {
@@ -405,17 +419,9 @@ class b_plus_tree_node_leaf
     }
 
     void _check(
-        size_t& count, NodeNT* parent, NodeLT*& prev_leaf, key_t& known_min, key_t known_max) {
-        (void)parent;
-        (void)known_max;
+        size_t& count, NInnerT* parent, NLeafT*& prev_leaf, key_t& known_min, key_t known_max) {
+        this->_check_data(parent, known_max);
 
-        // assert(parent_ == nullptr || data_.size() >= M_min);
-        assert(this->parent_ == parent);
-        if (this->data_.empty()) {
-            assert(parent == nullptr);
-            return;
-        }
-        assert(this->parent_ == nullptr || known_max == this->data_.back().first);
         assert(prev_leaf == this->prev_node_);
         for (auto& e : this->data_) {
             assert(count == 0 || e.first > known_min);
@@ -425,50 +431,28 @@ class b_plus_tree_node_leaf
         }
         prev_leaf = this;
     }
-
-  private:
-    template <typename... Args>
-    auto emplace_no_check(const LeafIteratorT& it, key_t key, Args&&... args) {
-        assert(it == this->data_.end() || it->first != key);
-        auto x = this->data_.emplace(
-            it,
-            std::piecewise_construct,
-            std::forward_as_tuple(key),
-            std::forward_as_tuple(std::forward<Args>(args)...));
-        return std::make_pair(x, true);
-    }
 };
 
 template <typename T, size_t COUNT_MAX>
-class b_plus_tree_node_node : public b_plus_tree_node_data<
-                                  T,
-                                  COUNT_MAX,
-                                  b_plus_tree_node_node<T, COUNT_MAX>,
-                                  BptEntryNode<T, COUNT_MAX>> {
-    using NodeT = b_plus_tree_node_base<T, COUNT_MAX>;
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
-    using Node2T = b_plus_tree_node_data<T, COUNT_MAX, NodeNT, BptEntryNode<T, COUNT_MAX>>;
-    using IterT = BstIterator<T, COUNT_MAX>;
+class bpt_node_inner
+: public bpt_node_data<T, COUNT_MAX, bpt_node_inner<T, COUNT_MAX>, bpt_entry_inner<T, COUNT_MAX>> {
+    using NodeT = bpt_node_base<T, COUNT_MAX>;
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using NInnerT = bpt_node_inner<T, COUNT_MAX>;
+    using NodeDataT = bpt_node_data<T, COUNT_MAX, NInnerT, bpt_entry_inner<T, COUNT_MAX>>;
+    using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
     friend IterT;
-    friend Node2T;
 
   public:
-    explicit b_plus_tree_node_node(NodeNT* parent, NodeNT* prev, NodeNT* next) noexcept
-    : Node2T(false, parent, prev, next) {}
+    explicit bpt_node_inner(NInnerT* parent, NInnerT* prev, NInnerT* next) noexcept
+    : NodeDataT(false, parent, prev, next) {}
 
-    ~b_plus_tree_node_node() noexcept {
+    ~bpt_node_inner() noexcept {
         for (auto& e : this->data_) {
             if (e.second != nullptr) {
                 delete e.second;
-                //                // TODO ? Avoid virtual ~() ?
-                //                if (e.second->is_leaf()) {
-                //                    delete e.second->as_leaf();
-                //                } else {
-                //                    delete e.second->as_inner();
-                //                }
             }
         }
     }
@@ -488,20 +472,11 @@ class b_plus_tree_node_node : public b_plus_tree_node_data<
     }
 
     void _check(
-        size_t& count, NodeNT* parent, NodeLT*& prev_leaf, key_t& known_min, key_t known_max) {
-        (void)parent;
-        (void)known_max;
+        size_t& count, NInnerT* parent, NLeafT*& prev_leaf, key_t& known_min, key_t known_max) {
+        this->_check_data(parent, known_max);
 
-        // assert(parent_ == nullptr || data_.size() >= M_min);
-        assert(this->parent_ == parent);
-        if (this->data_.empty()) {
-            assert(parent == nullptr);
-            return;
-        }
-        assert(count == 0 || known_min < this->data_[0].first);
         assert(this->parent_ == nullptr || known_max == this->data_.back().first);
         auto prev_key = this->data_[0].first;
-
         int n = 0;
         for (auto& e : this->data_) {
             assert(n == 0 || e.first > prev_key);
@@ -557,18 +532,18 @@ class b_plus_tree_node_node : public b_plus_tree_node_data<
 
 template <typename T, size_t COUNT_MAX>
 class b_plus_tree_map {
-    using IterT = BstIterator<T, COUNT_MAX>;
-    using NodeT = b_plus_tree_node_base<T, COUNT_MAX>;
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
+    using IterT = bpt_iterator<T, COUNT_MAX>;
+    using NodeT = bpt_node_base<T, COUNT_MAX>;
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using NInnerT = bpt_node_inner<T, COUNT_MAX>;
 
-    friend b_plus_tree_node_data<T, COUNT_MAX, NodeLT, BptEntryLeaf<T>>;
-    friend b_plus_tree_node_data<T, COUNT_MAX, NodeNT, BptEntryNode<T, COUNT_MAX>>;
-    friend NodeLT;
-    friend NodeNT;
+    friend bpt_node_data<T, COUNT_MAX, NLeafT, bpt_entry_leaf<T>>;
+    friend bpt_node_data<T, COUNT_MAX, NInnerT, bpt_entry_inner<T, COUNT_MAX>>;
+    friend NLeafT;
+    friend NInnerT;
 
   public:
-    explicit b_plus_tree_map() : root_{new NodeLT(nullptr, nullptr, nullptr)}, size_{0} {};
+    explicit b_plus_tree_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
     ~b_plus_tree_map() {
         if (root_->is_leaf()) {
@@ -657,7 +632,7 @@ class b_plus_tree_map {
 
     void _check() {
         size_t count = 0;
-        NodeLT* prev_leaf = nullptr;
+        NLeafT* prev_leaf = nullptr;
         key_t known_min = std::numeric_limits<key_t>::max();
         root_->_check(count, nullptr, prev_leaf, known_min, 0);
         assert(count == size());
@@ -679,11 +654,11 @@ class b_plus_tree_map {
 
 namespace {
 template <typename T, size_t COUNT_MAX>
-class BstIterator {
-    using IterT = BstIterator<T, COUNT_MAX>;
-    using NodeT = b_plus_tree_node_base<T, COUNT_MAX>;
-    using NodeLT = b_plus_tree_node_leaf<T, COUNT_MAX>;
-    using EntryT = BptEntryLeaf<T>;
+class bpt_iterator {
+    using IterT = bpt_iterator<T, COUNT_MAX>;
+    using NodeT = bpt_node_base<T, COUNT_MAX>;
+    using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
+    using EntryT = bpt_entry_leaf<T>;
 
     friend b_plus_tree_map<T, COUNT_MAX>;
 
@@ -695,12 +670,12 @@ class BstIterator {
     using reference = T&;
 
     // Arbitrary position iterator
-    explicit BstIterator(NodeLT* node, pos_t pos) noexcept : node_{node}, pos_{pos} {
+    explicit bpt_iterator(NLeafT* node, pos_t pos) noexcept : node_{node}, pos_{pos} {
         assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
     }
 
     // begin() iterator
-    explicit BstIterator(NodeT* node) noexcept {
+    explicit bpt_iterator(NodeT* node) noexcept {
         assert(node->parent_ == nullptr && "must start with root node");
         // move iterator to first value
         while (!node->is_leaf_) {
@@ -716,7 +691,7 @@ class BstIterator {
     }
 
     // end() iterator
-    BstIterator() noexcept : node_{nullptr}, pos_{0} {}
+    bpt_iterator() noexcept : node_{nullptr}, pos_{0} {}
 
     auto& operator*() const noexcept {
         assert(AssertNotEnd());
@@ -757,7 +732,7 @@ class BstIterator {
     [[nodiscard]] inline bool AssertNotEnd() const noexcept {
         return node_ != nullptr;
     }
-    NodeLT* node_;
+    NLeafT* node_;
     pos_t pos_;
 };
 }  // namespace
