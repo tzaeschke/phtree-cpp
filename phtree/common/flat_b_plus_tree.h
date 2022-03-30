@@ -53,6 +53,10 @@ namespace improbable::phtree {
  *     nodes that own bordering values/child-nodes).
  *   - There is no guarantee that siblings are on the same depth of the tree.
  * - The tree is not balanced
+ *
+ * TODO since this is a "map" (with 1:1 mapping of key:value), we could optimize splitting and
+ *   merging by trying to reduce `dead space`
+ *   (space between key1 and key2 that exceeds (key2 - key1)).
  */
 
 template <typename T, size_t COUNT_MAX>
@@ -100,8 +104,8 @@ class b_plus_tree_node {
     using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
 
     // TODO test with 8 again
-    constexpr static size_t M_leaf = 32;
-    constexpr static size_t M_inner = 32;
+    constexpr static size_t M_leaf = 8;
+    constexpr static size_t M_inner = 16;
     constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
     constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
     // There is no point in allocating more leaf space than the max amount of entries.
@@ -161,6 +165,7 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
     using NodeNT = b_plus_tree_node_node<T, COUNT_MAX>;
     using IterT = BstIterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
+    using DataIteratorT = decltype(std::vector<EntryT>().begin());
 
     friend IterT;
 
@@ -274,11 +279,11 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
         }
     }
 
-    ThisT* SplitNode(key_t key, TreeT& tree, key_t& split_key, pos_t& split_pos) {
+    ThisT* SplitNode(key_t key, TreeT& tree) {
         // overflow
         auto& parent_ = this->parent_;
-        split_pos = this->M_max() >> 1;
-        split_key = data_[split_pos - 1].first;
+        auto split_pos = this->M_max() >> 1;
+        auto split_key = data_[split_pos - 1].first;
         auto max_key = data_.back().first;
         if (parent_ == nullptr) {
             // special root node handling
@@ -297,6 +302,7 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
         next_node_ = node2;
 
         // populate new node
+        // TODO Optimize populating new node: move 1st part, insert new value, move 2nd part...?
         node2->data_.insert(
             node2->data_.end(),
             std::make_move_iterator(data_.begin() + split_pos),
@@ -310,10 +316,32 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
         }
 
         // Add node to parent
+        // TODO consider adding new entry at END of first node when possible
         parent_->UpdateKeyAndAddNode(max_key, split_key, std::max(max_key, key), node2, tree);
 
         // Return node for insertion of new value
         return key > split_key ? node2 : static_cast<ThisT*>(this);
+    }
+
+    auto prepare_emplace(key_t key, TreeT& tree, DataIteratorT it) {
+        if (data_.size() == this->M_max()) {
+            ThisT* dest = this->SplitNode(key, tree);
+
+            auto it_insert = it;
+            if (dest != this) {
+                // The insertion pos in node2 can be calculated:
+                auto old_pos = it - data_.begin();
+                it_insert = dest->data_.begin() + old_pos - data_.size();
+            }
+            return std::make_pair(dest, it_insert);
+        }
+        if (this->parent_ != nullptr) {
+            auto max_key = data_.back().first;
+            if (key > max_key) {
+                this->parent_->UpdateKey(max_key, key);
+            }
+        }
+        return std::make_pair(static_cast<ThisT*>(this), it);
     }
 
   protected:
@@ -366,28 +394,8 @@ class b_plus_tree_node_leaf
         }
         ++entry_count;
 
-        if (data_.size() == this->M_max()) {
-            key_t split_key;
-            pos_t split_pos;
-            NodeLT* dest = this->SplitNode(key, tree, split_key, split_pos);
-
-            // insert entry
-            auto it_insert = it;
-            if (dest != this) {
-                // TODO Optimize populating new node: move 1st part, insert new value, move 2nd
-                //   part...? The insertion pos in node2 can be calculated:
-                auto old_pos = it - data_.begin();
-                it_insert = dest->data_.begin() + old_pos - split_pos;
-            }
-            return dest->EmplaceNoCheck(it_insert, key, std::forward<Args>(args)...);
-        }
-        if (this->parent_ != nullptr) {
-            auto max_key = data_.back().first;
-            if (key > max_key) {
-                this->parent_->UpdateKey(max_key, key);
-            }
-        }
-        return EmplaceNoCheck(it, key, std::forward<Args>(args)...);
+        auto pair = this->prepare_emplace(key, tree, it);
+        return pair.first->EmplaceNoCheck(pair.second, key, std::forward<Args>(args)...);
     }
 
     bool erase_key(key_t key, TreeT& tree) {
@@ -465,6 +473,7 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
     ~b_plus_tree_node_node() noexcept {
         for (auto& e : data_) {
             if (e.second != nullptr) {
+                // TODO ? Avoid virtual ~() ?
                 if (e.second->is_leaf()) {
                     delete e.second->as_leaf();
                 } else {
@@ -536,34 +545,17 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
         key_t key1_old, key_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
         assert(key2 > key1_new);
         assert(key1_old >= key1_new);
-        NodeNT* dest = this;
+        auto it2 = this->lower_bound(key1_old) + 1;
 
-        if (data_.size() >= this->M_max()) {
-            key_t split_key;
-            pos_t split_pos;
-            dest = this->SplitNode(key2, tree, split_key, split_pos);
+        auto pair = this->prepare_emplace(key2, tree, it2);
 
-            // insert entry
-            if (dest != this) { // if (key2 > split_key) { TODO remove
-                child2->parent_ = dest;
-                if (key1_old <= split_key) {
-                    auto it = data_.end() - 1;
-                    it->first = key1_new; // TODO don't we need to parent_->UpdateKey(key1_old, key1_new);
-                    assert(dest->lower_bound(key2) == dest->data_.begin());
-                    dest->EmplaceNoCheck(dest->data_.begin(), key2, child2);
-                    return;
-                }
-            }
-        }
-        auto it = dest->lower_bound(key1_old);
-        assert(it != dest->data_.end());
-        it->first = key1_new;
-        ++it;
-        dest->EmplaceNoCheck(it, key2, child2);
-        assert(child2->parent_ == dest);
-        if (this->parent_ != nullptr && key2 > key1_old) {
-            this->parent_->UpdateKey(key1_old, key2);
-        }
+ //       pair.first->UpdatePrevKeyAndEmplace(pair.second, key1_new, key2, child2);
+        auto it = pair.second;
+        auto it_prev = it == pair.first->data_.begin() ? pair.first->prev_node_->data_.end() - 1 : it - 1;
+        it_prev->first = key1_new; // TODO move up?
+        child2->parent_ = pair.first;
+        assert(it == pair.first->data_.end() || it->first > key2);
+        pair.first->data_.emplace(it, key2, child2);
     }
 
     /*
@@ -576,11 +568,6 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
     }
 
   private:
-    auto EmplaceNoCheck(const InnerteratorT& it, key_t key, NodeT* child) {
-        assert(it == data_.end() || it->first > key);
-        data_.emplace(it, key, child);
-    }
-
     std::vector<EntryNodeT>& data_;
 };
 }  // namespace
