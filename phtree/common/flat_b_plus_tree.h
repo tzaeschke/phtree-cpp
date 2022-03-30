@@ -279,17 +279,13 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
         }
     }
 
-    ThisT* SplitNode(key_t key, TreeT& tree) {
-        // overflow
+    ThisT* SplitNode(key_t key, key_t old_max_key, TreeT& tree) {
         auto& parent_ = this->parent_;
-        auto split_pos = this->M_max() >> 1;
-        auto split_key = data_[split_pos - 1].first;
-        auto max_key = data_.back().first;
         if (parent_ == nullptr) {
             // special root node handling
             assert(parent_ == nullptr);
             auto* new_parent = new NodeNT(nullptr, nullptr, nullptr);
-            new_parent->emplace_back(max_key, this);
+            new_parent->emplace_back(old_max_key, this);
             tree.root_ = new_parent;
             parent_ = new_parent;
         }
@@ -303,6 +299,7 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
 
         // populate new node
         // TODO Optimize populating new node: move 1st part, insert new value, move 2nd part...?
+        auto split_pos = this->M_max() >> 1;
         node2->data_.insert(
             node2->data_.end(),
             std::make_move_iterator(data_.begin() + split_pos),
@@ -317,31 +314,29 @@ class b_plus_tree_node2 : public b_plus_tree_node<T, COUNT_MAX> {
 
         // Add node to parent
         // TODO consider adding new entry at END of first node when possible
-        parent_->UpdateKeyAndAddNode(max_key, split_key, std::max(max_key, key), node2, tree);
+        auto split_key = data_[split_pos - 1].first;
+        parent_->UpdateKeyAndAddNode(
+            old_max_key, split_key, std::max(old_max_key, key), node2, tree);
 
         // Return node for insertion of new value
         return key > split_key ? node2 : static_cast<ThisT*>(this);
     }
 
-    auto prepare_emplace(key_t key, TreeT& tree, DataIteratorT it) {
+    auto prepare_emplace(key_t key, key_t old_max_key, TreeT& tree, DataIteratorT& it_in_out) {
         if (data_.size() == this->M_max()) {
-            ThisT* dest = this->SplitNode(key, tree);
+            ThisT* dest = this->SplitNode(key, old_max_key, tree);
 
-            auto it_insert = it;
             if (dest != this) {
                 // The insertion pos in node2 can be calculated:
-                auto old_pos = it - data_.begin();
-                it_insert = dest->data_.begin() + old_pos - data_.size();
+                auto old_pos = it_in_out - data_.begin();
+                it_in_out = dest->data_.begin() + old_pos - data_.size();
             }
-            return std::make_pair(dest, it_insert);
+            return dest;
         }
-        if (this->parent_ != nullptr) {
-            auto max_key = data_.back().first;
-            if (key > max_key) {
-                this->parent_->UpdateKey(max_key, key);
-            }
+        if (this->parent_ != nullptr && key > old_max_key) {
+            this->parent_->UpdateKey(old_max_key, key);
         }
-        return std::make_pair(static_cast<ThisT*>(this), it);
+        return static_cast<ThisT*>(this);
     }
 
   protected:
@@ -394,8 +389,8 @@ class b_plus_tree_node_leaf
         }
         ++entry_count;
 
-        auto pair = this->prepare_emplace(key, tree, it);
-        return pair.first->EmplaceNoCheck(pair.second, key, std::forward<Args>(args)...);
+        auto dest = this->prepare_emplace(key, data_.back().first, tree, it);
+        return dest->EmplaceNoCheck(it, key, std::forward<Args>(args)...);
     }
 
     bool erase_key(key_t key, TreeT& tree) {
@@ -545,17 +540,13 @@ class b_plus_tree_node_node : public b_plus_tree_node2<
         key_t key1_old, key_t key1_new, key_t key2, NodeT* child2, TreeT& tree) {
         assert(key2 > key1_new);
         assert(key1_old >= key1_new);
+        auto old_max_key = data_.back().first;
         auto it2 = this->lower_bound(key1_old) + 1;
+        (it2 - 1)->first = key1_new;
 
-        auto pair = this->prepare_emplace(key2, tree, it2);
-
- //       pair.first->UpdatePrevKeyAndEmplace(pair.second, key1_new, key2, child2);
-        auto it = pair.second;
-        auto it_prev = it == pair.first->data_.begin() ? pair.first->prev_node_->data_.end() - 1 : it - 1;
-        it_prev->first = key1_new; // TODO move up?
-        child2->parent_ = pair.first;
-        assert(it == pair.first->data_.end() || it->first > key2);
-        pair.first->data_.emplace(it, key2, child2);
+        auto dest = this->prepare_emplace(key2, old_max_key, tree, it2);
+        child2->parent_ = dest;
+        dest->data_.emplace(it2, key2, child2);
     }
 
     /*
