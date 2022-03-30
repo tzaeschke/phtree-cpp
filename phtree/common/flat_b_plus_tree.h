@@ -329,8 +329,11 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
         }
 
         // Add node to parent
-        // TODO consider adding new entry at END of first node when possible
         auto split_key = data_[split_pos - 1].first;
+        if (key > split_key && key < node2->data_[0].first) {
+            // Add new entry at END of first node when possible -> avoids some shifting
+            split_key = key;
+        }
         parent_->update_key_and_add_node(
             old_max_key, split_key, std::max(old_max_key, key), node2, tree);
 
