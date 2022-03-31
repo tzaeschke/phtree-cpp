@@ -91,7 +91,7 @@ auto CreateDuplicates =
     };
 }  // namespace
 
-enum TestGenerator { CUBE, CLUSTER };
+enum TestGenerator { CUBE = 4, CLUSTER = 7 };
 
 template <dimension_t DIM>
 auto CreatePointDataMinMax = [](auto& points,

@@ -44,26 +44,19 @@ using TreeType = PhTreeD<DIM, int>;
 template <dimension_t DIM, QueryType QUERY_TYPE>
 class IndexBenchmark {
   public:
-    IndexBenchmark(
-        benchmark::State& state,
-        TestGenerator data_type,
-        int num_entities,
-        double avg_query_result_size_ = 100);
-
+    IndexBenchmark(benchmark::State& state, double avg_query_result_size_ = 100);
     void Benchmark(benchmark::State& state);
 
   private:
     void SetupWorld(benchmark::State& state);
-
     void QueryWorld(benchmark::State& state, BoxType<DIM>& query_box);
-
     void CreateQuery(BoxType<DIM>& query_box);
 
     const TestGenerator data_type_;
     const int num_entities_;
     const double avg_query_result_size_;
 
-    constexpr int query_endge_length() {
+    constexpr int query_edge_length() {
         return GLOBAL_MAX * pow(avg_query_result_size_ / (double)num_entities_, 1. / (double)DIM);
     };
 
@@ -75,17 +68,14 @@ class IndexBenchmark {
 
 template <dimension_t DIM, QueryType QUERY_TYPE>
 IndexBenchmark<DIM, QUERY_TYPE>::IndexBenchmark(
-    benchmark::State& state,
-    TestGenerator data_type,
-    int num_entities,
-    double avg_query_result_size)
-: data_type_{data_type}
-, num_entities_(num_entities)
+    benchmark::State& state, double avg_query_result_size)
+: data_type_{static_cast<TestGenerator>(state.range(1))}
+, num_entities_(state.range(0))
 , avg_query_result_size_(avg_query_result_size)
 , tree_{}
 , random_engine_{1}
 , cube_distribution_{0, GLOBAL_MAX}
-, points_(num_entities) {
+, points_(state.range(0)) {
     logging::SetupDefaultLogging();
     SetupWorld(state);
 }
@@ -163,7 +153,7 @@ void IndexBenchmark<DIM, QUERY_TYPE>::QueryWorld(benchmark::State& state, BoxTyp
 
 template <dimension_t DIM, QueryType QUERY_TYPE>
 void IndexBenchmark<DIM, QUERY_TYPE>::CreateQuery(BoxType<DIM>& query_box) {
-    int length = query_endge_length();
+    int length = query_edge_length();
     // scale to ensure query lies within boundary
     double scale = (GLOBAL_MAX - (double)length) / GLOBAL_MAX;
     for (dimension_t d = 0; d < DIM; ++d) {
@@ -177,127 +167,48 @@ void IndexBenchmark<DIM, QUERY_TYPE>::CreateQuery(BoxType<DIM>& query_box) {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree6D_MMFE(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<6, MIN_MAX_FOR_EACH> benchmark{state, arguments...};
+void PhTree6D_FE(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<6, MIN_MAX_FOR_EACH> benchmark{state};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree6D_MMI(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<6, MIN_MAX_ITER> benchmark{state, arguments...};
+void PhTree6D_IT(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<6, MIN_MAX_ITER> benchmark{state};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree10D_MMI(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<10, MIN_MAX_ITER> benchmark{state, arguments...};
+void PhTree10D_IT(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<10, MIN_MAX_ITER> benchmark{state};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree20D_MMI(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<20, MIN_MAX_ITER> benchmark{state, arguments...};
+void PhTree20D_IT(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<20, MIN_MAX_ITER> benchmark{state};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_type, num_entities, query_result_size
-// CUBE
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CU_100_of_1K, TestGenerator::CUBE, 1000)
+BENCHMARK_CAPTURE(PhTree6D_FE, KNN, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CU_100_of_10K, TestGenerator::CUBE, 10000)
+BENCHMARK_CAPTURE(PhTree6D_IT, KNN, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CU_100_of_100K, TestGenerator::CUBE, 100000)
+BENCHMARK_CAPTURE(PhTree10D_IT, KNN, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CLUSTER
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CL_100_of_1K, TestGenerator::CLUSTER, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMFE, WQ_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CUBE
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CU_100_of_1K, TestGenerator::CUBE, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CU_100_of_10K, TestGenerator::CUBE, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CU_100_of_100K, TestGenerator::CUBE, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CLUSTER
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CL_100_of_1K, TestGenerator::CLUSTER, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree6D_MMI, WQ_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CUBE
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CU_100_of_10K, TestGenerator::CUBE, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CU_100_of_100K, TestGenerator::CUBE, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CLUSTER
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree10D_MMI, WQ_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CUBE
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CU_100_of_10K, TestGenerator::CUBE, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CU_100_of_100K, TestGenerator::CUBE, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, query_result_size
-// CLUSTER
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree20D_MMI, WQ_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
+BENCHMARK_CAPTURE(PhTree20D_IT, KNN, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();
