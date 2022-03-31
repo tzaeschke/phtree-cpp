@@ -191,22 +191,22 @@ void PhTree20D_IT(benchmark::State& state, Arguments&&...) {
 }
 
 // index type, scenario name, data_type, num_entities, query_result_size
-BENCHMARK_CAPTURE(PhTree6D_FE, KNN, 0)
+BENCHMARK_CAPTURE(PhTree6D_FE, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree6D_IT, KNN, 0)
+BENCHMARK_CAPTURE(PhTree6D_IT, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree10D_IT, KNN, 0)
+BENCHMARK_CAPTURE(PhTree10D_IT, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree20D_IT, KNN, 0)
+BENCHMARK_CAPTURE(PhTree20D_IT, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
