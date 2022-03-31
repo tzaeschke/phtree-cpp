@@ -284,11 +284,9 @@ class b_plus_tree_map {
                 return;
             }
 
-            // TODO can we merge with different parent now?
             if (data_.size() < this->M_min()) {
                 // merge
-                if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
-                    prev_node_->data_.size() < this->M_max()) {
+                if (prev_node_ != nullptr && prev_node_->data_.size() < this->M_max()) {
                     remove_from_siblings();
                     auto& prev_data = prev_node_->data_;
                     if constexpr (std::is_same_v<ThisT, NLeafT>) {
@@ -306,9 +304,7 @@ class b_plus_tree_map {
                         prev_node->parent_->update_key(old1, new1);
                     }
                     return;
-                } else if (
-                    next_node_ != nullptr && next_node_->parent_ == parent_ &&
-                    next_node_->data_.size() < this->M_max()) {
+                } else if (next_node_ != nullptr && next_node_->data_.size() < this->M_max()) {
                     remove_from_siblings();
                     assert(next_node_->parent_ == parent_);
                     auto& next_data = next_node_->data_;
@@ -324,7 +320,7 @@ class b_plus_tree_map {
                     parent_->remove_node(max_key_old, tree);
                     return;
                 }
-                // This node is to small! Well... .
+                // This node is too small but there is nothing we can do.
             }
             if (it_to_erase == data_.end()) {
                 parent_->update_key(max_key_old, data_.back().first);
@@ -364,7 +360,6 @@ class b_plus_tree_map {
         ThisT* split_node(key_t key, TreeT& tree) {
             auto max_key = data_.back().first;
             if (this->parent_ == nullptr) {
-                // special root node handling
                 auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
                 new_parent->emplace_back(max_key, this);
                 tree.root_ = new_parent;
