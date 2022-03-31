@@ -101,15 +101,6 @@ class bpt_node_base {
     using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
     using NInnerT = bpt_node_inner<T, COUNT_MAX>;
 
-    // TODO test with 8 again
-    constexpr static size_t M_leaf = 8;       // 8;
-    constexpr static size_t M_inner = 8;      // 16;
-    constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
-    constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
-    // There is no point in allocating more leaf space than the max amount of entries.
-    constexpr static size_t M_leaf_init = std::min(size_t(4), SIZE_MAX);
-    constexpr static size_t M_inner_init = 4;
-
   public:
     explicit bpt_node_base(bool is_leaf, NInnerT* parent) noexcept
     : is_leaf_{is_leaf}, parent_{parent} {}
@@ -140,18 +131,6 @@ class bpt_node_base {
         return static_cast<NLeafT*>(this);
     }
 
-    [[nodiscard]] inline size_t M_min() {
-        return is_leaf_ ? M_leaf_min : M_inner_min;
-    }
-
-    [[nodiscard]] inline size_t M_max() {
-        return is_leaf_ ? M_leaf : M_inner;
-    }
-
-    [[nodiscard]] inline size_t M_init() {
-        return is_leaf_ ? M_leaf_init : M_inner_init;
-    }
-
   public:
     const bool is_leaf_;
     NInnerT* parent_;
@@ -164,8 +143,15 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
     using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
     using DataIteratorT = decltype(std::vector<EntryT>().begin());
-
     friend IterT;
+
+    constexpr static size_t M_leaf = 8;       // 8;
+    constexpr static size_t M_inner = 8;      // 16;
+    constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2); // TODO
+    constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
+    // There is no point in allocating more leaf space than the max amount of entries.
+    constexpr static size_t M_leaf_init = std::min(size_t(4), COUNT_MAX);
+    constexpr static size_t M_inner_init = 4;
 
   public:
     explicit bpt_node_data(bool is_leaf, NInnerT* parent, ThisT* prev, ThisT* next) noexcept
@@ -174,6 +160,18 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
     }
 
     virtual ~bpt_node_data() noexcept = default;
+
+    [[nodiscard]] inline size_t M_min() {
+        return this->is_leaf_ ? M_leaf_min : M_inner_min;
+    }
+
+    [[nodiscard]] inline size_t M_max() {
+        return this->is_leaf_ ? M_leaf : M_inner;
+    }
+
+    [[nodiscard]] inline size_t M_init() {
+        return this->is_leaf_ ? M_leaf_init : M_inner_init;
+    }
 
     [[nodiscard]] auto lower_bound(key_t key) noexcept {
         return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const key_t key) {
@@ -206,16 +204,14 @@ class bpt_node_data : public bpt_node_base<T, COUNT_MAX> {
         }
 
         if (data_.size() == 0) {
-            // Nothing to merge, just remove node.
-            // This should be rare, i.e. only happens when a rare 1-entry node has another entry
-            // removed.
+            // Nothing to merge, just remove node. This should be rare, i.e. only happens when
+            // a rare 1-entry node has its last entry removed.
             remove_from_siblings();
             parent_->remove_node(max_key_old, tree);
             return;
         }
 
         // TODO can we merge with different parent now?
-        // TODO If not, are we unnecessarily adjusting parents anywhere?
         if (data_.size() < this->M_min()) {
             // merge
             if (prev_node_ != nullptr && prev_node_->parent_ == parent_ &&
@@ -360,15 +356,13 @@ class bpt_node_leaf
 : public bpt_node_data<T, COUNT_MAX, bpt_node_leaf<T, COUNT_MAX>, bpt_entry_leaf<T>> {
     using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
     using NInnerT = bpt_node_inner<T, COUNT_MAX>;
-    using NodeDataT = bpt_node_data<T, COUNT_MAX, NLeafT, bpt_entry_leaf<T>>;
     using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
-
     friend IterT;
 
   public:
     explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
-    : NodeDataT(true, parent, prev, next) {}
+    : bpt_node_data<T, COUNT_MAX, NLeafT, bpt_entry_leaf<T>>(true, parent, prev, next) {}
 
     ~bpt_node_leaf() noexcept = default;
 
@@ -440,7 +434,6 @@ class bpt_node_inner
     using NodeT = bpt_node_base<T, COUNT_MAX>;
     using NLeafT = bpt_node_leaf<T, COUNT_MAX>;
     using NInnerT = bpt_node_inner<T, COUNT_MAX>;
-    using NodeDataT = bpt_node_data<T, COUNT_MAX, NInnerT, bpt_entry_inner<T, COUNT_MAX>>;
     using IterT = bpt_iterator<T, COUNT_MAX>;
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
@@ -448,7 +441,8 @@ class bpt_node_inner
 
   public:
     explicit bpt_node_inner(NInnerT* parent, NInnerT* prev, NInnerT* next) noexcept
-    : NodeDataT(false, parent, prev, next) {}
+    : bpt_node_data<T, COUNT_MAX, NInnerT, bpt_entry_inner<T, COUNT_MAX>>(
+          false, parent, prev, next) {}
 
     ~bpt_node_inner() noexcept {
         for (auto& e : this->data_) {
@@ -734,7 +728,6 @@ class bpt_iterator {
     pos_t pos_;
 };
 }  // namespace
-
-};  // namespace improbable::phtree
+}  // namespace improbable::phtree
 
 #endif  // PHTREE_COMMON_B_PLUS_TREE_H
