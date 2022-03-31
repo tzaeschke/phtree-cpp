@@ -60,7 +60,7 @@ namespace improbable::phtree {
  *   merging by trying to reduce `dead space`
  *   (space between key1 and key2 that exceeds (key2 - key1)).
  */
-template <typename T, size_t COUNT_MAX>
+template <typename T, std::uint64_t COUNT_MAX>
 class b_plus_tree_map {
     class bpt_node_base;
     template <typename ThisT, typename EntryT>
@@ -69,8 +69,8 @@ class b_plus_tree_map {
     class bpt_node_inner;
     class bpt_iterator;
 
+    // TODO 32bit?
     using key_t = std::uint64_t;
-    using pos_t = std::uint32_t;
 
     using bpt_entry_inner = std::pair<key_t, bpt_node_base*>;
     using bpt_entry_leaf = std::pair<key_t, T>;
@@ -220,7 +220,7 @@ class b_plus_tree_map {
         constexpr static size_t M_leaf = std::min(size_t(16), COUNT_MAX);
         // Default MAX is 32. Special case for small COUNT with smaller inner leaf or
         // trees with a single inner leaf. '*2' is added because leaf filling is not compact.
-        constexpr static size_t M_inner = std::min(size_t(16), COUNT_MAX * 2 / M_leaf);
+        constexpr static size_t M_inner = std::min(size_t(16), COUNT_MAX / M_leaf * 2);
         // TODO This could be improved but requires a code change to move > 1 entry when merging.
         constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2);
         constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
@@ -263,7 +263,6 @@ class b_plus_tree_map {
             auto& parent_ = this->parent_;
             key_t max_key_old = data_.back().first;
 
-            pos_t pos = it_to_erase - data_.begin();
             data_.erase(it_to_erase);
             if (parent_ == nullptr) {
                 if constexpr (std::is_same_v<ThisT, NInnerT>) {
@@ -307,6 +306,7 @@ class b_plus_tree_map {
                         key_t new1 = (prev_data.end() - 1)->first;
                         prev_node->parent_->update_key(old1, new1);
                     }
+                    return;
                 } else if (
                     next_node_ != nullptr && next_node_->parent_ == parent_ &&
                     next_node_->data_.size() < this->M_max()) {
@@ -323,14 +323,12 @@ class b_plus_tree_map {
                     }
 
                     parent_->remove_node(max_key_old, tree);
-                } else {
-                    // This node is to small! Well... .
-                    if (pos == data_.size()) {
-                        parent_->update_key(max_key_old, data_[pos - 1].first);
-                    }
+                    return;
                 }
-            } else if (pos == data_.size()) {
-                parent_->update_key(max_key_old, data_[pos - 1].first);
+                // This node is to small! Well... .
+            }
+            if (it_to_erase == data_.end()) {
+                parent_->update_key(max_key_old, data_.back().first);
             }
         }
 
@@ -583,7 +581,7 @@ class b_plus_tree_map {
       public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = T;
-        using difference_type = pos_t;
+        using difference_type = std::ptrdiff_t;
         using pointer = T*;
         using reference = T&;
 
