@@ -79,6 +79,7 @@ class b_plus_tree_map {
     using NodeT = bpt_node_base;
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner;
+    using LeafIteratorT = decltype(std::vector<bpt_entry_leaf>().begin());
     using TreeT = b_plus_tree_map<T, COUNT_MAX>;
 
   public:
@@ -158,7 +159,7 @@ class b_plus_tree_map {
     void erase(const IterT& iterator) {
         assert(iterator != end());
         --size_;
-        iterator.node_->erase_pos(iterator.pos_, *this);
+        iterator.node_->erase_it(iterator.iter_, *this);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -258,12 +259,11 @@ class b_plus_tree_map {
             return data_.size();
         }
 
-        void erase_entry(pos_t pos, TreeT& tree) {
-            assert(pos < data_.size());
+        void erase_entry(DataIteratorT it_to_erase, TreeT& tree) {
             auto& parent_ = this->parent_;
             key_t max_key_old = data_.back().first;
 
-            auto it_to_erase = data_.begin() + pos;
+            pos_t pos = it_to_erase - data_.begin();
             data_.erase(it_to_erase);
             if (parent_ == nullptr) {
                 if constexpr (std::is_same_v<ThisT, NInnerT>) {
@@ -435,7 +435,7 @@ class b_plus_tree_map {
         [[nodiscard]] IterT find(key_t key) noexcept {
             auto it = this->lower_bound(key);
             if (it != this->data_.end() && it->first == key) {
-                return IterT(this, it - this->data_.begin());
+                return IterT(this, it);
             }
             return IterT();
         }
@@ -443,7 +443,7 @@ class b_plus_tree_map {
         [[nodiscard]] IterT lower_bound_as_iter(key_t key) noexcept {
             auto it = this->lower_bound(key);
             if (it != this->data_.end()) {
-                return IterT(this, it - this->data_.begin());
+                return IterT(this, it);
             }
             return IterT();
         }
@@ -469,14 +469,14 @@ class b_plus_tree_map {
         bool erase_key(key_t key, TreeT& tree) {
             auto it = this->lower_bound(key);
             if (it != this->data_.end() && it->first == key) {
-                this->erase_entry(it - this->data_.begin(), tree);
+                this->erase_entry(it, tree);
                 return true;
             }
             return false;
         }
 
-        void erase_pos(pos_t pos, TreeT& tree) {
-            this->erase_entry(pos, tree);
+        void erase_it(LeafIteratorT iter, TreeT& tree) {
+            this->erase_entry(iter, tree);
         }
 
         void _check(
@@ -572,7 +572,7 @@ class b_plus_tree_map {
         void remove_node(key_t key_remove, TreeT& tree) {
             auto it_to_erase = this->lower_bound(key_remove);
             delete it_to_erase->second;
-            this->erase_entry(it_to_erase - this->data_.begin(), tree);
+            this->erase_entry(it_to_erase, tree);
         }
     };
 
@@ -588,7 +588,7 @@ class b_plus_tree_map {
         using reference = T&;
 
         // Arbitrary position iterator
-        explicit bpt_iterator(NLeafT* node, pos_t pos) noexcept : node_{node}, pos_{pos} {
+        explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept : node_{node}, iter_{it} {
             assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
         }
 
@@ -600,34 +600,35 @@ class b_plus_tree_map {
                 node = node->as_inner()->data_[0].second;
             }
             node_ = node->as_leaf();
-            pos_ = 0;
 
             if (node_->size() == 0) {
                 node_ = nullptr;
+                iter_ = {};
                 return;
             }
+            iter_ = node_->data_.begin();
         }
 
         // end() iterator
-        bpt_iterator() noexcept : node_{nullptr}, pos_{0} {}
+        bpt_iterator() noexcept : node_{nullptr}, iter_{} {}
 
         auto& operator*() const noexcept {
             assert(AssertNotEnd());
-            return const_cast<EntryT&>(node_->data_[pos_]);
+            return const_cast<EntryT&>(*iter_);
         }
 
         auto* operator->() const noexcept {
             assert(AssertNotEnd());
-            return const_cast<EntryT*>(&node_->data_[pos_]);
+            return const_cast<EntryT*>(&*iter_);
         }
 
         auto& operator++() noexcept {
             assert(AssertNotEnd());
-            ++pos_;
-            if (pos_ >= node_->data_.size()) {
-                pos_ = 0;
+            ++iter_;
+            if (iter_ == node_->data_.end()) {
                 // this may be a nullptr -> end of data
                 node_ = node_->next_node_;
+                iter_ = node_ != nullptr ? node_->data_.begin() : LeafIteratorT{};
             }
             return *this;
         }
@@ -639,7 +640,7 @@ class b_plus_tree_map {
         }
 
         friend bool operator==(const IterT& left, const IterT& right) noexcept {
-            return left.node_ == right.node_ && left.pos_ == right.pos_;
+            return left.iter_ == right.iter_ && left.node_ == right.node_;
         }
 
         friend bool operator!=(const IterT& left, const IterT& right) noexcept {
@@ -652,7 +653,7 @@ class b_plus_tree_map {
         }
 
         NLeafT* node_;
-        pos_t pos_;
+        LeafIteratorT iter_;
     };
 
   private:
