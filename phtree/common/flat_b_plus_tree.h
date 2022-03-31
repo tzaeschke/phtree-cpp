@@ -69,7 +69,6 @@ class b_plus_tree_map {
     class bpt_node_inner;
     class bpt_iterator;
 
-    // TODO 32bit?
     using key_t = std::uint64_t;
 
     using bpt_entry_inner = std::pair<key_t, bpt_node_base*>;
