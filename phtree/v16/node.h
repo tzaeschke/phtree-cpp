@@ -43,7 +43,9 @@ template <dimension_t DIM, typename Entry>
 using EntryMap = typename std::conditional<
     DIM <= 3,
     array_map<Entry, (hc_pos_t(1) << DIM)>,
-    typename std::conditional<DIM <= 8, sparse_map<Entry>, std::map<hc_pos_t, Entry>>::type>::type;
+    typename std::
+        conditional<DIM <= 8, sparse_map<Entry>, b_plus_tree_map<Entry, (hc_pos_t(1) << DIM)>>::
+            type>::type;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = decltype(EntryMap<DIM, Entry>().begin());

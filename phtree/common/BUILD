@@ -11,7 +11,7 @@ cc_library(
         "distance.h",
         "filter.h",
         "flat_array_map.h",
-        "flat_b_plus_tree.h",
+        "b_plus_tree_map.h",
         "flat_sparse_map.h",
         "tree_stats.h",
     ],
@@ -101,10 +101,10 @@ cc_test(
 )
 
 cc_test(
-    name = "flat_b_plus_tree_test",
+    name = "b_plus_tree_map_test",
     timeout = "long",
     srcs = [
-        "flat_b_plus_tree_test.cc",
+        "b_plus_tree_map_test.cc",
     ],
     linkstatic = True,
     deps = [

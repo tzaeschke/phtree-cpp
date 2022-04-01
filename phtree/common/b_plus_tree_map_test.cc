@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "flat_b_plus_tree.h"
+#include "b_plus_tree_map.h"
 #include <gtest/gtest.h>
 #include <random>
 

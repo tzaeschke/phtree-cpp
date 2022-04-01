@@ -306,9 +306,7 @@ class b_plus_tree_map {
                     return;
                 } else if (next_node_ != nullptr && next_node_->data_.size() < this->M_max()) {
                     remove_from_siblings();
-                    assert(next_node_->parent_ == parent_);
                     auto& next_data = next_node_->data_;
-
                     if constexpr (std::is_same_v<ThisT, NLeafT>) {
                         next_data.emplace(next_data.begin(), std::move(data_[0]));
                     } else {
@@ -316,7 +314,6 @@ class b_plus_tree_map {
                         next_data.emplace(next_data.begin(), std::move(data_[0]));
                         data_[0].second = nullptr;
                     }
-
                     parent_->remove_node(max_key_old, tree);
                     return;
                 }
