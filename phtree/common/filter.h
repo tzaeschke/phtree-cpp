@@ -126,7 +126,7 @@ class FilterAABB {
         return true;
     }
 
-    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) const {
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
         // Let's assume that we always want to traverse the root node (bits_to_ignore == 64)
         if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
             return true;
@@ -187,7 +187,7 @@ class FilterSphere {
      * Calculate whether AABB encompassing all possible points in the node intersects with the
      * sphere.
      */
-    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) const {
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
         // we always want to traverse the root node (bits_to_ignore == 64)
 
         if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {

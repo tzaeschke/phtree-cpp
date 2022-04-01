@@ -128,7 +128,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
         current_distance_ = std::numeric_limits<double>::max();
     }
 
-    double DistanceToNode(const KeyInternal& prefix, int bits_to_ignore) {
+    double DistanceToNode(const KeyInternal& prefix, std::uint32_t bits_to_ignore) {
         assert(bits_to_ignore < MAX_BIT_WIDTH<SCALAR>);
         SCALAR mask_min = MAX_MASK<SCALAR> << bits_to_ignore;
         SCALAR mask_max = ~mask_min;
@@ -153,8 +153,8 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
     double current_distance_;
     std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance<EntryDistT>>
         queue_;
-    int num_found_results_;
-    int num_requested_results_;
+    size_t num_found_results_;
+    size_t num_requested_results_;
     DISTANCE distance_;
 };
 

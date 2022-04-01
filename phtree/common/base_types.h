@@ -40,8 +40,10 @@ using scalar_64_t = int64_t;
 using scalar_32_t = int32_t;
 using scalar_16_t = int16_t;
 
-// Bits in a coordinate (usually a double or long has 64 bits, so uint_8 suffices)
-using bit_width_t = uint16_t;
+// Bits in a coordinate (usually a double or long has 64 bits, so uint_8 suffices).
+// However, uint32_t turned out to be faster, probably due to fewer cycles required for 32bit
+// instructions (8bit/16bit tend to require more cycles, see CPU tables available on the web).
+using bit_width_t = uint32_t;
 // Number of bit for 'scalar_64_t' or 'scalar_32_t'. Note that 'digits' does _not_ include sign bit,
 // so e.g. int64_t has 63 `digits`, however we need all bits, i.e. 64.
 template <typename SCALAR>

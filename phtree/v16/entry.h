@@ -55,13 +55,19 @@ class Entry {
      * Construct entry with existing node.
      */
     Entry(const KeyT& k, std::unique_ptr<NodeT>&& node_ptr, bit_width_t postfix_len) noexcept
-    : kd_key_{k}, node_{std::move(node_ptr)}, union_type_{NODE}, postfix_len_{postfix_len} {}
+    : kd_key_{k}
+    , node_{std::move(node_ptr)}
+    , union_type_{NODE}
+    , postfix_len_{static_cast<std::uint16_t>(postfix_len)} {}
 
     /*
      * Construct entry with a new node.
      */
     Entry(bit_width_t postfix_len) noexcept
-    : kd_key_(), node_{std::make_unique<NodeT>()}, union_type_{NODE}, postfix_len_{postfix_len} {}
+    : kd_key_()
+    , node_{std::make_unique<NodeT>()}
+    , union_type_{NODE}
+    , postfix_len_{static_cast<std::uint16_t>(postfix_len)} {}
 
     /*
      * Construct entry with existing T.
@@ -125,7 +131,7 @@ class Entry {
     }
 
     void SetNode(std::unique_ptr<NodeT>&& node, bit_width_t postfix_len) noexcept {
-        postfix_len_ = postfix_len;
+        postfix_len_ = static_cast<std::uint16_t>(postfix_len);
         DestroyUnion();
         union_type_ = NODE;
         new (&node_) std::unique_ptr<NodeT>{std::move(node)};
@@ -204,7 +210,7 @@ class Entry {
     // prefix_len + 1 + postfix_len = 64.
     // The '+1' accounts for the 1 bit that is represented by the local node's hypercube,
     // i.e. the same bit that is used to create the lookup keys in entries_.
-    alignas(2) bit_width_t postfix_len_;
+    alignas(2) std::uint16_t postfix_len_;
 };
 
 }  // namespace improbable::phtree::v16

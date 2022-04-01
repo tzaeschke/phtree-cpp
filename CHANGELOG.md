@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Potentially **BREAKING CHANGE** when using `IsNodeValid()` in provided filters:
+  Changed `bit_width_t` from `uin16_t` to `uint32_t`. This improves performance of 3D insert/emplace
+  on small datasets by up to 15%. To avoid warnings that meant that the API of `FilterAABB` and `FilterSphere` 
+  had to be changed to accept `uint32_t` instead of `int`. This may break some implementations.
 - DIM>8 now uses custom b_plus_tree_map instead of std::map. This improves performance for all operations, e.g.
   window queries on large datasets are up to 4x faster. Benchmarks results can be found in the issue. 
   [#14](https://github.com/tzaeschke/phtree-cpp/issues/14)
