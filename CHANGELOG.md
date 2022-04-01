@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- DIM>8 now uses custom b_plus_tree_map instead of std::map. This improves performance for all operations, e.g.
+  window queries on large datasets are up to 4x faster. Benchmarks results can be found in the issue. 
+  [#14](https://github.com/tzaeschke/phtree-cpp/issues/14)
 - postfix/infix field moved from Node to Entry. This avoids indirections and improves performance of most by ~10%.
   operations by 5-15%.  [#11](https://github.com/tzaeschke/phtree-cpp/issues/11)
 - Entries now use 'union' to store children.  [#9](https://github.com/tzaeschke/phtree-cpp/issues/9)
