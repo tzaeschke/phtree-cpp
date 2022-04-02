@@ -68,11 +68,17 @@ class PhTreeV16 {
         std::is_arithmetic<ScalarExternal>::value, "ScalarExternal must be an arithmetic type");
     static_assert(DIM >= 1 && DIM <= 63, "This PH-Tree supports between 1 and 63 dimensions");
 
-    PhTreeV16(CONVERT& converter = ConverterNoOp<DIM, ScalarInternal>())
+    PhTreeV16(CONVERT* converter)
     : num_entries_{0}
     , root_{MAX_BIT_WIDTH<ScalarInternal> - 1}
-    , the_end_{converter}
-    , converter_{converter} {}
+    , converter_{converter}
+    , the_end_{converter} {}
+
+    PhTreeV16(const PhTreeV16& other) = delete;
+    PhTreeV16& operator=(const PhTreeV16& other) = delete;
+    PhTreeV16(PhTreeV16&& other) noexcept = default;
+    PhTreeV16& operator=(PhTreeV16&& other) noexcept = default;
+    ~PhTreeV16() noexcept = default;
 
     /*
      *  Attempts to build and insert a key and a value into the tree.
@@ -395,8 +401,8 @@ class PhTreeV16 {
     // Contract: root_ contains a Node with 0 or more entries (the root node is the only Node
     // that is allowed to have less than two entries.
     EntryT root_;
+    CONVERT* converter_;
     IteratorEnd<T, CONVERT> the_end_;
-    CONVERT converter_;
 };
 
 }  // namespace improbable::phtree::v16

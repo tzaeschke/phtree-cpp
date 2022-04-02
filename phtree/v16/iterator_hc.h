@@ -53,7 +53,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         const EntryT& root,
         const KeyInternal& range_min,
         const KeyInternal& range_max,
-        const CONVERT& converter,
+        const CONVERT* converter,
         FILTER filter)
     : IteratorBase<T, CONVERT, FILTER>(converter, filter)
     , stack_size_{0}

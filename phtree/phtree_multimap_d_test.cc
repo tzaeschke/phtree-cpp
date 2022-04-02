@@ -1102,3 +1102,73 @@ TEST(PhTreeMMDTest, SmokeTestTreeAPI) {
     treePtr.clear();
     delete idPtr;
 }
+
+template <typename TREE>
+void test_tree(TREE& tree) {
+    PhPointD<3> p{1, 2, 3};
+
+    // test various operations
+    tree.emplace(p, Id{2});
+    Id id3{3};
+    tree.insert(p, id3);
+    ASSERT_EQ(tree.size(), 3);
+    ASSERT_EQ(tree.find(p)->_i, 3);
+
+    auto q_window = tree.begin_query({p, p});
+    ASSERT_EQ(3, q_window->_i);
+    ++q_window;
+    ASSERT_EQ(2, q_window->_i);
+    ++q_window;
+    ASSERT_EQ(1, q_window->_i);
+    ++q_window;
+    ASSERT_EQ(q_window, tree.end());
+
+    auto q_extent = tree.begin();
+    ASSERT_EQ(3, q_extent->_i);
+    ++q_extent;
+    ASSERT_EQ(2, q_extent->_i);
+    ++q_extent;
+    ASSERT_EQ(1, q_extent->_i);
+    ++q_extent;
+    ASSERT_EQ(q_extent, tree.end());
+
+    auto q_knn = tree.begin_knn_query(10, p, DistanceEuclidean<3>());
+    ASSERT_EQ(3, q_knn->_i);
+    ++q_knn;
+    ASSERT_EQ(2, q_knn->_i);
+    ++q_knn;
+    ASSERT_EQ(1, q_knn->_i);
+    ++q_knn;
+    ASSERT_EQ(q_knn, tree.end());
+
+    ASSERT_EQ(1, tree.erase(p, Id{1}));
+    ASSERT_EQ(2, tree.size());
+    ASSERT_EQ(0, tree.erase(p, Id{1}));
+    ASSERT_EQ(2, tree.size());
+    ASSERT_EQ(1, tree.erase(p, Id{2}));
+    ASSERT_EQ(1, tree.erase(p, Id{3}));
+    ASSERT_TRUE(tree.empty());
+}
+
+TEST(PhTreeTest, TestMoveConstruct) {
+    // Test edge case: only one entry in tree
+    PhPointD<3> p{1, 2, 3};
+    PhTreeMultiMapD<3, Id> tree1;
+    tree1.emplace(p, Id{1});
+
+    TestTree<3, Id> tree{std::move(tree1)};
+    test_tree(tree);
+    tree.~PhTreeMultiMap();
+}
+
+TEST(PhTreeTest, TestMoveAssign) {
+    // Test edge case: only one entry in tree
+    PhPointD<3> p{1, 2, 3};
+    PhTreeMultiMapD<3, Id> tree1;
+    tree1.emplace(p, Id{1});
+
+    TestTree<3, Id> tree{};
+    tree = std::move(tree1);
+    test_tree(tree);
+    tree.~PhTreeMultiMap();
+}

@@ -57,12 +57,12 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
         const EntryT& root,
         size_t min_results,
         const KeyInternal& center,
-        const CONVERT& converter,
+        const CONVERT* converter,
         DISTANCE dist,
         FILTER filter)
     : IteratorBase<T, CONVERT, FILTER>(converter, filter)
     , center_{center}
-    , center_post_{converter.post(center)}
+    , center_post_{converter->post(center)}
     , current_distance_{std::numeric_limits<double>::max()}
     , num_found_results_(0)
     , num_requested_results_(min_results)

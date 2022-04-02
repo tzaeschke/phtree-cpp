@@ -44,7 +44,7 @@ class ForEachHC {
     ForEachHC(
         const KeyInternal& range_min,
         const KeyInternal& range_max,
-        const CONVERT& converter,
+        const CONVERT* converter,
         CALLBACK_FN& callback,
         FILTER filter)
     : range_min_{range_min}
@@ -77,7 +77,7 @@ class ForEachHC {
                     T& value = child.GetValue();
                     if (IsInRange(child_key, range_min_, range_max_) &&
                         filter_.IsEntryValid(child_key, value)) {
-                        callback_(converter_.post(child_key), value);
+                        callback_(converter_->post(child_key), value);
                     }
                 }
             }
@@ -168,7 +168,7 @@ class ForEachHC {
 
     const KeyInternal range_min_;
     const KeyInternal range_max_;
-    CONVERT converter_;
+    const CONVERT* converter_;
     CALLBACK_FN& callback_;
     FILTER filter_;
 };

@@ -1077,3 +1077,114 @@ TEST(PhTreeTest, SmokeTestPoint1) {
     ASSERT_EQ(0, tree.size());
     ASSERT_TRUE(tree.empty());
 }
+
+template <typename TREE>
+void test_tree(TREE& tree) {
+    PhPoint<3> p{1, 2, 3};
+
+    // test various operations
+    tree.emplace(p, Id{2});  // already exists
+    Id id3{3};
+    tree.insert(p, id3);  // already exists
+    ASSERT_EQ(tree.size(), 1);
+    ASSERT_EQ(tree.find(p).second()._i, 1);
+    ASSERT_EQ(tree[p]._i, 1);
+
+    auto q_window = tree.begin_query({p, p});
+    ASSERT_EQ(1, q_window->_i);
+    ++q_window;
+    ASSERT_EQ(q_window, tree.end());
+
+    auto q_extent = tree.begin();
+    ASSERT_EQ(1, q_extent->_i);
+    ++q_extent;
+    ASSERT_EQ(q_extent, tree.end());
+
+    auto q_knn = tree.begin_knn_query(10, p, DistanceEuclidean<3>());
+    ASSERT_EQ(1, q_knn->_i);
+    ++q_knn;
+    ASSERT_EQ(q_knn, tree.end());
+
+    ASSERT_EQ(1, tree.erase(p));
+    ASSERT_EQ(0, tree.size());
+    ASSERT_EQ(0, tree.erase(p));
+    ASSERT_EQ(0, tree.size());
+    ASSERT_TRUE(tree.empty());
+}
+
+TEST(PhTreeTest, TestMoveConstruct) {
+    // Test edge case: only one entry in tree
+    PhPoint<3> p{1, 2, 3};
+    TestTree<3, Id> tree1;
+    tree1.emplace(p, Id{1});
+
+    TestTree<3, Id> tree{std::move(tree1)};
+    test_tree(tree);
+    tree.~PhTree();
+}
+
+TEST(PhTreeTest, TestMoveAssign) {
+    // Test edge case: only one entry in tree
+    PhPoint<3> p{1, 2, 3};
+    TestTree<3, Id> tree1;
+    tree1.emplace(p, Id{1});
+
+    TestTree<3, Id> tree{};
+    tree = std::move(tree1);
+    test_tree(tree);
+    tree.~PhTree();
+}
+
+size_t count_pre{0};
+size_t count_post{0};
+size_t count_query{0};
+
+template <dimension_t DIM, typename SCALAR = scalar_64_t>
+struct DebugConverterNoOp : public ConverterPointBase<DIM, SCALAR, SCALAR> {
+    using BASE = ConverterPointBase<DIM, SCALAR, SCALAR>;
+    using Point = typename BASE::KeyExternal;
+    using PointInternal = typename BASE::KeyInternal;
+
+    constexpr const PointInternal& pre(const Point& point) const {
+        ++count_pre;
+        ++const_cast<size_t&>(count_pre_local);
+        return point;
+    }
+
+    constexpr const Point& post(const PointInternal& point) const {
+        ++count_post;
+        ++const_cast<size_t&>(count_post_local);
+        return point;
+    }
+
+    constexpr const PhBox<DIM, SCALAR>& pre_query(const PhBox<DIM, SCALAR>& box) const {
+        ++count_query;
+        ++const_cast<size_t&>(count_query_local);
+        return box;
+    }
+
+    size_t count_pre_local{0};
+    size_t count_post_local{0};
+    size_t count_query_local{0};
+};
+
+TEST(PhTreeTest, TestMoveAssignCustomConverter) {
+    // Test edge case: only one entry in tree
+    PhPoint<3> p{1, 2, 3};
+    auto converter = DebugConverterNoOp<3>();
+    auto tree1 = PhTree<3, Id, DebugConverterNoOp<3>>(converter);
+    tree1.emplace(p, Id{1});
+    ASSERT_GE(tree1.converter().count_pre_local, 1);
+    ASSERT_EQ(tree1.converter().count_pre_local, count_pre);
+
+    PhTree<3, Id, DebugConverterNoOp<3>> tree{};
+    tree = std::move(tree1);
+    // Assert that converter got moved (or copied?):
+    ASSERT_GE(tree.converter().count_pre_local, 1);
+    ASSERT_EQ(tree.converter().count_pre_local, count_pre);
+
+    test_tree(tree);
+    ASSERT_GE(tree.converter().count_pre_local, 2);
+    ASSERT_EQ(tree.converter().count_pre_local, count_pre);
+    tree.~PhTree();
+}

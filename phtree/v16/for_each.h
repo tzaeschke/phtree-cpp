@@ -34,7 +34,7 @@ class ForEach {
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
-    ForEach(const CONVERT& converter, CALLBACK_FN& callback, FILTER filter)
+    ForEach(const CONVERT* converter, CALLBACK_FN& callback, FILTER filter)
     : converter_{converter}, callback_{callback}, filter_(std::move(filter)) {}
 
     void Traverse(const EntryT& entry) {
@@ -52,13 +52,13 @@ class ForEach {
             } else {
                 T& value = child.GetValue();
                 if (filter_.IsEntryValid(child_key, value)) {
-                    callback_(converter_.post(child_key), value);
+                    callback_(converter_->post(child_key), value);
                 }
             }
         }
     }
 
-    CONVERT converter_;
+    const CONVERT* converter_;
     CALLBACK_FN& callback_;
     FILTER filter_;
 };

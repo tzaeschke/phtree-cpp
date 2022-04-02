@@ -32,7 +32,6 @@ namespace improbable::phtree {
 template <dimension_t DIM, typename T, typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>>
 class PhTree {
     friend PhTreeDebugHelper;
-    using KeyInternal = typename CONVERTER::KeyInternal;
     using QueryBox = typename CONVERTER::QueryBoxExternal;
     using Key = typename CONVERTER::KeyExternal;
     static constexpr dimension_t DimInternal = CONVERTER::DimInternal;
@@ -42,7 +41,15 @@ class PhTree {
         typename std::conditional<(DIM == DimInternal), QueryPoint, QueryIntersect>::type;
 
   public:
-    explicit PhTree(CONVERTER converter = CONVERTER()) : tree_{converter}, converter_{converter} {}
+    template <typename CONVERTER2 = CONVERTER>
+    explicit PhTree(CONVERTER2&& converter = CONVERTER())
+    : tree_{&converter_}, converter_{converter} {}
+
+    PhTree(const PhTree& other) = delete;
+    PhTree& operator=(const PhTree& other) = delete;
+    PhTree(PhTree&& other) noexcept = default;
+    PhTree& operator=(PhTree&& other) noexcept = default;
+    ~PhTree() noexcept = default;
 
     /*
      *  Attempts to build and insert a key and a value into the tree.

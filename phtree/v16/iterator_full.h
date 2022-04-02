@@ -33,7 +33,7 @@ class IteratorFull : public IteratorBase<T, CONVERT, FILTER> {
     using EntryT = typename IteratorBase<T, CONVERT, FILTER>::EntryT;
 
   public:
-    IteratorFull(const EntryT& root, const CONVERT& converter, FILTER filter)
+    IteratorFull(const EntryT& root, const CONVERT* converter, FILTER filter)
     : IteratorBase<T, CONVERT, FILTER>(converter, filter), stack_{}, stack_size_{0} {
         PrepareAndPush(root.GetNode());
         FindNextElement();

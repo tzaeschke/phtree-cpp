@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Make PhTree and PhTreeMultimap moveable (move-assign/copy). [#18](https://github.com/tzaeschke/phtree-cpp/issues/18)
 - Potentially **BREAKING CHANGE** when using `IsNodeValid()` in provided filters:
   Changed `bit_width_t` from `uin16_t` to `uint32_t`. This improves performance of 3D insert/emplace
   on small datasets by up to 15%. To avoid warnings that meant that the API of `FilterAABB` and `FilterSphere` 

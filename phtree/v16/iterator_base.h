@@ -38,7 +38,7 @@ class IteratorBase {
     friend PhTreeV16<DIM, T, CONVERT>;
 
   public:
-    explicit IteratorBase(const CONVERT& converter)
+    explicit IteratorBase(const CONVERT* converter)
     : current_result_{nullptr}
     , current_node_{}
     , parent_node_{}
@@ -46,7 +46,7 @@ class IteratorBase {
     , converter_{converter}
     , filter_{FILTER()} {}
 
-    explicit IteratorBase(const CONVERT& converter, FILTER filter)
+    explicit IteratorBase(const CONVERT* converter, FILTER filter)
     : current_result_{nullptr}
     , current_node_{}
     , parent_node_{}
@@ -85,7 +85,7 @@ class IteratorBase {
     }
 
     auto first() const {
-        return converter_.post(current_result_->GetKey());
+        return converter_->post(current_result_->GetKey());
     }
 
     T& second() const {
@@ -107,9 +107,8 @@ class IteratorBase {
     }
 
     [[nodiscard]] bool ApplyFilter(const EntryT& entry) const {
-        return entry.IsNode()
-            ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
-            : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
+        return entry.IsNode() ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
+                              : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }
 
     void SetCurrentResult(const EntryT* current_result) {
@@ -127,7 +126,7 @@ class IteratorBase {
     }
 
     auto post(const KeyInternal& point) {
-        return converter_.post(point);
+        return converter_->post(point);
     }
 
   private:
@@ -147,7 +146,7 @@ class IteratorBase {
     const EntryT* current_node_;
     const EntryT* parent_node_;
     bool is_finished_;
-    const CONVERT& converter_;
+    const CONVERT* converter_;
     FILTER filter_;
 };
 

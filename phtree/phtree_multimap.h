@@ -236,7 +236,21 @@ class PhTreeMultiMap {
     using EndType = decltype(std::declval<v16::PhTreeV16<DIM, BUCKET, CONVERTER>>().end());
 
     explicit PhTreeMultiMap(CONVERTER converter = CONVERTER())
-    : tree_{converter}, converter_{converter}, size_{0} {}
+    : tree_{&converter_}, converter_{converter}, size_{0} {}
+
+    PhTreeMultiMap(const PhTreeMultiMap& other) = delete;
+    PhTreeMultiMap& operator=(const PhTreeMultiMap& other) = delete;
+    PhTreeMultiMap(PhTreeMultiMap&& other) noexcept = default;
+    // PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept = default;
+    PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept {
+        tree_ = std::move(other.tree_);
+        converter_ = std::move(other.converter_);
+        //the_end_ = std::move(other.the_end_);  // TODO THis works, but it is pretty dirty!
+        bucket_dummy_end_ = std::move(other.bucket_dummy_end_);
+        size_ = std::move(other.size_);
+        return *this;
+    }
+    ~PhTreeMultiMap() noexcept = default;
 
     /*
      *  Attempts to build and insert a key and a value into the tree.
