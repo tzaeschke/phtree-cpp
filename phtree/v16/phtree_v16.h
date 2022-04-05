@@ -69,10 +69,7 @@ class PhTreeV16 {
     static_assert(DIM >= 1 && DIM <= 63, "This PH-Tree supports between 1 and 63 dimensions");
 
     PhTreeV16(CONVERT* converter)
-    : num_entries_{0}
-    , root_{MAX_BIT_WIDTH<ScalarInternal> - 1}
-    , converter_{converter}
-    , the_end_{converter} {}
+    : num_entries_{0}, root_{MAX_BIT_WIDTH<ScalarInternal> - 1}, converter_{converter} {}
 
     PhTreeV16(const PhTreeV16& other) = delete;
     PhTreeV16& operator=(const PhTreeV16& other) = delete;
@@ -249,27 +246,44 @@ class PhTreeV16 {
      *
      * @return '1' if a value was found, otherwise '0'.
      */
-    template <typename ITERATOR>
-    size_t erase(const ITERATOR& iterator) {
-        if (iterator.Finished()) {
-            return 0;
-        }
-        if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
-            // There may be no entry because not every iterator sets it.
-            // Also, do _not_ use the root entry, see erase(key).
-            // Start searching from the top.
-            return erase(iterator.GetCurrentResult()->GetKey());
-        }
-        bool found = false;
-        assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
-        iterator.GetCurrentNodeEntry()->GetNode().Erase(
-            iterator.GetCurrentResult()->GetKey(),
-            iterator.GetCurrentNodeEntry(),
-            iterator.GetCurrentNodeEntry()->GetNodePostfixLen(),
-            found);
 
-        num_entries_ -= found;
-        return found;
+    template <typename ITERATOR>
+    typename std::enable_if_t<std::is_same_v<ITERATOR, IteratorBase0<EntryT>>, size_t> erase(
+        const ITERATOR&) {
+        return 0;
+    }
+
+    //    template <typename ITERATOR>
+    //    size_t erase(const ITERATOR& iterator0) {
+    template <typename ITERATOR>
+    typename std::enable_if<!std::is_same_v<ITERATOR, IteratorBase0<EntryT>>, size_t>::type erase(
+        const ITERATOR& iterator0) {
+        if constexpr (std::is_same_v<ITERATOR, IteratorBase0<EntryT>>) {
+            //        static_assert(false);
+            assert(false);
+        } else {
+            if (iterator0.Finished()) {
+                return 0;
+            }
+            const auto& iterator =
+                static_cast<const IteratorBase<T, CONVERT, typename ITERATOR::FilterT>&>(iterator0);
+            if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
+                // There may be no entry because not every iterator sets it.
+                // Also, do _not_ use the root entry, see erase(key).
+                // Start searching from the top.
+                return erase(iterator.GetCurrentResult()->GetKey());
+            }
+            bool found = false;
+            assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
+            iterator.GetCurrentNodeEntry()->GetNode().Erase(
+                iterator.GetCurrentResult()->GetKey(),
+                iterator.GetCurrentNodeEntry(),
+                iterator.GetCurrentNodeEntry()->GetNodePostfixLen(),
+                found);
+
+            num_entries_ -= found;
+            return found;
+        }
     }
 
     /*
@@ -362,8 +376,8 @@ class PhTreeV16 {
     /*
      * @return An iterator representing the tree's 'end'.
      */
-    const auto& end() const {
-        return the_end_;
+    auto end() const {
+        return IteratorEnd<EntryT>();
     }
 
     /*
@@ -402,7 +416,6 @@ class PhTreeV16 {
     // that is allowed to have less than two entries.
     EntryT root_;
     CONVERT* converter_;
-    IteratorEnd<T, CONVERT> the_end_;
 };
 
 }  // namespace improbable::phtree::v16

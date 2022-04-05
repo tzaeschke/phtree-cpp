@@ -51,6 +51,7 @@ class Entry {
     };
 
   public:
+    using OrigValueT = T;
     /*
      * Construct entry with existing node.
      */

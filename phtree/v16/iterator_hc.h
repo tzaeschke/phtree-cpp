@@ -77,10 +77,9 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
 
   private:
     void FindNextElement() {
-        assert(!this->Finished());
         while (!IsEmpty()) {
             auto* p = &Peek();
-            const EntryT* current_result = nullptr;
+            const EntryT* current_result;
             while ((current_result = p->Increment(range_min_, range_max_))) {
                 if (this->ApplyFilter(*current_result)) {
                     if (current_result->IsNode()) {

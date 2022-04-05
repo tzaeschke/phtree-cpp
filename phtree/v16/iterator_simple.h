@@ -60,9 +60,6 @@ class IteratorSimple : public IteratorBase<T, CONVERT> {
     }
 };
 
-template <typename T, typename CONVERT>
-using IteratorEnd = IteratorSimple<T, CONVERT>;
-
 }  // namespace improbable::phtree::v16
 
 #endif  // PHTREE_V16_ITERATOR_SIMPLE_H

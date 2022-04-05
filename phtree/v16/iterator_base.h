@@ -28,31 +28,13 @@ class PhTreeV16;
 /*
  * Base class for all PH-Tree iterators.
  */
-template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
-class IteratorBase {
-  protected:
-    static constexpr dimension_t DIM = CONVERT::DimInternal;
-    using KeyInternal = typename CONVERT::KeyInternal;
-    using SCALAR = typename CONVERT::ScalarInternal;
-    using EntryT = Entry<DIM, T, SCALAR>;
-    friend PhTreeV16<DIM, T, CONVERT>;
-
+template <typename EntryT>
+class IteratorBase0 {
+    using T = typename EntryT::OrigValueT;
   public:
-    explicit IteratorBase(const CONVERT* converter)
-    : current_result_{nullptr}
-    , current_node_{}
-    , parent_node_{}
-    , is_finished_{false}
-    , converter_{converter}
-    , filter_{FILTER()} {}
-
-    explicit IteratorBase(const CONVERT* converter, FILTER filter)
-    : current_result_{nullptr}
-    , current_node_{}
-    , parent_node_{}
-    , is_finished_{false}
-    , converter_{converter}
-    , filter_(std::move(filter)) {}
+    explicit IteratorBase0() : current_result_{nullptr} {}
+    explicit IteratorBase0(EntryT* current_result)
+    : current_result_{current_result} {}
 
     T& operator*() const {
         assert(current_result_);
@@ -64,28 +46,14 @@ class IteratorBase {
         return &current_result_->GetValue();
     }
 
-    template <typename FILTER_2>
     friend bool operator==(
-        const IteratorBase<T, CONVERT, FILTER>& left,
-        const IteratorBase<T, CONVERT, FILTER_2>& right) {
-        // Note: The following compares pointers to Entry objects so it should be
-        // a) fast (i.e. not comparing contents of entries)
-        // b) return `false` when comparing apparently identical entries from different PH-Trees (as
-        // intended)
-        return (left.is_finished_ && right.Finished()) ||
-            (!left.is_finished_ && !right.Finished() &&
-             left.current_result_ == right.GetCurrentResult());
+        const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
+        return left.current_result_ == right.current_result_;
     }
 
-    template <typename FILTER_2>
     friend bool operator!=(
-        const IteratorBase<T, CONVERT, FILTER>& left,
-        const IteratorBase<T, CONVERT, FILTER_2>& right) {
-        return !(left == right);
-    }
-
-    auto first() const {
-        return converter_->post(current_result_->GetKey());
+        const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
+        return left.current_result_ != right.current_result_;
     }
 
     T& second() const {
@@ -93,7 +61,7 @@ class IteratorBase {
     }
 
     [[nodiscard]] bool Finished() const {
-        return is_finished_;
+        return current_result_ == nullptr;
     }
 
     const EntryT* GetCurrentResult() const {
@@ -102,17 +70,57 @@ class IteratorBase {
 
   protected:
     void SetFinished() {
-        is_finished_ = true;
         current_result_ = nullptr;
-    }
-
-    [[nodiscard]] bool ApplyFilter(const EntryT& entry) const {
-        return entry.IsNode() ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
-                              : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }
 
     void SetCurrentResult(const EntryT* current_result) {
         current_result_ = current_result;
+    }
+
+  protected:
+    const EntryT* current_result_;
+};
+
+template <typename EntryT>
+using IteratorEnd = IteratorBase0<EntryT>;
+
+// TODO using IteratorEnd = EntryT*; ? -> end() == nullptr
+
+template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
+class IteratorBase
+: public IteratorBase0<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
+  protected:
+    static constexpr dimension_t DIM = CONVERT::DimInternal;
+    using KeyInternal = typename CONVERT::KeyInternal;
+    using SCALAR = typename CONVERT::ScalarInternal;
+    using EntryT = Entry<DIM, T, SCALAR>;
+    friend PhTreeV16<DIM, T, CONVERT>;
+
+  public:
+    using FilterT = FILTER;
+
+    explicit IteratorBase(const CONVERT* converter)
+    : IteratorBase0<EntryT>(nullptr)
+    , current_node_{}
+    , parent_node_{}
+    , converter_{converter}
+    , filter_{FILTER()} {}
+
+    explicit IteratorBase(const CONVERT* converter, FILTER filter)
+    : IteratorBase0<EntryT>(nullptr)
+    , current_node_{}
+    , parent_node_{}
+    , converter_{converter}
+    , filter_(std::forward<FILTER>(filter)) {}
+
+    auto first() const {
+        return converter_->post(this->current_result_->GetKey());
+    }
+
+  protected:
+    [[nodiscard]] bool ApplyFilter(const EntryT& entry) const {
+        return entry.IsNode() ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
+                              : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }
 
     void SetCurrentNodeEntry(const EntryT* current_node) {
@@ -142,10 +150,8 @@ class IteratorBase {
         return parent_node_;
     }
 
-    const EntryT* current_result_;
     const EntryT* current_node_;
     const EntryT* parent_node_;
-    bool is_finished_;
     const CONVERT* converter_;
     FILTER filter_;
 };

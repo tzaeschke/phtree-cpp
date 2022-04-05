@@ -96,7 +96,7 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
     void FindNextElement() {
         while (num_found_results_ < num_requested_results_ && !queue_.empty()) {
             auto& candidate = queue_.top();
-            auto o = candidate.second;
+            auto* o = candidate.second;
             if (!o->IsNode()) {
                 // data entry
                 ++num_found_results_;

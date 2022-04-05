@@ -256,7 +256,7 @@ class PhTree {
     /*
      * @return An iterator representing the tree's 'end'.
      */
-    const auto& end() const {
+    auto end() const {
         return tree_.end();
     }
 
