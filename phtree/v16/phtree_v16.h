@@ -23,7 +23,7 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
-#include "iterator_simple.h"
+#include "iterator_with_parent.h"
 #include "node.h"
 
 namespace improbable::phtree::v16 {
@@ -120,37 +120,44 @@ class PhTreeV16 {
      */
     template <typename ITERATOR, typename... Args>
     std::pair<T&, bool> emplace_hint(const ITERATOR& iterator, const KeyT& key, Args&&... args) {
-        // This function can be used to insert a value close to a known value
-        // or close to a recently removed value. The hint can only be used if the new key is
-        // inside one of the nodes provided by the hint iterator.
-        // The idea behind using the 'parent' is twofold:
-        // - The 'parent' node is one level above the iterator position, it therefore is spatially
-        //   larger and has a better probability of containing the new position, allowing for
-        //   fast track emplace.
-        // - Using 'parent' allows a scenario where the iterator was previously used with
-        //   erase(iterator). This is safe because erase() will never erase the 'parent' node.
-
-        if (!iterator.GetParentNodeEntry()) {
-            // No hint available, use standard emplace()
+        if constexpr (!std::is_same_v<ITERATOR, IteratorWithParent<T, CONVERT>>) {
             return emplace(key, std::forward<Args>(args)...);
-        }
+        } else {
+            // This function can be used to insert a value close to a known value
+            // or close to a recently removed value. The hint can only be used if the new key is
+            // inside one of the nodes provided by the hint iterator.
+            // The idea behind using the 'parent' is twofold:
+            // - The 'parent' node is one level above the iterator position, it is spatially
+            //   larger and has a better probability of containing the new position, allowing for
+            //   fast track emplace.
+            // - Using 'parent' allows a scenario where the iterator was previously used with
+            //   erase(iterator). This is safe because erase() will never erase the 'parent' node.
 
-        auto* parent_entry = iterator.GetParentNodeEntry();
-        if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
-            parent_entry->GetNodePostfixLen() + 1) {
-            // replace higher up in the tree
-            return emplace(key, std::forward<Args>(args)...);
-        }
+            if (!iterator.GetParentNodeEntry()) {
+                // No hint available, use standard emplace()
+                return emplace(key, std::forward<Args>(args)...);
+            }
 
-        // replace in node
-        auto* current_entry = parent_entry;
-        bool is_inserted = false;
-        while (current_entry->IsNode()) {
-            current_entry = &current_entry->GetNode().Emplace(
-                is_inserted, key, current_entry->GetNodePostfixLen(), std::forward<Args>(args)...);
+            auto* parent_entry = iterator.GetParentNodeEntry();
+            if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
+                parent_entry->GetNodePostfixLen() + 1) {
+                // replace higher up in the tree
+                return emplace(key, std::forward<Args>(args)...);
+            }
+
+            // replace in node
+            auto* current_entry = parent_entry;
+            bool is_inserted = false;
+            while (current_entry->IsNode()) {
+                current_entry = &current_entry->GetNode().Emplace(
+                    is_inserted,
+                    key,
+                    current_entry->GetNodePostfixLen(),
+                    std::forward<Args>(args)...);
+            }
+            num_entries_ += is_inserted;
+            return {current_entry->GetValue(), is_inserted};
         }
-        num_entries_ += is_inserted;
-        return {current_entry->GetValue(), is_inserted};
     }
 
     /*
@@ -197,7 +204,7 @@ class PhTreeV16 {
      */
     auto find(const KeyT& key) const {
         if (empty()) {
-            return IteratorSimple<T, CONVERT>(converter_);
+            return IteratorWithParent<T, CONVERT>(nullptr, nullptr, nullptr, converter_);
         }
 
         const EntryT* current_entry = &root_;
@@ -209,7 +216,7 @@ class PhTreeV16 {
             current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
         }
 
-        return IteratorSimple<T, CONVERT>(current_entry, current_node, parent_node, converter_);
+        return IteratorWithParent<T, CONVERT>(current_entry, current_node, parent_node, converter_);
     }
 
     /*
@@ -247,32 +254,28 @@ class PhTreeV16 {
      * @return '1' if a value was found, otherwise '0'.
      */
     template <typename ITERATOR>
-    size_t erase(const ITERATOR& iterator0) {
-        if constexpr (std::is_same_v<ITERATOR, IteratorBase0<EntryT>>) {
+    size_t erase(const ITERATOR& iterator) {
+        if (iterator.IsEnd()) {
             return 0;
-        } else {
-            if (iterator0.IsEnd()) {
-                return 0;
-            }
-            const auto& iterator =
-                static_cast<const IteratorBase<T, CONVERT, typename ITERATOR::FilterT>&>(iterator0);
-            if (!iterator.GetCurrentNodeEntry() || iterator.GetCurrentNodeEntry() == &root_) {
-                // There may be no entry because not every iterator sets it.
-                // Also, do _not_ use the root entry, see erase(key).
-                // Start searching from the top.
-                return erase(iterator.GetCurrentResult()->GetKey());
+        }
+        if constexpr (std::is_same_v<ITERATOR, IteratorWithParent<T, CONVERT>>) {
+            const auto& iter_rich = static_cast<const IteratorWithParent<T, CONVERT>&>(iterator);
+            if (!iter_rich.GetCurrentNodeEntry() || iter_rich.GetCurrentNodeEntry() == &root_) {
+                // Do _not_ use the root entry, see erase(key). Start searching from the top.
+                return erase(iter_rich.GetCurrentResult()->GetKey());
             }
             bool found = false;
-            assert(iterator.GetCurrentNodeEntry() && iterator.GetCurrentNodeEntry()->IsNode());
-            iterator.GetCurrentNodeEntry()->GetNode().Erase(
-                iterator.GetCurrentResult()->GetKey(),
-                iterator.GetCurrentNodeEntry(),
-                iterator.GetCurrentNodeEntry()->GetNodePostfixLen(),
+            assert(iter_rich.GetCurrentNodeEntry() && iter_rich.GetCurrentNodeEntry()->IsNode());
+            iter_rich.GetCurrentNodeEntry()->GetNode().Erase(
+                iter_rich.GetCurrentResult()->GetKey(),
+                iter_rich.GetCurrentNodeEntry(),
+                iter_rich.GetCurrentNodeEntry()->GetNodePostfixLen(),
                 found);
-
             num_entries_ -= found;
             return found;
         }
+        // There may be no entry because not every iterator sets it.
+        return erase(iterator.GetCurrentResult()->GetKey());
     }
 
     /*

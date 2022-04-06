@@ -22,19 +22,16 @@
 
 namespace improbable::phtree::v16 {
 
-template <dimension_t DIM, typename T, typename CONVERT>
-class PhTreeV16;
-
 /*
  * Base class for all PH-Tree iterators.
  */
 template <typename EntryT>
-class IteratorBase0 {
+class IteratorBase {
     using T = typename EntryT::OrigValueT;
 
   public:
-    explicit IteratorBase0() noexcept : current_result_{nullptr} {}
-    explicit IteratorBase0(const EntryT* current_result) noexcept
+    explicit IteratorBase() noexcept : current_result_{nullptr} {}
+    explicit IteratorBase(const EntryT* current_result) noexcept
     : current_result_{current_result} {}
 
     inline T& operator*() const noexcept {
@@ -48,12 +45,12 @@ class IteratorBase0 {
     }
 
     inline friend bool operator==(
-        const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
+        const IteratorBase<EntryT>& left, const IteratorBase<EntryT>& right) noexcept {
         return left.current_result_ == right.current_result_;
     }
 
     inline friend bool operator!=(
-        const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
+        const IteratorBase<EntryT>& left, const IteratorBase<EntryT>& right) noexcept {
         return left.current_result_ != right.current_result_;
     }
 
@@ -83,45 +80,23 @@ class IteratorBase0 {
 };
 
 template <typename EntryT>
-using IteratorEnd = IteratorBase0<EntryT>;
+using IteratorEnd = IteratorBase<EntryT>;
 
 template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
-class IteratorBase
-: public IteratorBase0<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
+class IteratorWithFilter
+: public IteratorBase<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
   protected:
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = Entry<DIM, T, SCALAR>;
-    friend PhTreeV16<DIM, T, CONVERT>;
 
   public:
-    using FilterT = FILTER;
+    explicit IteratorWithFilter(const CONVERT* converter, FILTER filter) noexcept
+    : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_(std::forward<FILTER>(filter)) {}
 
-    explicit IteratorBase(const CONVERT* converter) noexcept
-    : IteratorBase0<EntryT>(nullptr)
-    , current_node_{}
-    , parent_node_{}
-    , converter_{converter}
-    , filter_{FILTER()} {}
-
-    explicit IteratorBase(const CONVERT* converter, FILTER filter) noexcept
-    : IteratorBase0<EntryT>(nullptr)
-    , current_node_{}
-    , parent_node_{}
-    , converter_{converter}
-    , filter_(std::forward<FILTER>(filter)) {}
-
-    explicit IteratorBase(
-        const EntryT* current_result,
-        const EntryT* current_node,
-        const EntryT* parent_node,
-        const CONVERT* converter) noexcept
-    : IteratorBase0<EntryT>(current_result)
-    , current_node_{current_node}
-    , parent_node_{parent_node}
-    , converter_{converter}
-    , filter_{FILTER()} {}
+    explicit IteratorWithFilter(const EntryT* current_result, const CONVERT* converter) noexcept
+    : IteratorBase<EntryT>(current_result), converter_{converter}, filter_{FILTER()} {}
 
     auto first() const {
         return converter_->post(this->current_result_->GetKey());
@@ -133,35 +108,11 @@ class IteratorBase
                               : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }
 
-    void SetCurrentNodeEntry(const EntryT* current_node) {
-        assert(!current_node || current_node->IsNode());
-        current_node_ = current_node;
-    }
-
-    void SetParentNodeEntry(const EntryT* parent_node) {
-        assert(!parent_node || parent_node->IsNode());
-        parent_node_ = parent_node;
-    }
-
     auto post(const KeyInternal& point) {
         return converter_->post(point);
     }
 
   private:
-    /*
-     * The parent entry contains the parent node. The parent node is the node ABOVE the current node
-     * which contains the current entry.
-     */
-    EntryT* GetCurrentNodeEntry() const {
-        return const_cast<EntryT*>(current_node_);
-    }
-
-    const EntryT* GetParentNodeEntry() const {
-        return parent_node_;
-    }
-
-    const EntryT* current_node_;
-    const EntryT* parent_node_;
     const CONVERT* converter_;
     FILTER filter_;
 };

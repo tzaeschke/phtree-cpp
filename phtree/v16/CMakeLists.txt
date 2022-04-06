@@ -9,6 +9,6 @@ target_sources(phtree
         iterator_full.h
         iterator_hc.h
         iterator_knn_hs.h
-        iterator_simple.h
+        iterator_with_parent.h
         phtree_v16.h
         )

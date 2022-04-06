@@ -26,15 +26,15 @@ template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
 
 template <typename T, typename CONVERT, typename FILTER>
-class IteratorFull : public IteratorBase<T, CONVERT, FILTER> {
+class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using NodeT = Node<DIM, T, SCALAR>;
-    using EntryT = typename IteratorBase<T, CONVERT, FILTER>::EntryT;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
 
   public:
     IteratorFull(const EntryT& root, const CONVERT* converter, FILTER filter)
-    : IteratorBase<T, CONVERT, FILTER>(converter, filter), stack_{}, stack_size_{0} {
+    : IteratorWithFilter<T, CONVERT, FILTER>(converter, filter), stack_{}, stack_size_{0} {
         PrepareAndPush(root.GetNode());
         FindNextElement();
     }

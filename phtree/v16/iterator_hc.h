@@ -18,7 +18,7 @@
 #define PHTREE_V16_ITERATOR_HC_H
 
 #include "../common/common.h"
-#include "iterator_simple.h"
+#include "iterator_with_parent.h"
 
 namespace improbable::phtree::v16 {
 
@@ -42,11 +42,11 @@ class NodeIterator;
  * 2017.
  */
 template <typename T, typename CONVERT, typename FILTER>
-class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
+class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
-    using EntryT = typename IteratorBase<T, CONVERT, FILTER>::EntryT;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
 
   public:
     IteratorHC(
@@ -55,7 +55,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         const KeyInternal& range_max,
         const CONVERT* converter,
         FILTER filter)
-    : IteratorBase<T, CONVERT, FILTER>(converter, filter)
+    : IteratorWithFilter<T, CONVERT, FILTER>(converter, filter)
     , stack_size_{0}
     , range_min_{range_min}
     , range_max_{range_max} {

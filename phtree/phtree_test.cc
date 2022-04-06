@@ -559,6 +559,10 @@ TEST(PhTreeTest, TestUpdateWithEmplaceHint) {
 
     ASSERT_EQ(N, tree.size());
     tree.clear();
+
+    tree.emplace_hint(tree.end(), {11, 21, 31}, 421);
+    tree.emplace_hint(tree.begin(), {1, 2, 3}, 42);
+    ASSERT_EQ(2, tree.size());
 }
 
 TEST(PhTreeTest, TestEraseByIterator) {
