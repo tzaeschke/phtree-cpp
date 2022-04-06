@@ -246,23 +246,12 @@ class PhTreeV16 {
      *
      * @return '1' if a value was found, otherwise '0'.
      */
-
     template <typename ITERATOR>
-    typename std::enable_if_t<std::is_same_v<ITERATOR, IteratorBase0<EntryT>>, size_t> erase(
-        const ITERATOR&) {
-        return 0;
-    }
-
-    //    template <typename ITERATOR>
-    //    size_t erase(const ITERATOR& iterator0) {
-    template <typename ITERATOR>
-    typename std::enable_if<!std::is_same_v<ITERATOR, IteratorBase0<EntryT>>, size_t>::type erase(
-        const ITERATOR& iterator0) {
+    size_t erase(const ITERATOR& iterator0) {
         if constexpr (std::is_same_v<ITERATOR, IteratorBase0<EntryT>>) {
-            //        static_assert(false);
-            assert(false);
+            return 0;
         } else {
-            if (iterator0.Finished()) {
+            if (iterator0.IsEnd()) {
                 return 0;
             }
             const auto& iterator =

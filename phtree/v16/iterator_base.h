@@ -31,27 +31,28 @@ class PhTreeV16;
 template <typename EntryT>
 class IteratorBase0 {
     using T = typename EntryT::OrigValueT;
+
   public:
-    explicit IteratorBase0() : current_result_{nullptr} {}
-    explicit IteratorBase0(EntryT* current_result)
+    explicit IteratorBase0() noexcept : current_result_{nullptr} {}
+    explicit IteratorBase0(const EntryT* current_result) noexcept
     : current_result_{current_result} {}
 
-    T& operator*() const {
+    inline T& operator*() const noexcept {
         assert(current_result_);
         return current_result_->GetValue();
     }
 
-    T* operator->() const {
+    inline T* operator->() const noexcept {
         assert(current_result_);
         return &current_result_->GetValue();
     }
 
-    friend bool operator==(
+    inline friend bool operator==(
         const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
         return left.current_result_ == right.current_result_;
     }
 
-    friend bool operator!=(
+    inline friend bool operator!=(
         const IteratorBase0<EntryT>& left, const IteratorBase0<EntryT>& right) noexcept {
         return left.current_result_ != right.current_result_;
     }
@@ -60,11 +61,11 @@ class IteratorBase0 {
         return current_result_->GetValue();
     }
 
-    [[nodiscard]] bool Finished() const {
+    [[nodiscard]] inline bool IsEnd() const noexcept {
         return current_result_ == nullptr;
     }
 
-    const EntryT* GetCurrentResult() const {
+    inline const EntryT* GetCurrentResult() const noexcept {
         return current_result_;
     }
 
@@ -84,8 +85,6 @@ class IteratorBase0 {
 template <typename EntryT>
 using IteratorEnd = IteratorBase0<EntryT>;
 
-// TODO using IteratorEnd = EntryT*; ? -> end() == nullptr
-
 template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
 class IteratorBase
 : public IteratorBase0<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
@@ -99,19 +98,30 @@ class IteratorBase
   public:
     using FilterT = FILTER;
 
-    explicit IteratorBase(const CONVERT* converter)
+    explicit IteratorBase(const CONVERT* converter) noexcept
     : IteratorBase0<EntryT>(nullptr)
     , current_node_{}
     , parent_node_{}
     , converter_{converter}
     , filter_{FILTER()} {}
 
-    explicit IteratorBase(const CONVERT* converter, FILTER filter)
+    explicit IteratorBase(const CONVERT* converter, FILTER filter) noexcept
     : IteratorBase0<EntryT>(nullptr)
     , current_node_{}
     , parent_node_{}
     , converter_{converter}
     , filter_(std::forward<FILTER>(filter)) {}
+
+    explicit IteratorBase(
+        const EntryT* current_result,
+        const EntryT* current_node,
+        const EntryT* parent_node,
+        const CONVERT* converter) noexcept
+    : IteratorBase0<EntryT>(current_result)
+    , current_node_{current_node}
+    , parent_node_{parent_node}
+    , converter_{converter}
+    , filter_{FILTER()} {}
 
     auto first() const {
         return converter_->post(this->current_result_->GetKey());

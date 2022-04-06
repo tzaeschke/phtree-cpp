@@ -81,12 +81,12 @@ class IteratorKnnHS : public IteratorBase<T, CONVERT, FILTER> {
         return current_distance_;
     }
 
-    IteratorKnnHS& operator++() {
+    IteratorKnnHS& operator++() noexcept {
         FindNextElement();
         return *this;
     }
 
-    IteratorKnnHS operator++(int) {
+    IteratorKnnHS operator++(int) noexcept {
         IteratorKnnHS iterator(*this);
         ++(*this);
         return iterator;

@@ -29,24 +29,15 @@ class IteratorSimple : public IteratorBase<T, CONVERT> {
     using EntryT = typename IteratorBase<T, CONVERT>::EntryT;
 
   public:
-    explicit IteratorSimple(const CONVERT* converter) : IteratorBase<T, CONVERT>(converter) {
-        this->SetFinished();
-    }
+    explicit IteratorSimple(const CONVERT* converter) noexcept
+    : IteratorBase<T, CONVERT>(converter) {}
 
     explicit IteratorSimple(
         const EntryT* current_result,
         const EntryT* current_node,
         const EntryT* parent_node,
-        const CONVERT* converter)
-    : IteratorBase<T, CONVERT>(converter) {
-        if (current_result) {
-            this->SetCurrentResult(current_result);
-            this->SetCurrentNodeEntry(current_node);
-            this->SetParentNodeEntry(parent_node);
-        } else {
-            this->SetFinished();
-        }
-    }
+        const CONVERT* converter) noexcept
+    : IteratorBase<T, CONVERT>(current_result, current_node, parent_node, converter) {}
 
     IteratorSimple& operator++() {
         this->SetFinished();

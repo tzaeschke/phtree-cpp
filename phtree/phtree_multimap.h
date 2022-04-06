@@ -57,7 +57,7 @@ class IteratorBase {
     using T = typename PHTREE::ValueType;
 
   public:
-    explicit IteratorBase() noexcept : current_value_ptr_{nullptr}, is_finished_{false} {}
+    explicit IteratorBase() noexcept : current_value_ptr_{nullptr} {}
 
     T& operator*() const noexcept {
         assert(current_value_ptr_);
@@ -74,23 +74,16 @@ class IteratorBase {
         // Note: The following compares pointers to Entry objects (actually: their values T)
         // so it should be _fast_ and return 'true' only for identical entries.
         static_assert(std::is_pointer_v<decltype(left.current_value_ptr_)>);
-        return (left.is_finished_ && right.Finished()) ||
-            (!left.is_finished_ && !right.Finished() &&
-             left.current_value_ptr_ == right.current_value_ptr_);
+        return left.current_value_ptr_ == right.current_value_ptr_;
     }
 
     friend bool operator!=(
         const IteratorBase<PHTREE>& left, const IteratorBase<PHTREE>& right) noexcept {
-        return !(left == right);
+        return left.current_value_ptr_ != right.current_value_ptr_;
     }
 
   protected:
-    [[nodiscard]] bool Finished() const noexcept {
-        return is_finished_;
-    }
-
     void SetFinished() noexcept {
-        is_finished_ = true;
         current_value_ptr_ = nullptr;
     }
 
@@ -100,40 +93,24 @@ class IteratorBase {
 
   private:
     const T* current_value_ptr_;
-    bool is_finished_;
 };
 
-template <typename ITERATOR_PH, typename PHTREE, typename FILTER = FilterNoOp>
+template <typename ITERATOR_PH, typename PHTREE, typename FILTER>
 class IteratorNormal : public IteratorBase<PHTREE> {
     friend PHTREE;
     using BucketIterType = typename PHTREE::BucketIterType;
-    using PhTreeIterEndType = typename PHTREE::EndType;
 
   public:
     explicit IteratorNormal() noexcept
-    : IteratorBase<PHTREE>()
-    , iter_ph_end_{}
-    , iter_ph_{iter_ph_end_}
-    , iter_bucket_{}
-    , filter_{} {
-        this->SetFinished();
-    }
+    : IteratorBase<PHTREE>(), iter_ph_{}, iter_bucket_{}, filter_{} {}
 
-    // Why are we passing two iterators by reference + std::move?
+    // TODO Why are we passing two iterators by reference + std::move?
     // See: https://abseil.io/tips/117
-    IteratorNormal(
-        ITERATOR_PH iter_ph,
-        BucketIterType iter_bucket,
-        const FILTER filter = FILTER()) noexcept
+    IteratorNormal(ITERATOR_PH iter_ph, BucketIterType iter_bucket, const FILTER filter) noexcept
     : IteratorBase<PHTREE>()
-    , iter_ph_end_{}
     , iter_ph_{std::move(iter_ph)}
     , iter_bucket_{std::move(iter_bucket)}
     , filter_{filter} {
-        if (iter_ph == iter_ph_end_) {
-            this->SetFinished();
-            return;
-        }
         FindNextElement();
     }
 
@@ -167,7 +144,7 @@ class IteratorNormal : public IteratorBase<PHTREE> {
 
   private:
     void FindNextElement() {
-        while (iter_ph_ != iter_ph_end_) {
+        while (!iter_ph_.IsEnd()) {
             while (iter_bucket_ != iter_ph_->end()) {
                 // We filter only entries here, nodes are filtered elsewhere
                 if (filter_.IsEntryValid(iter_ph_.GetCurrentResult()->GetKey(), *iter_bucket_)) {
@@ -177,7 +154,7 @@ class IteratorNormal : public IteratorBase<PHTREE> {
                 ++iter_bucket_;
             }
             ++iter_ph_;
-            if (iter_ph_ != iter_ph_end_) {
+            if (!iter_ph_.IsEnd()) {
                 iter_bucket_ = iter_ph_->begin();
             }
         }
@@ -185,7 +162,6 @@ class IteratorNormal : public IteratorBase<PHTREE> {
         this->SetFinished();
     }
 
-    const PhTreeIterEndType iter_ph_end_;
     ITERATOR_PH iter_ph_;
     BucketIterType iter_bucket_;
     FILTER filter_;
@@ -196,10 +172,7 @@ class IteratorKnn : public IteratorNormal<ITERATOR_PH, PHTREE, FILTER> {
     using BucketIterType = typename PHTREE::BucketIterType;
 
   public:
-    IteratorKnn(
-        const ITERATOR_PH iter_ph,
-        BucketIterType iter_bucket,
-        const FILTER filter) noexcept
+    IteratorKnn(const ITERATOR_PH iter_ph, BucketIterType iter_bucket, const FILTER filter) noexcept
     : IteratorNormal<ITERATOR_PH, PHTREE, FILTER>(iter_ph, iter_bucket, filter) {}
 
     [[nodiscard]] double distance() const noexcept {
@@ -238,14 +211,7 @@ class PhTreeMultiMap {
     PhTreeMultiMap(const PhTreeMultiMap& other) = delete;
     PhTreeMultiMap& operator=(const PhTreeMultiMap& other) = delete;
     PhTreeMultiMap(PhTreeMultiMap&& other) noexcept = default;
-    // PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept = default;
-    PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept {
-        tree_ = std::move(other.tree_);
-        converter_ = std::move(other.converter_);
-        bucket_dummy_end_ = std::move(other.bucket_dummy_end_);
-        size_ = std::move(other.size_);
-        return *this;
-    }
+    PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept = default;
     ~PhTreeMultiMap() noexcept = default;
 
     /*

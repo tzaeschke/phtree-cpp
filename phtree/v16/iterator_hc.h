@@ -64,19 +64,19 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         FindNextElement();
     }
 
-    IteratorHC& operator++() {
+    IteratorHC& operator++() noexcept {
         FindNextElement();
         return *this;
     }
 
-    IteratorHC operator++(int) {
+    IteratorHC operator++(int) noexcept {
         IteratorHC iterator(*this);
         ++(*this);
         return iterator;
     }
 
   private:
-    void FindNextElement() {
+    void FindNextElement() noexcept {
         while (!IsEmpty()) {
             auto* p = &Peek();
             const EntryT* current_result;
@@ -97,7 +97,7 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         this->SetFinished();
     }
 
-    auto& PrepareAndPush(const EntryT& entry) {
+    auto& PrepareAndPush(const EntryT& entry) noexcept {
         if (stack_.size() < stack_size_ + 1) {
             stack_.emplace_back();
         }
@@ -107,17 +107,17 @@ class IteratorHC : public IteratorBase<T, CONVERT, FILTER> {
         return ni;
     }
 
-    auto& Peek() {
+    auto& Peek() noexcept {
         assert(stack_size_ > 0);
         return stack_[stack_size_ - 1];
     }
 
-    auto& Pop() {
+    auto& Pop() noexcept {
         assert(stack_size_ > 0);
         return stack_[--stack_size_];
     }
 
-    bool IsEmpty() {
+    bool IsEmpty() noexcept {
         return stack_size_ == 0;
     }
 
@@ -189,7 +189,7 @@ class NodeIterator {
     }
 
   private:
-    [[nodiscard]] bool IsPosValid(hc_pos_t key) const {
+    [[nodiscard]] inline bool IsPosValid(hc_pos_t key) const noexcept {
         return ((key | mask_lower_) & mask_upper_) == key;
     }
 
