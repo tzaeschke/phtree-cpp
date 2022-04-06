@@ -56,6 +56,9 @@ class IteratorBase {
     friend PHTREE;
     using T = typename PHTREE::ValueType;
 
+  protected:
+    using BucketIterType = typename PHTREE::BucketIterType;
+
   public:
     explicit IteratorBase() noexcept : current_value_ptr_{nullptr} {}
 
@@ -95,14 +98,12 @@ class IteratorBase {
 template <typename ITERATOR_PH, typename PHTREE, typename FILTER>
 class IteratorNormal : public IteratorBase<PHTREE> {
     friend PHTREE;
-    using BucketIterType = typename PHTREE::BucketIterType;
+    using BucketIterType = typename IteratorBase<PHTREE>::BucketIterType;
 
   public:
     explicit IteratorNormal() noexcept
     : IteratorBase<PHTREE>(), iter_ph_{}, iter_bucket_{}, filter_{} {}
 
-    // TODO Why are we passing two iterators by reference + std::move?
-    // See: https://abseil.io/tips/117
     template <typename ITER_PH, typename BucketIterType, typename FILTER2 = FILTER>
     IteratorNormal(ITER_PH&& iter_ph, BucketIterType&& iter_bucket, FILTER2&& filter) noexcept
     : IteratorBase<PHTREE>()
@@ -191,17 +192,19 @@ template <
     bool POINT_KEYS = true,
     typename DEFAULT_QUERY_TYPE = QueryPoint>
 class PhTreeMultiMap {
-    friend PhTreeDebugHelper;
     using KeyInternal = typename CONVERTER::KeyInternal;
-    using QueryBox = typename CONVERTER::QueryBoxExternal;
     using Key = typename CONVERTER::KeyExternal;
     static constexpr dimension_t DimInternal = CONVERTER::DimInternal;
     using PHTREE = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>;
-
-  public:
     using ValueType = T;
     using BucketIterType = decltype(std::declval<BUCKET>().begin());
     using EndType = decltype(std::declval<v16::PhTreeV16<DimInternal, BUCKET, CONVERTER>>().end());
+
+    friend PhTreeDebugHelper;
+    friend IteratorBase<PHTREE>;
+
+  public:
+    using QueryBox = typename CONVERTER::QueryBoxExternal;
 
     explicit PhTreeMultiMap(CONVERTER converter = CONVERTER())
     : tree_{&converter_}, converter_{converter}, size_{0} {}

@@ -1176,3 +1176,33 @@ TEST(PhTreeTest, TestMoveAssign) {
     test_tree(tree);
     tree.~PhTreeMultiMap();
 }
+
+TEST(PhTreeTest, TestMovableIterators) {
+    // Test edge case: only one entry in tree
+    PhPointD<3> p{1, 2, 3};
+    auto tree = TestTree<3, Id>();
+    tree.emplace(p, Id{1});
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin())>);
+    // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin())>);
+    ASSERT_NE(tree.begin(), tree.end());
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.end())>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.end())>);
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.find(p))>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.find(p))>);
+    ASSERT_NE(tree.find(p), tree.end());
+
+    TestTree<3, Id>::QueryBox qb{{1, 2, 3}, {4, 5, 6}};
+    FilterAABB filter(p, p, tree.converter());
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin_query(qb, filter))>);
+    // Not movable due to constant fields
+    // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_query(qb, filter))>);
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin_knn_query(
+                    3, {2, 3, 4}, DistanceEuclidean<3>()))>);
+    // Not movable due to constant fields
+    // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_knn_query(
+    //                 3, {2, 3, 4}, DistanceEuclidean<3>()))>);
+}
