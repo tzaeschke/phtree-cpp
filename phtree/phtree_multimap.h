@@ -71,9 +71,6 @@ class IteratorBase {
 
     friend bool operator==(
         const IteratorBase<PHTREE>& left, const IteratorBase<PHTREE>& right) noexcept {
-        // Note: The following compares pointers to Entry objects (actually: their values T)
-        // so it should be _fast_ and return 'true' only for identical entries.
-        static_assert(std::is_pointer_v<decltype(left.current_value_ptr_)>);
         return left.current_value_ptr_ == right.current_value_ptr_;
     }
 
@@ -106,11 +103,12 @@ class IteratorNormal : public IteratorBase<PHTREE> {
 
     // TODO Why are we passing two iterators by reference + std::move?
     // See: https://abseil.io/tips/117
-    IteratorNormal(ITERATOR_PH iter_ph, BucketIterType iter_bucket, const FILTER filter) noexcept
+    template <typename ITER_PH, typename BucketIterType, typename FILTER2 = FILTER>
+    IteratorNormal(ITER_PH&& iter_ph, BucketIterType&& iter_bucket, FILTER2&& filter) noexcept
     : IteratorBase<PHTREE>()
-    , iter_ph_{std::move(iter_ph)}
-    , iter_bucket_{std::move(iter_bucket)}
-    , filter_{filter} {
+    , iter_ph_{std::forward<ITER_PH>(iter_ph)}
+    , iter_bucket_{std::forward<BucketIterType>(iter_bucket)}
+    , filter_{std::forward<FILTER2>(filter)} {
         FindNextElement();
     }
 
@@ -169,11 +167,11 @@ class IteratorNormal : public IteratorBase<PHTREE> {
 
 template <typename ITERATOR_PH, typename PHTREE, typename FILTER>
 class IteratorKnn : public IteratorNormal<ITERATOR_PH, PHTREE, FILTER> {
-    using BucketIterType = typename PHTREE::BucketIterType;
-
   public:
-    IteratorKnn(const ITERATOR_PH iter_ph, BucketIterType iter_bucket, const FILTER filter) noexcept
-    : IteratorNormal<ITERATOR_PH, PHTREE, FILTER>(iter_ph, iter_bucket, filter) {}
+    template <typename BucketIterType>
+    IteratorKnn(ITERATOR_PH iter_ph, BucketIterType&& iter_bucket, const FILTER filter) noexcept
+    : IteratorNormal<ITERATOR_PH, PHTREE, FILTER>(
+          std::forward<ITERATOR_PH>(iter_ph), std::forward<BucketIterType>(iter_bucket), filter) {}
 
     [[nodiscard]] double distance() const noexcept {
         return this->GetIteratorOfPhTree().distance();
@@ -319,7 +317,7 @@ class PhTreeMultiMap {
     auto find(const Key& key) const {
         auto outer_iter = tree_.find(converter_.pre(key));
         if (outer_iter == tree_.end()) {
-            return CreateIterator(outer_iter, bucket_dummy_end_);
+            return CreateIterator(outer_iter, BucketIterType{});
         }
         auto bucket_iter = outer_iter.second().begin();
         return CreateIterator(outer_iter, bucket_iter);
@@ -336,7 +334,7 @@ class PhTreeMultiMap {
     auto find(const Key& key, const T& value) const {
         auto outer_iter = tree_.find(converter_.pre(key));
         if (outer_iter == tree_.end()) {
-            return CreateIterator(outer_iter, bucket_dummy_end_);
+            return CreateIterator(outer_iter, BucketIterType{});
         }
         auto bucket_iter = outer_iter.second().find(value);
         return CreateIterator(outer_iter, bucket_iter);
@@ -505,7 +503,7 @@ class PhTreeMultiMap {
     auto begin(FILTER filter = FILTER()) const {
         auto outer_iter = tree_.begin(WrapFilter(filter));
         if (outer_iter == tree_.end()) {
-            return CreateIterator(outer_iter, bucket_dummy_end_, filter);
+            return CreateIterator(outer_iter, BucketIterType{}, filter);
         }
         auto bucket_iter = outer_iter.second().begin();
         assert(bucket_iter != outer_iter.second().end());
@@ -530,7 +528,7 @@ class PhTreeMultiMap {
         auto outer_iter =
             tree_.begin_query(query_type(converter_.pre_query(query_box)), WrapFilter(filter));
         if (outer_iter == tree_.end()) {
-            return CreateIterator(outer_iter, bucket_dummy_end_, filter);
+            return CreateIterator(outer_iter, BucketIterType{}, filter);
         }
         auto bucket_iter = outer_iter.second().begin();
         assert(bucket_iter != outer_iter.second().end());
@@ -566,7 +564,7 @@ class PhTreeMultiMap {
         auto outer_iter = tree_.begin_knn_query(
             min_results, converter_.pre(center), distance_function, WrapFilter(filter));
         if (outer_iter == tree_.end()) {
-            return CreateIteratorKnn(outer_iter, bucket_dummy_end_, filter);
+            return CreateIteratorKnn(outer_iter, BucketIterType{}, filter);
         }
         auto bucket_iter = outer_iter.second().begin();
         assert(bucket_iter != outer_iter.second().end());
@@ -615,18 +613,22 @@ class PhTreeMultiMap {
         return tree_;
     }
 
-    template <typename OUTER_ITER, typename FILTER = FilterNoOp>
+    template <typename OUTER_ITER, typename INNER_ITER, typename FILTER = FilterNoOp>
     auto CreateIterator(
-        OUTER_ITER outer_iter, BucketIterType bucket_iter, FILTER filter = FILTER()) const {
+        OUTER_ITER outer_iter, INNER_ITER&& bucket_iter, FILTER&& filter = FILTER()) const {
         return IteratorNormal<OUTER_ITER, PHTREE, FILTER>(
-            std::move(outer_iter), std::move(bucket_iter), filter);
+            std::forward<OUTER_ITER>(outer_iter),
+            std::forward<INNER_ITER>(bucket_iter),
+            std::forward<FILTER>(filter));
     }
 
-    template <typename OUTER_ITER, typename FILTER = FilterNoOp>
+    template <typename OUTER_ITER, typename INNER_ITER, typename FILTER = FilterNoOp>
     auto CreateIteratorKnn(
-        OUTER_ITER outer_iter, BucketIterType bucket_iter, FILTER filter = FILTER()) const {
+        OUTER_ITER outer_iter, INNER_ITER&& bucket_iter, FILTER&& filter = FILTER()) const {
         return IteratorKnn<OUTER_ITER, PHTREE, FILTER>(
-            std::move(outer_iter), std::move(bucket_iter), filter);
+            std::forward<OUTER_ITER>(outer_iter),
+            std::forward<INNER_ITER>(bucket_iter),
+            std::forward<FILTER>(filter));
     }
 
     template <typename FILTER>
@@ -671,7 +673,6 @@ class PhTreeMultiMap {
 
     v16::PhTreeV16<DimInternal, BUCKET, CONVERTER> tree_;
     CONVERTER converter_;
-    BucketIterType bucket_dummy_end_;
     size_t size_;
 };
 
