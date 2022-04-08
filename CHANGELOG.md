@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Bugfix: FilterSphere was not working correctly. [#27](https://github.com/tzaeschke/phtree-cpp/issues/27)
 - Potentially **BREAKING CHANGE**: Refactored API of all methods that accept callbacks and filters to
   accept universal/forwarding references.
   Also changed filters and callback to not require `const` methods. 

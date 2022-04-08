@@ -213,7 +213,7 @@ class FilterSphere {
 
   private:
     const KeyExternal center_external_;
-    const KeyExternal center_internal_;
+    const KeyInternal center_internal_;
     const ScalarExternal radius_;
     const CONVERTER converter_;
     const DISTANCE distance_function_;
