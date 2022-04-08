@@ -92,8 +92,9 @@ class IteratorWithFilter
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
-    explicit IteratorWithFilter(const CONVERT* converter, FILTER filter) noexcept
-    : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_(std::forward<FILTER>(filter)) {}
+    template <typename F>
+    explicit IteratorWithFilter(const CONVERT* converter, F&& filter) noexcept
+    : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_(std::forward<F>(filter)) {}
 
     explicit IteratorWithFilter(const EntryT* current_result, const CONVERT* converter) noexcept
     : IteratorBase<EntryT>(current_result), converter_{converter}, filter_{FILTER()} {}
@@ -102,8 +103,12 @@ class IteratorWithFilter
         return converter_->post(this->current_result_->GetKey());
     }
 
+    auto& __Filter() {
+        return filter_;
+    }
+
   protected:
-    [[nodiscard]] bool ApplyFilter(const EntryT& entry) const {
+    [[nodiscard]] bool ApplyFilter(const EntryT& entry) {
         return entry.IsNode() ? filter_.IsNodeValid(entry.GetKey(), entry.GetNodePostfixLen() + 1)
                               : filter_.IsEntryValid(entry.GetKey(), entry.GetValue());
     }

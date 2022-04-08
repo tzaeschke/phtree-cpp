@@ -33,7 +33,7 @@ namespace improbable::phtree::v16 {
  * For details see  "Efficient Z-Ordered Traversal of Hypercube Indexes" by T. Zäschke, M.C. Norrie,
  * 2017.
  */
-template <typename T, typename CONVERT, typename CALLBACK_FN, typename FILTER>
+template <typename T, typename CONVERT, typename CALLBACK, typename FILTER>
 class ForEachHC {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
@@ -41,17 +41,18 @@ class ForEachHC {
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
+    template <typename CB, typename F>
     ForEachHC(
         const KeyInternal& range_min,
         const KeyInternal& range_max,
         const CONVERT* converter,
-        CALLBACK_FN& callback,
-        FILTER filter)
+        CB&& callback,
+        F&& filter)
     : range_min_{range_min}
     , range_max_{range_max}
     , converter_{converter}
-    , callback_{callback}
-    , filter_(std::move(filter)) {}
+    , callback_{std::forward<CB>(callback)}
+    , filter_(std::forward<F>(filter)) {}
 
     void Traverse(const EntryT& entry) {
         assert(entry.IsNode());
@@ -84,7 +85,7 @@ class ForEachHC {
         }
     }
 
-    bool CheckNode(const EntryT& entry, bit_width_t parent_postfix_len) const {
+    bool CheckNode(const EntryT& entry, bit_width_t parent_postfix_len) {
         const KeyInternal& key = entry.GetKey();
         // Check if the node overlaps with the query box.
         // An infix with len=0 implies that at least part of the child node overlaps with the query,
@@ -169,7 +170,7 @@ class ForEachHC {
     const KeyInternal range_min_;
     const KeyInternal range_max_;
     const CONVERT* converter_;
-    CALLBACK_FN& callback_;
+    CALLBACK callback_;
     FILTER filter_;
 };
 }  // namespace improbable::phtree::v16

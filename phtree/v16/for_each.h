@@ -26,7 +26,7 @@ namespace improbable::phtree::v16 {
  * Iterates over the whole tree. Entries and child nodes that are rejected by the Filter are not
  * traversed or returned.
  */
-template <typename T, typename CONVERT, typename CALLBACK_FN, typename FILTER>
+template <typename T, typename CONVERT, typename CALLBACK, typename FILTER>
 class ForEach {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
@@ -34,8 +34,11 @@ class ForEach {
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
-    ForEach(const CONVERT* converter, CALLBACK_FN& callback, FILTER filter)
-    : converter_{converter}, callback_{callback}, filter_(std::move(filter)) {}
+    template <typename CB, typename F>
+    ForEach(const CONVERT* converter, CB&& callback, F&& filter)
+    : converter_{converter}
+    , callback_{std::forward<CB>(callback)}
+    , filter_(std::forward<F>(filter)) {}
 
     void Traverse(const EntryT& entry) {
         assert(entry.IsNode());
@@ -59,7 +62,7 @@ class ForEach {
     }
 
     const CONVERT* converter_;
-    CALLBACK_FN& callback_;
+    CALLBACK callback_;
     FILTER filter_;
 };
 }  // namespace improbable::phtree::v16

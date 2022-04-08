@@ -53,20 +53,21 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     using EntryDistT = EntryDist<DIM, T, SCALAR>;
 
   public:
+    template <typename DIST, typename F>
     explicit IteratorKnnHS(
         const EntryT& root,
         size_t min_results,
         const KeyInternal& center,
         const CONVERT* converter,
-        DISTANCE dist,
-        FILTER filter)
-    : IteratorWithFilter<T, CONVERT, FILTER>(converter, filter)
+        DIST&& dist,
+        F&& filter)
+    : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
     , center_{center}
     , center_post_{converter->post(center)}
     , current_distance_{std::numeric_limits<double>::max()}
     , num_found_results_(0)
     , num_requested_results_(min_results)
-    , distance_(std::move(dist)) {
+    , distance_(std::forward<DIST>(dist)) {
         if (min_results <= 0 || root.GetNode().GetEntryCount() == 0) {
             this->SetFinished();
             return;

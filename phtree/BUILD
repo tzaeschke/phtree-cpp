@@ -109,6 +109,19 @@ cc_test(
 )
 
 cc_test(
+    name = "phtree_multimap_d_test_filter",
+    timeout = "long",
+    srcs = [
+        "phtree_multimap_d_test_filter.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":phtree",
+        "//phtree/testing/gtest_main",
+    ],
+)
+
+cc_test(
     name = "phtree_d_test_custom_key",
     timeout = "long",
     srcs = [

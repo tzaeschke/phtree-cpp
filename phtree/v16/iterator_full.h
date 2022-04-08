@@ -33,8 +33,11 @@ class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
 
   public:
-    IteratorFull(const EntryT& root, const CONVERT* converter, FILTER filter)
-    : IteratorWithFilter<T, CONVERT, FILTER>(converter, filter), stack_{}, stack_size_{0} {
+    template <typename F>
+    IteratorFull(const EntryT& root, const CONVERT* converter, F&& filter)
+    : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
+    , stack_{}
+    , stack_size_{0} {
         PrepareAndPush(root.GetNode());
         FindNextElement();
     }

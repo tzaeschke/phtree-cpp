@@ -49,13 +49,14 @@ class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
 
   public:
+    template <typename F>
     IteratorHC(
         const EntryT& root,
         const KeyInternal& range_min,
         const KeyInternal& range_max,
         const CONVERT* converter,
-        FILTER filter)
-    : IteratorWithFilter<T, CONVERT, FILTER>(converter, filter)
+        F&& filter)
+    : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
     , stack_size_{0}
     , range_min_{range_min}
     , range_max_{range_max} {

@@ -166,9 +166,9 @@ class PhTree {
      * sub-nodes before they are returned or traversed. Any filter function must follow the
      * signature of the default 'FilterNoOp`.
      */
-    template <typename CALLBACK_FN, typename FILTER = FilterNoOp>
-    void for_each(CALLBACK_FN& callback, FILTER filter = FILTER()) const {
-        tree_.for_each(callback, filter);
+    template <typename CALLBACK, typename FILTER = FilterNoOp>
+    void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
+        tree_.for_each(std::forward<CALLBACK>(callback), std::forward<FILTER>(filter));
     }
 
     /*
@@ -183,15 +183,18 @@ class PhTree {
      * signature of the default 'FilterNoOp`.
      */
     template <
-        typename CALLBACK_FN,
+        typename CALLBACK,
         typename FILTER = FilterNoOp,
         typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     void for_each(
         QueryBox query_box,
-        CALLBACK_FN& callback,
-        FILTER filter = FILTER(),
+        CALLBACK&& callback,
+        FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        tree_.for_each(query_type(converter_.pre_query(query_box)), callback, filter);
+        tree_.for_each(
+            query_type(converter_.pre_query(query_box)),
+            std::forward<CALLBACK>(callback),
+            std::forward<FILTER>(filter));
     }
 
     /*
@@ -202,8 +205,8 @@ class PhTree {
      * @return an iterator over all (filtered) entries in the tree,
      */
     template <typename FILTER = FilterNoOp>
-    auto begin(FILTER filter = FILTER()) const {
-        return tree_.begin(filter);
+    auto begin(FILTER&& filter = FILTER()) const {
+        return tree_.begin(std::forward<FILTER>(filter));
     }
 
     /*
@@ -219,9 +222,10 @@ class PhTree {
     template <typename FILTER = FilterNoOp, typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     auto begin_query(
         const QueryBox& query_box,
-        FILTER filter = FILTER(),
+        FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = DEFAULT_QUERY_TYPE()) const {
-        return tree_.begin_query(query_type(converter_.pre_query(query_box)), filter);
+        return tree_.begin_query(
+            query_type(converter_.pre_query(query_box)), std::forward<FILTER>(filter));
     }
 
     /*
@@ -246,12 +250,15 @@ class PhTree {
     auto begin_knn_query(
         size_t min_results,
         const Key& center,
-        DISTANCE distance_function = DISTANCE(),
-        FILTER filter = FILTER()) const {
+        DISTANCE&& distance_function = DISTANCE(),
+        FILTER&& filter = FILTER()) const {
         // We use pre() instead of pre_query() here because, strictly speaking, we want to
         // find the nearest neighbors of a (fictional) key, which may as well be a box.
         return tree_.begin_knn_query(
-            min_results, converter_.pre(center), distance_function, filter);
+            min_results,
+            converter_.pre(center),
+            std::forward<DISTANCE>(distance_function),
+            std::forward<FILTER>(filter));
     }
 
     /*

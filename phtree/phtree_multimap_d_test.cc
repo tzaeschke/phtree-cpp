@@ -1184,7 +1184,7 @@ TEST(PhTreeTest, TestMovableIterators) {
     tree.emplace(p, Id{1});
 
     ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin())>);
-    // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin())>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin())>);
     ASSERT_NE(tree.begin(), tree.end());
 
     ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.end())>);

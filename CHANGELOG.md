@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Potentially **BREAKING CHANGE**: Refactored API of all methods that accept callbacks and filters to
+  accept universal/forwarding references.
+  Also changed filters and callback to not require `const` methods. 
+  [#22](https://github.com/tzaeschke/phtree-cpp/issues/22)
 - Clean up iterator implementations. [#19](https://github.com/tzaeschke/phtree-cpp/issues/19)
 - Make PhTree and PhTreeMultimap movable (move-assign/copy). [#18](https://github.com/tzaeschke/phtree-cpp/issues/18)
 - Potentially **BREAKING CHANGE** when using `IsNodeValid()` in provided filters:

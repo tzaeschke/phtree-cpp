@@ -95,12 +95,10 @@ struct Id {
     }
 
     bool operator==(const Id& rhs) const {
-        ++copy_assign_count_;
         return _i == rhs._i;
     }
 
     bool operator==(Id&& rhs) const {
-        ++move_assign_count_;
         return _i == rhs._i;
     }
 
