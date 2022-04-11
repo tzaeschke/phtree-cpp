@@ -63,8 +63,45 @@ struct FilterNoOp {
      * @param value The value of the entry.
      * @returns This default implementation always returns `true`.
      */
-    template <typename KEY, typename T>
-    constexpr bool IsEntryValid(const KEY& /*key*/, const T& /*value*/) const {
+    template <typename KeyT, typename ValueT>
+    constexpr bool IsEntryValid(const KeyT& /*key*/, const ValueT& /*value*/) const noexcept {
+        return true;
+    }
+
+    /*
+     * @param prefix The prefix of node. Any coordinate in the nodes shares this prefix.
+     * @param bits_to_ignore The number of bits of the prefix that should be ignored because they
+     * are NOT the same for all coordinates in the node. For example, assuming 64bit values, if the
+     * node represents coordinates that all share the first 10 bits of the prefix, then the value of
+     * bits_to_ignore is 64-10=54.
+     * @returns This default implementation always returns `true`.
+     */
+    template <typename KeyT>
+    constexpr bool IsNodeValid(const KeyT& /*prefix*/, int /*bits_to_ignore*/) const noexcept {
+        return true;
+    }
+};
+
+struct FilterMultiMapNoOp {
+    /*
+     * This is checked once for every bucket that is encountered.
+     * @param key The key/coordinate of the entry.
+     * @param bucket The bucket of the entry, e.g. an instance of std::unordered_set.
+     * @returns This default implementation always returns `true`.
+     */
+    template <typename KeyT, typename BucketT>
+    constexpr bool IsEntryValid(const KeyT& /*key*/, const BucketT& /*bucket*/) const noexcept {
+        return true;
+    }
+
+    /*
+     * This is checked once for every entry in a bucket.
+     * @param key The key/coordinate of the bucket entry.
+     * @param value The value of the entry.
+     * @returns This default implementation always returns `true`.
+     */
+    template <typename KeyT, typename ValueT>
+    constexpr bool IsBucketEntryValid(const KeyT& /*key*/, const ValueT& /*value*/) const noexcept {
         return true;
     }
 
@@ -77,7 +114,7 @@ struct FilterNoOp {
      * @returns This default implementation always returns `true`.
      */
     template <typename KEY>
-    constexpr bool IsNodeValid(const KEY& /*prefix*/, int /*bits_to_ignore*/) const {
+    constexpr bool IsNodeValid(const KEY& /*prefix*/, int /*bits_to_ignore*/) const noexcept {
         return true;
     }
 };
@@ -181,6 +218,76 @@ class FilterSphere {
     [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
         KeyExternal point = converter_.post(key);
         return distance_function_(center_external_, point) <= radius_;
+    }
+
+    /*
+     * Calculate whether AABB encompassing all possible points in the node intersects with the
+     * sphere.
+     */
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+        // we always want to traverse the root node (bits_to_ignore == 64)
+
+        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+            return true;
+        }
+
+        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_max_bits = ~node_min_bits;
+
+        KeyInternal closest_in_bounds;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            // calculate lower and upper bound for dimension for given node
+            ScalarInternal lo = prefix[i] & node_min_bits;
+            ScalarInternal hi = prefix[i] | node_max_bits;
+
+            // choose value closest to center for dimension
+            closest_in_bounds[i] = std::clamp(center_internal_[i], lo, hi);
+        }
+
+        KeyExternal closest_point = converter_.post(closest_in_bounds);
+        return distance_function_(center_external_, closest_point) <= radius_;
+    }
+
+  private:
+    const KeyExternal center_external_;
+    const KeyInternal center_internal_;
+    const ScalarExternal radius_;
+    const CONVERTER converter_;
+    const DISTANCE distance_function_;
+};
+
+template <
+    typename CONVERTER = ConverterIEEE<3>,
+    typename DISTANCE = DistanceEuclidean<CONVERTER::DimInternal>>
+class FilterSphereMultiMap {
+    using KeyExternal = typename CONVERTER::KeyExternal;
+    using KeyInternal = typename CONVERTER::KeyInternal;
+    using ScalarInternal = typename CONVERTER::ScalarInternal;
+    using ScalarExternal = typename CONVERTER::ScalarExternal;
+
+    static constexpr auto DIM = CONVERTER::DimInternal;
+
+  public:
+    FilterSphereMultiMap(
+        const KeyExternal& center,
+        const ScalarExternal& radius,
+        CONVERTER converter = CONVERTER(),
+        DISTANCE distance_function = DISTANCE())
+    : center_external_{center}
+    , center_internal_{converter.pre(center)}
+    , radius_{radius}
+    , converter_{converter}
+    , distance_function_{distance_function} {};
+
+    template <typename BucketT>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const BucketT&) const {
+        KeyExternal point = converter_.post(key);
+        return distance_function_(center_external_, point) <= radius_;
+    }
+
+    template <typename ValueT>
+    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal&, const ValueT&) const {
+        return true;
     }
 
     /*
