@@ -94,7 +94,7 @@ class IteratorWithFilter
   public:
     template <typename F>
     explicit IteratorWithFilter(const CONVERT* converter, F&& filter) noexcept
-    : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_(std::forward<F>(filter)) {}
+    : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_{std::forward<F>(filter)} {}
 
     explicit IteratorWithFilter(const EntryT* current_result, const CONVERT* converter) noexcept
     : IteratorBase<EntryT>(current_result), converter_{converter}, filter_{FILTER()} {}

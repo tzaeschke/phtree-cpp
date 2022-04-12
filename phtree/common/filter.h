@@ -82,9 +82,15 @@ struct FilterNoOp {
     }
 };
 
+/*
+ * The no-op filter is the default filter for the MultiMap PH-Tree. It always returns 'true'.
+ */
 struct FilterMultiMapNoOp {
     /*
-     * This is checked once for every bucket that is encountered.
+     * This is checked once for every bucket that is encountered. Every coordinate/entry in
+     * a MultiMap PH-Tree contains a `bucket` (e.g. an std::unordered_map) of user entries.
+     * A typical implementation checks the `key` (position of the bucket) against a geometric
+     * constraint, such as a sphere.
      * @param key The key/coordinate of the entry.
      * @param bucket The bucket of the entry, e.g. an instance of std::unordered_set.
      * @returns This default implementation always returns `true`.
@@ -95,7 +101,9 @@ struct FilterMultiMapNoOp {
     }
 
     /*
-     * This is checked once for every entry in a bucket.
+     * This is checked once for every entry in a bucket. The method is called once a call to
+     * 'IsEntryValid` for the same bucket has returned 'true'. A typical implementation
+     * simply returns `true` or checks some values of the entry.
      * @param key The key/coordinate of the bucket entry.
      * @param value The value of the entry.
      * @returns This default implementation always returns `true`.
@@ -189,6 +197,80 @@ class FilterAABB {
 };
 
 /*
+ * The AABB filter can be used to query a point tree for an axis aligned bounding box (AABB).
+ * The result is equivalent to that of the 'begin_query(...)' function.
+ */
+template <typename CONVERTER = ConverterIEEE<3>>
+class FilterMultiMapAABB {
+    using KeyExternal = typename CONVERTER::KeyExternal;
+    using KeyInternal = typename CONVERTER::KeyInternal;
+    using ScalarInternal = typename CONVERTER::ScalarInternal;
+
+    static constexpr auto DIM = CONVERTER::DimInternal;
+
+  public:
+    FilterMultiMapAABB(
+        const KeyExternal& min_include,
+        const KeyExternal& max_include,
+        const CONVERTER& converter = CONVERTER())
+    : min_external_{min_include}
+    , max_external_{max_include}
+    , min_internal_{converter.pre(min_include)}
+    , max_internal_{converter.pre(max_include)}
+    , converter_{converter} {};
+
+    /*
+     * This function allows resizing/shifting the AABB while iterating over the tree.
+     */
+    void set(const KeyExternal& min_include, const KeyExternal& max_include) {
+        min_external_ = min_include;
+        max_external_ = max_include;
+        min_internal_ = converter_.pre(min_include);
+        max_internal_ = converter_.pre(max_include);
+    }
+
+    template <typename BucketT>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const BucketT& /*value*/) const {
+        auto point = converter_.post(key);
+        for (dimension_t i = 0; i < DIM; ++i) {
+            if (point[i] < min_external_[i] || point[i] > max_external_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename ValueT>
+    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal&, const ValueT&) const {
+        return true;
+    }
+
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+        // Let's assume that we always want to traverse the root node (bits_to_ignore == 64)
+        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+            return true;
+        }
+        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_max_bits = ~node_min_bits;
+
+        for (dimension_t i = 0; i < DIM; ++i) {
+            if ((prefix[i] | node_max_bits) < min_internal_[i] ||
+                (prefix[i] & node_min_bits) > max_internal_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  private:
+    const KeyExternal min_external_;
+    const KeyExternal max_external_;
+    const KeyInternal min_internal_;
+    const KeyInternal max_internal_;
+    const CONVERTER& converter_;
+};
+
+/*
  * The sphere filter can be used to query a point tree for a sphere.
  */
 template <
@@ -256,10 +338,11 @@ class FilterSphere {
     const DISTANCE distance_function_;
 };
 
+
 template <
     typename CONVERTER = ConverterIEEE<3>,
     typename DISTANCE = DistanceEuclidean<CONVERTER::DimInternal>>
-class FilterSphereMultiMap {
+class FilterMultiMapSphere {
     using KeyExternal = typename CONVERTER::KeyExternal;
     using KeyInternal = typename CONVERTER::KeyInternal;
     using ScalarInternal = typename CONVERTER::ScalarInternal;
@@ -268,7 +351,7 @@ class FilterSphereMultiMap {
     static constexpr auto DIM = CONVERTER::DimInternal;
 
   public:
-    FilterSphereMultiMap(
+    FilterMultiMapSphere(
         const KeyExternal& center,
         const ScalarExternal& radius,
         CONVERTER converter = CONVERTER(),
@@ -279,15 +362,10 @@ class FilterSphereMultiMap {
     , converter_{converter}
     , distance_function_{distance_function} {};
 
-    template <typename BucketT>
-    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const BucketT&) const {
+    template <typename T>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
         KeyExternal point = converter_.post(key);
         return distance_function_(center_external_, point) <= radius_;
-    }
-
-    template <typename ValueT>
-    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal&, const ValueT&) const {
-        return true;
     }
 
     /*
@@ -325,6 +403,66 @@ class FilterSphereMultiMap {
     const CONVERTER converter_;
     const DISTANCE distance_function_;
 };
+
+/*
+ * Sphere filter for MultiMaps.
+ */
+//template <typename CONVERTER, typename DISTANCE>
+//class FilterMultiMapSphere {
+//    using KeyExternal = typename CONVERTER::KeyExternal;
+//    using KeyInternal = typename CONVERTER::KeyInternal;
+//
+//  public:
+//    template <typename DIST = DistanceEuclidean<CONVERTER::DimInternal>>
+//    FilterMultiMapSphere(
+//        const KeyExternal& center,
+//        double radius,
+//        const CONVERTER& converter,
+//        DIST&& distance_fn = DISTANCE())
+//    : filter_(center, radius, converter, std::forward<DIST>(distance_fn)){};
+//
+//    template <typename BucketT>
+//    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const BucketT& bucket) const {
+//        // Check if the bucket's coordinate is inside the sphere
+//        return filter_.IsEntryValid(key, bucket);
+//    }
+//
+//    template <typename ValueT>
+//    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal&, const ValueT&) {
+//        // Let's assume all entries in a bucket are valid
+//        return true;
+//    }
+//
+//    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+//        return filter_.IsNodeValid(prefix, bits_to_ignore);
+//    }
+//
+//  private:
+//    FilterSphere<CONVERTER, DISTANCE> filter_;
+//};
+//// deduction guide
+//template <typename CONV, typename DIST = DistanceEuclidean<CONV::DimInternal>, typename P>
+//FilterMultiMapSphere(const P&, double, const CONV&, DIST&& = DIST()) -> FilterMultiMapSphere<CONV, DIST>;
+
+//template <typename CONVERTER, typename DISTANCE>
+//class FilterSphereMultiMap2 : public FilterSphere<CONVERTER, DISTANCE> {
+//    using Key = typename CONVERTER::KeyExternal;
+//    using KeyInternal = typename CONVERTER::KeyInternal;
+//
+//  public:
+//    template <typename DIST = DistanceEuclidean<CONVERTER::DimInternal>>
+//    FilterSphereMultiMap2(
+//        const Key& center, double radius, const CONVERTER& converter, DIST&& dist_fn = DIST())
+//    : FilterSphere<CONVERTER, DIST>(center, radius, converter, std::forward<DIST>(dist_fn)){};
+//
+//    template <typename ValueT>
+//    [[nodiscard]] inline bool IsBucketEntryValid(const KeyInternal&, const ValueT&) const noexcept {
+//        return true;
+//    }
+//};
+//// deduction guide
+//template <typename CONV, typename DIST, typename P>
+//FilterSphereMultiMap2(const P&, double, const CONV&, DIST&&) -> FilterSphereMultiMap2<CONV, DIST>;
 
 }  // namespace improbable::phtree
 
