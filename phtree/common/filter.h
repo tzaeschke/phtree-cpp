@@ -364,6 +364,13 @@ class FilterMultiMapSphere {
 
     template <typename T>
     [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
+        //KeyExternal point = converter_.post(key);
+        //return distance_function_(center_external_, point) <= radius_;
+        return true;
+    }
+
+    template <typename ValueT>
+    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal& key, const ValueT&) {
         KeyExternal point = converter_.post(key);
         return distance_function_(center_external_, point) <= radius_;
     }
