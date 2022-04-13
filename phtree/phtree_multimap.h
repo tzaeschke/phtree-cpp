@@ -43,12 +43,12 @@ namespace improbable::phtree {
 
 namespace {
 // Helpers to detect legacy filters. Legacy filters do not have a 'IsBucketEntryValid' function.
-template <typename T>
-constexpr auto hbevHelper(T const&, int) -> decltype(&T::IsBucketEntryValid, std::true_type{});
-template <typename T>
-constexpr std::false_type hbevHelper(T const&, long);
-template <typename T>
-using HasIsBucketEntryValid = decltype(hbevHelper(std::declval<T>(), 0));
+// template <typename T>
+// constexpr auto hbevHelper(T const&, int) -> decltype(&T::IsBucketEntryValid, std::true_type{});
+// template <typename T>
+// constexpr std::false_type hbevHelper(T const&, long);
+// template <typename T>
+// using HasIsBucketEntryValid = decltype(hbevHelper(std::declval<T>(), 0));
 
 /*
  * Base class for the internal PH-Tree multi-map iterators.
@@ -151,7 +151,8 @@ class IteratorNormal : public IteratorBase<PHTREE> {
         while (!iter_ph_.IsEnd()) {
             while (iter_bucket_ != iter_ph_->end()) {
                 // We filter only entries here, nodes are filtered elsewhere
-                if (IsEntryValid()) {
+                if (iter_ph_.__Filter().IsBucketEntryValid(
+                        iter_ph_.GetCurrentResult()->GetKey(), *iter_bucket_)) {
                     this->SetCurrentValue(&(*iter_bucket_));
                     return;
                 }
@@ -164,16 +165,6 @@ class IteratorNormal : public IteratorBase<PHTREE> {
         }
         // finished
         this->SetFinished();
-    }
-
-    bool IsEntryValid() {
-        if constexpr (HasIsBucketEntryValid<std::decay_t<decltype(iter_ph_.__Filter())>>()) {
-            return iter_ph_.__Filter().IsBucketEntryValid(
-                iter_ph_.GetCurrentResult()->GetKey(), *iter_bucket_);
-        } else {
-            return iter_ph_.__Filter().IsEntryValid(
-                iter_ph_.GetCurrentResult()->GetKey(), *iter_bucket_);
-        }
     }
 
     ITERATOR_PH iter_ph_;
@@ -468,17 +459,10 @@ class PhTreeMultiMap {
      */
     template <typename CALLBACK, typename FILTER = FilterMultiMapNoOp>
     void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
-        if constexpr (HasIsBucketEntryValid<FILTER>{}) {
-            tree_.for_each(
-                NoOpCallback{},
-                WrapCallbackFilterNew<CALLBACK, FILTER>{
-                    std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
-        } else {
-            tree_.for_each(
-                NoOpCallback{},
-                WrapCallbackFilter<CALLBACK, FILTER>{
-                    std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
-        }
+        tree_.for_each(
+            NoOpCallback{},
+            WrapCallbackFilter<CALLBACK, FILTER>{
+                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
     }
 
     /*
@@ -503,18 +487,10 @@ class PhTreeMultiMap {
         CALLBACK&& callback,
         FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        if constexpr (HasIsBucketEntryValid<FILTER>{}) {
-            tree_.template for_each<NoOpCallback, WrapCallbackFilterNew<CALLBACK, FILTER>>(
+            tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
                 query_type(converter_.pre_query(query_box)),
                 {},
                 {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
-        } else {
-            tree_.for_each(
-                query_type(converter_.pre_query(query_box)),
-                NoOpCallback(),
-                WrapCallbackFilter<CALLBACK, FILTER>(
-                    std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_));
-        }
     }
 
     /*
@@ -524,20 +500,9 @@ class PhTreeMultiMap {
      *
      * @return an iterator over all (filtered) entries in the tree,
      */
-    auto begin() const {
-        return CreateIterator(tree_.begin(FilterMultiMapNoOp{}));
-    }
-    template <typename FILTER>
-    auto begin(FILTER&& filter) const {
-        if constexpr (HasIsBucketEntryValid<FILTER>{}) {
-//            auto f = WrapFilter(std::forward<FILTER>(filter));
-//            tree_.begin(std::forward<FILTER>(f));
-            return CreateIterator(tree_.begin(WrapFilter<FILTER>(std::forward<FILTER>(filter))));
-        } else {
-//            auto f = WrapFilter(std::forward<FILTER>(filter));
-//            tree_.begin(std::forward<FILTER>(f));
-            return CreateIterator(tree_.begin(WrapFilter<FILTER>(std::forward<FILTER>(filter))));
-        }
+    template <typename FILTER = FilterMultiMapNoOp>
+    auto begin(FILTER&& filter = FILTER()) const {
+            return CreateIterator(tree_.begin(std::forward<FILTER>(filter)));
     }
 
     /*
@@ -556,7 +521,7 @@ class PhTreeMultiMap {
         FILTER&& filter = FILTER(),
         QUERY_TYPE&& query_type = QUERY_TYPE()) const {
         return CreateIterator(tree_.begin_query(
-            query_type(converter_.pre_query(query_box)), WrapFilter(std::forward<FILTER>(filter))));
+            query_type(converter_.pre_query(query_box)), std::forward<FILTER>(filter)));
     }
 
     /*
@@ -589,7 +554,7 @@ class PhTreeMultiMap {
             min_results,
             converter_.pre(center),
             std::forward<DISTANCE>(distance_function),
-            WrapFilter(std::forward<FILTER>(filter))));
+            std::forward<FILTER>(filter)));
     }
 
     /*
@@ -666,78 +631,19 @@ class PhTreeMultiMap {
      * The IsEntryValid() for the bucket iterator forwards the call to the user defined
      * IsEntryValid() for every entry in the bucket.
      */
-    template <typename FILTER>
-    decltype(auto) WrapFilter(FILTER&& filter) const {
-        if constexpr (HasIsBucketEntryValid<FILTER>{}) {
-            return std::forward<FILTER>(filter);
-        } else {
-            return FilterWrapperDeprecated<FILTER>{std::forward<FILTER>(filter)};
-        }
-    }
-
-    template <typename FILTER>
-    struct FilterWrapperDeprecated {
-        [[deprecated(
-            "Please use the new filter API for multimaps, see "
-            "FilterMultiMapNoOp")]]
-        [[nodiscard]] constexpr bool
-        IsEntryValid(const KeyInternal&, const BUCKET&) {
-            // This filter is used in the PH-Tree iterator.
-            return true;
-        }
-        [[nodiscard]] constexpr bool IsBucketEntryValid(const KeyInternal& key, const T& value) {
-            // This filter is used in the PH-Tree multimap iterator (bucket iterator).
-            return filter_.IsEntryValid(key, value);
-        }
-        [[nodiscard]] constexpr bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
-            return filter_.IsNodeValid(prefix, bits_to_ignore);
-        }
-        FILTER filter_;
-    };
+    //    template <typename FILTER>
+    //    decltype(auto) WrapFilter(FILTER&& filter) const {
+    //        if constexpr (HasIsBucketEntryValid<FILTER>{}) {
+    //            return std::forward<FILTER>(filter);
+    //        } else {
+    //            return FilterWrapperDeprecated<FILTER>{std::forward<FILTER>(filter)};
+    //        }
+    //    }
 
     /*
      * This wrapper wraps the Filter and Callback such that the callback is called for every
      * bucket entry that matches the user defined IsEntryValid().
      */
-    template <typename CALLBACK, typename FILTER>
-    class WrapCallbackFilterNew {
-      public:
-        // TODO fix
-        // We always have two iterators, one that traverses the PH-Tree and one that traverses the
-        // bucket. Using the FilterWrapper we create a new Filter for the PH-Tree iterator. This new
-        // filter checks only if nodes are valid. It cannot check whether buckets are valid.
-        // The original filter is then used when we iterate over the entries of a bucket. At this
-        // point, we do not need to check IsNodeValid anymore for each entry (see `IteratorNormal`).
-        template <typename CB, typename F>
-        WrapCallbackFilterNew(CB&& callback, F&& filter, const CONVERTER& converter)
-        : callback_{std::forward<CB>(callback)}
-        , filter_{std::forward<F>(filter)}
-        , converter_{converter} {}
-
-        [[nodiscard]] constexpr bool IsEntryValid(
-            const KeyInternal& internal_key, const BUCKET& bucket) {
-            if (filter_.IsEntryValid(internal_key, bucket)) {
-                auto key = converter_.post(internal_key);
-                for (auto& entry : bucket) {
-                    if (filter_.IsBucketEntryValid(internal_key, entry)) {
-                        callback_(key, entry);
-                    }
-                }
-            }
-            // Return false. We already called the callback.
-            return false;
-        }
-
-        [[nodiscard]] constexpr bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
-            return filter_.IsNodeValid(prefix, bits_to_ignore);
-        }
-
-      private:
-        CALLBACK callback_;
-        FILTER filter_;
-        const CONVERTER& converter_;
-    };
-
     template <typename CALLBACK, typename FILTER>
     class WrapCallbackFilter {
       public:
@@ -755,27 +661,17 @@ class PhTreeMultiMap {
 
         [[nodiscard]] constexpr bool IsEntryValid(
             const KeyInternal& internal_key, const BUCKET& bucket) {
-            auto key = converter_.post(internal_key);
-            for (auto& entry : bucket) {
-                if (filter_.IsEntryValid(internal_key, entry)) {
-                    callback_(key, entry);
+            if (filter_.IsEntryValid(internal_key, bucket)) {
+                auto key = converter_.post(internal_key);
+                for (auto& entry : bucket) {
+                    if (filter_.IsBucketEntryValid(internal_key, entry)) {
+                        callback_(key, entry);
+                    }
                 }
             }
             // Return false. We already called the callback.
             return false;
         }
-
-        //        [[nodiscard]] constexpr bool IsBucketEntryValid(
-        //            const KeyInternal& internal_key, const BUCKET& bucket) {
-        //            auto key = converter_.post(internal_key);
-        //            for (auto& entry : bucket) {
-        //                if (filter_.IsEntryValid(internal_key, entry)) {
-        //                    callback_(key, entry);
-        //                }
-        //            }
-        //            // Return false. We already called the callback.
-        //            return false;
-        //        }
 
         [[nodiscard]] constexpr bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
             return filter_.IsNodeValid(prefix, bits_to_ignore);

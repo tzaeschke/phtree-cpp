@@ -54,6 +54,77 @@ using DistanceFn = DistanceEuclidean<DIM>;
 template <dimension_t DIM>
 using TestMap = PhTreeMultiMapD<DIM, payload_t, CONVERTER<DIM>>;
 
+template <
+    typename CONVERTER = ConverterIEEE<3>,
+    typename DISTANCE = DistanceEuclidean<CONVERTER::DimInternal>>
+class FilterSphereLegacy {
+    using KeyExternal = typename CONVERTER::KeyExternal;
+    using KeyInternal = typename CONVERTER::KeyInternal;
+    using ScalarInternal = typename CONVERTER::ScalarInternal;
+    using ScalarExternal = typename CONVERTER::ScalarExternal;
+
+    static constexpr auto DIM = CONVERTER::DimInternal;
+
+  public:
+    FilterSphereLegacy(
+        const KeyExternal& center,
+        const ScalarExternal& radius,
+        CONVERTER converter = CONVERTER(),
+        DISTANCE distance_function = DISTANCE())
+    : center_external_{center}
+    , center_internal_{converter.pre(center)}
+    , radius_{radius}
+    , converter_{converter}
+    , distance_function_{distance_function} {};
+
+    template <typename BucketT>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal&, const BucketT&) const {
+        // We simulate a legacy filter by returning 'true' for all buckets
+        return true;
+    }
+
+    template <typename T>
+    [[nodiscard]] bool IsBucketEntryValid(const KeyInternal& key, const T&) const {
+        KeyExternal point = converter_.post(key);
+        return distance_function_(center_external_, point) <= radius_;
+    }
+
+    /*
+     * Calculate whether AABB encompassing all possible points in the node intersects with the
+     * sphere.
+     */
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+        // we always want to traverse the root node (bits_to_ignore == 64)
+
+        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+            return true;
+        }
+
+        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_max_bits = ~node_min_bits;
+
+        KeyInternal closest_in_bounds;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            // calculate lower and upper bound for dimension for given node
+            ScalarInternal lo = prefix[i] & node_min_bits;
+            ScalarInternal hi = prefix[i] | node_max_bits;
+
+            // choose value closest to center for dimension
+            closest_in_bounds[i] = std::clamp(center_internal_[i], lo, hi);
+        }
+
+        KeyExternal closest_point = converter_.post(closest_in_bounds);
+        return distance_function_(center_external_, closest_point) <= radius_;
+    }
+
+  private:
+    const KeyExternal center_external_;
+    const KeyInternal center_internal_;
+    const ScalarExternal radius_;
+    const CONVERTER converter_;
+    const DISTANCE distance_function_;
+};
+
 template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
   public:
@@ -165,7 +236,7 @@ template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<SCENARIO == Scenario::LEGACY_WQ, int>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     // Legacy: use non-multi-map filter
-    FilterSphere filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
+    FilterSphereLegacy filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
     Counter counter{0};
     tree.for_each(query.box, counter, filter);
     return counter.n_;
