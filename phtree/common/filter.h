@@ -363,7 +363,7 @@ class FilterMultiMapSphere {
     , distance_function_{distance_function} {};
 
     template <typename T>
-    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
+    [[nodiscard]] bool IsEntryValid(const KeyInternal&, const T&) const {
         //KeyExternal point = converter_.post(key);
         //return distance_function_(center_external_, point) <= radius_;
         return true;
