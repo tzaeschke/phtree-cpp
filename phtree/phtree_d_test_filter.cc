@@ -455,7 +455,7 @@ void testSphereQuery(TestPoint<DIM>& center, double radius, size_t N, int& resul
     ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeDTest, TestSphereQuery0) {
+TEST(PhTreeMMDFilterTest, TestSphereQuery0) {
     const dimension_t dim = 3;
     TestPoint<dim> p{-10000, -10000, -10000};
     int n = 0;
@@ -463,7 +463,7 @@ TEST(PhTreeDTest, TestSphereQuery0) {
     ASSERT_EQ(0, n);
 }
 
-TEST(PhTreeDTest, TestSphereQueryMany) {
+TEST(PhTreeMMDFilterTest, TestSphereQueryMany) {
     const dimension_t dim = 3;
     TestPoint<dim> p{0, 0, 0};
     int n = 0;
@@ -472,7 +472,7 @@ TEST(PhTreeDTest, TestSphereQueryMany) {
     ASSERT_LT(n, 800);
 }
 
-TEST(PhTreeDTest, TestSphereQueryAll) {
+TEST(PhTreeMMDFilterTest, TestSphereQueryAll) {
     const dimension_t dim = 3;
     TestPoint<dim> p{0, 0, 0};
     int n = 0;

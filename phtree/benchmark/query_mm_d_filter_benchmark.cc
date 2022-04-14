@@ -32,7 +32,7 @@ namespace {
 
 const double GLOBAL_MAX = 10000;
 
-enum Scenario { SPHERE_WQ, SPHERE, WQ, LEGACY_WQ };
+enum Scenario { SPHERE_WQ, SPHERE, WQ, SPHERE_IT_WQ, LEGACY_WQ };
 
 using TestPoint = PhPointD<3>;
 using QueryBox = PhBoxD<3>;
@@ -233,6 +233,17 @@ typename std::enable_if<SCENARIO == Scenario::WQ, int>::type CountEntries(
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
+typename std::enable_if<SCENARIO == Scenario::SPHERE_IT_WQ, int>::type CountEntries(
+    TestMap<DIM>& tree, const Query& query) {
+    FilterMultiMapSphere filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
+    Counter counter{0};
+    for (auto it = tree.begin_query(query.box, filter); it != tree.end(); ++it) {
+        ++counter.n_;
+    }
+    return counter.n_;
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<SCENARIO == Scenario::LEGACY_WQ, int>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     // Legacy: use non-multi-map filter
@@ -299,28 +310,39 @@ void PhTree3DWQ(benchmark::State& state, Arguments&&... arguments) {
 }
 
 template <typename... Arguments>
+void PhTree3DSphereITWQ(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::SPHERE_IT_WQ> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
 void PhTree3DLegacyWQ(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, Scenario::LEGACY_WQ> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_type, num_entities, avg_query_result_size
-BENCHMARK_CAPTURE(PhTree3DSphereWQ, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTree3DSphereITWQ, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3DSphere, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTree3DSphereWQ, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3DWQ, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTree3DSphere, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3DLegacyWQ, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTree3DWQ, _100, 100.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3DLegacyWQ, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

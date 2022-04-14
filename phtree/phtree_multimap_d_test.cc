@@ -589,11 +589,15 @@ TEST(PhTreeMMDTest, TestExtent) {
 
 template <dimension_t DIM, typename T>
 struct FilterEvenId {
-    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<DIM>&, const T& value) const {
-        return value._i % 2 == 0;
+    template <typename BucketT>
+    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<DIM>&, const BucketT&) const {
+        return true;
     }
     [[nodiscard]] constexpr bool IsNodeValid(const PhPoint<DIM>&, int) const {
         return true;
+    }
+    [[nodiscard]] constexpr bool IsBucketEntryValid(const PhPoint<DIM>&, const T& value) const {
+        return value._i % 2 == 0;
     }
 };
 
@@ -1195,7 +1199,7 @@ TEST(PhTreeTest, TestMovableIterators) {
     ASSERT_NE(tree.find(p), tree.end());
 
     TestTree<3, Id>::QueryBox qb{{1, 2, 3}, {4, 5, 6}};
-    FilterAABB filter(p, p, tree.converter());
+    FilterMultiMapAABB filter(p, p, tree.converter());
     ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin_query(qb, filter))>);
     // Not movable due to constant fields
     // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_query(qb, filter))>);

@@ -187,58 +187,6 @@ struct FilterCount {
     T last_known;
 };
 
-/*
- * Legacy filter: The pre 1.1 release allowed using normal filters to be used.
- * While this is highly inefficient, it should still continue to work.
- */
-template <dimension_t DIM, typename T>
-struct FilterCountLegacy {
-    FilterCountLegacy() : last_known{} {
-        ++f_default_construct_;
-    }
-
-    explicit FilterCountLegacy(const T i) : last_known{i} {
-        ++f_construct_;
-    }
-
-    FilterCountLegacy(const FilterCountLegacy& other) {
-        ++f_copy_construct_;
-        last_known = other.last_known;
-    }
-
-    FilterCountLegacy(FilterCountLegacy&& other) noexcept {
-        ++f_move_construct_;
-        last_known = other.last_known;
-    }
-
-    FilterCountLegacy& operator=(const FilterCountLegacy& other) noexcept {
-        ++f_copy_assign_;
-        last_known = other.last_known;
-        return *this;
-    }
-
-    FilterCountLegacy& operator=(FilterCountLegacy&& other) noexcept {
-        ++f_move_assign_;
-        last_known = other.last_known;
-        return *this;
-    }
-
-    ~FilterCountLegacy() {
-        ++f_destruct_;
-    }
-
-    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<DIM>&, const T& value) {
-        last_known = value;
-        return true;
-    }
-
-    [[nodiscard]] constexpr bool IsNodeValid(const PhPoint<DIM>&, int) {
-        return true;
-    }
-
-    T last_known;
-};
-
 template <dimension_t DIM>
 struct DistanceCount {
     DistanceCount() {
@@ -519,58 +467,6 @@ TEST(PhTreeTest, TestFilterAPI_KNN) {
     f_reset_id_counters();
 }
 
-// TODO !!!!
-// TEST(PhTreeTest, TestLegacyFilter) {
-//    // Test edge case: only one entry in tree
-//    PhPointD<3> p{1, 2, 3};
-//    auto tree = TestTree<3, Id>();
-//    tree.emplace(p, Id{1});
-//    f_reset_id_counters();
-//
-//    // lvalue
-//    auto filter1 = FilterCountLegacy<3, Id>();
-//    ASSERT_EQ(tree.begin(filter1)->_i, 1);
-//    ASSERT_EQ(filter1.last_known._i, 1);
-//    ASSERT_EQ(1, f_construct_ + f_default_construct_);
-//    ASSERT_GE(0, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//
-//    TestTree<3, Id>::QueryBox qb{{1, 2, 3}, {4, 5, 6}};
-//    auto filter2 = FilterCountLegacy<3, Id>();
-//    ASSERT_EQ(tree.begin_query(qb, filter2)->_i, 1);
-//    ASSERT_EQ(filter2.last_known._i, 1);
-//    ASSERT_EQ(1, f_construct_ + f_default_construct_);
-//    ASSERT_EQ(0, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//
-//    FilterCount<3, Id> filter3{};
-//    DistanceCount<3> dist_fn{};
-//    ASSERT_EQ(tree.begin_knn_query(3, {2, 3, 4}, dist_fn, filter3)->_i, 1);
-//    ASSERT_EQ(filter3.last_known._i, 1);
-//    ASSERT_EQ(2, f_construct_ + f_default_construct_);
-//    ASSERT_EQ(0, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//
-//    // rvalue
-//    ASSERT_EQ(tree.begin(FilterCountLegacy<3, Id>())->_i, 1);
-//    ASSERT_EQ(1, f_construct_ + f_default_construct_);
-//    ASSERT_GE(3, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//
-//    auto it = tree.begin_query<FilterCountLegacy<3, Id>>({{1, 2, 3}, {2, 3, 4}});
-//    ASSERT_EQ(it->_i, 1);
-//    ASSERT_EQ(1, f_construct_ + f_default_construct_);
-//    ASSERT_GE(3, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//
-//    ASSERT_EQ(
-//        tree.begin_knn_query(3, {2, 3, 4}, DistanceCount<3>{}, FilterCountLegacy<3, Id>())->_i,
-//        1);
-//    ASSERT_EQ(2, f_construct_ + f_default_construct_);
-//    ASSERT_GE(3 * 2, f_copy_construct_ + f_move_construct_ + f_copy_assign_ + f_move_assign_);
-//    f_reset_id_counters();
-//}
-
 template <dimension_t DIM>
 double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     double sum2 = 0;
@@ -606,7 +502,6 @@ void testSphereQuery(TestPoint<DIM>& center, double radius, size_t N, int& resul
     referenceSphereQuery(points, center, radius, referenceResult);
 
     result = 0;
-    // TODO
     auto filter = FilterMultiMapSphere(center, radius, tree.converter());
     for (auto it = tree.begin(filter); it != tree.end(); it++) {
         auto& x = *it;
@@ -617,7 +512,7 @@ void testSphereQuery(TestPoint<DIM>& center, double radius, size_t N, int& resul
     ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeDTest, TestSphereQuery0) {
+TEST(PhTreeMMDFilterTest, TestSphereQuery0) {
     const dimension_t dim = 3;
     TestPoint<dim> p{-10000, -10000, -10000};
     int n = 0;
@@ -625,7 +520,7 @@ TEST(PhTreeDTest, TestSphereQuery0) {
     ASSERT_EQ(0, n);
 }
 
-TEST(PhTreeDTest, TestSphereQueryMany) {
+TEST(PhTreeMMDFilterTest, TestSphereQueryMany) {
     const dimension_t dim = 3;
     TestPoint<dim> p{0, 0, 0};
     int n = 0;
@@ -634,10 +529,63 @@ TEST(PhTreeDTest, TestSphereQueryMany) {
     ASSERT_LT(n, 800);
 }
 
-TEST(PhTreeDTest, TestSphereQueryAll) {
+TEST(PhTreeMMDFilterTest, TestSphereQueryAll) {
     const dimension_t dim = 3;
     TestPoint<dim> p{0, 0, 0};
     int n = 0;
     testSphereQuery<dim>(p, 10000, 1000, n);
+    ASSERT_EQ(1000, n);
+}
+
+
+// We use 'int&' because gtest does not compile with assertions in non-void functions.
+template <dimension_t DIM>
+void testSphereQueryForEach(TestPoint<DIM>& center, double radius, size_t N, int& result) {
+    TestTree<DIM, size_t> tree;
+    std::vector<TestPoint<DIM>> points;
+    populate(tree, points, N);
+
+    std::set<size_t> referenceResult;
+    referenceSphereQuery(points, center, radius, referenceResult);
+
+    result = 0;
+    auto filter = FilterMultiMapSphere(center, radius, tree.converter());
+    auto callback = [&result, &referenceResult](PhPointD<DIM>, const size_t& x) {
+        ASSERT_GE(x, 0);
+        ASSERT_EQ(referenceResult.count(x), 1);
+        ++result;
+    };
+    tree.for_each(callback, filter);
+//    for (auto it = tree.begin(filter); it != tree.end(); it++) {
+//        auto& x = *it;
+//        ASSERT_GE(x, 0);
+//        ASSERT_EQ(referenceResult.count(x), 1);
+//        result++;
+//    }
+    ASSERT_EQ(referenceResult.size(), result);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryForEach0) {
+    const dimension_t dim = 3;
+    TestPoint<dim> p{-10000, -10000, -10000};
+    int n = 0;
+    testSphereQueryForEach<dim>(p, 0.1, 100, n);
+    ASSERT_EQ(0, n);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryForEachMany) {
+    const dimension_t dim = 3;
+    TestPoint<dim> p{0, 0, 0};
+    int n = 0;
+    testSphereQueryForEach<dim>(p, 1000, 1000, n);
+    ASSERT_GT(n, 400);
+    ASSERT_LT(n, 800);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryForEachAll) {
+    const dimension_t dim = 3;
+    TestPoint<dim> p{0, 0, 0};
+    int n = 0;
+    testSphereQueryForEach<dim>(p, 10000, 1000, n);
     ASSERT_EQ(1000, n);
 }

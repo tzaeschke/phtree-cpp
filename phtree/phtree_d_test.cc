@@ -186,7 +186,7 @@ void SmokeTestBasicOps(size_t N) {
     PhTreeDebugHelper::CheckConsistency(tree);
 }
 
-TEST(PhTreeDTest, SmokeTestBasicOps) {
+TEST(PhTreeMMDFilterTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<1>(10000);
     SmokeTestBasicOps<3>(10000);
     SmokeTestBasicOps<6>(10000);
@@ -195,7 +195,7 @@ TEST(PhTreeDTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<63>(100);
 }
 
-TEST(PhTreeDTest, TestDebug) {
+TEST(PhTreeMMDFilterTest, TestDebug) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
@@ -231,7 +231,7 @@ TEST(PhTreeDTest, TestDebug) {
     Debug::CheckConsistency(tree);
 }
 
-TEST(PhTreeDTest, TestInsert) {
+TEST(PhTreeMMDFilterTest, TestInsert) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
@@ -270,7 +270,7 @@ TEST(PhTreeDTest, TestInsert) {
     }
 }
 
-TEST(PhTreeDTest, TestEmplace) {
+TEST(PhTreeMMDFilterTest, TestEmplace) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
@@ -317,7 +317,7 @@ TEST(PhTreeDTest, TestEmplace) {
     }
 }
 
-TEST(PhTreeDTest, TestSquareBrackets) {
+TEST(PhTreeMMDFilterTest, TestSquareBrackets) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
@@ -380,7 +380,7 @@ void populate(TestTree<DIM, Id>& tree, std::vector<TestPoint<DIM>>& points, size
     ASSERT_EQ(N, tree.size());
 }
 
-TEST(PhTreeDTest, TestClear) {
+TEST(PhTreeMMDFilterTest, TestClear) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 100;
@@ -406,7 +406,7 @@ TEST(PhTreeDTest, TestClear) {
     points.clear();
 }
 
-TEST(PhTreeDTest, TestFind) {
+TEST(PhTreeMMDFilterTest, TestFind) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -433,7 +433,7 @@ TEST(PhTreeDTest, TestFind) {
     ASSERT_NE(tree.end(), iter1);
 }
 
-TEST(PhTreeDTest, TestUpdateWithEmplace) {
+TEST(PhTreeMMDFilterTest, TestUpdateWithEmplace) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -456,7 +456,7 @@ TEST(PhTreeDTest, TestUpdateWithEmplace) {
     tree.clear();
 }
 
-TEST(PhTreeDTest, TestUpdateWithEmplaceHint) {
+TEST(PhTreeMMDFilterTest, TestUpdateWithEmplaceHint) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -485,7 +485,7 @@ TEST(PhTreeDTest, TestUpdateWithEmplaceHint) {
     tree.clear();
 }
 
-TEST(PhTreeDTest, TestEraseByIterator) {
+TEST(PhTreeMMDFilterTest, TestEraseByIterator) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -505,7 +505,7 @@ TEST(PhTreeDTest, TestEraseByIterator) {
     ASSERT_EQ(0, tree.erase(tree.end()));
 }
 
-TEST(PhTreeDTest, TestEraseByIteratorQuery) {
+TEST(PhTreeMMDFilterTest, TestEraseByIteratorQuery) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -522,7 +522,7 @@ TEST(PhTreeDTest, TestEraseByIteratorQuery) {
     ASSERT_EQ(0, tree.erase(tree.end()));
 }
 
-TEST(PhTreeDTest, TestExtent) {
+TEST(PhTreeMMDFilterTest, TestExtent) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -554,7 +554,7 @@ struct FilterEvenId {
     }
 };
 
-TEST(PhTreeDTest, TestExtentFilter) {
+TEST(PhTreeMMDFilterTest, TestExtentFilter) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -572,7 +572,7 @@ TEST(PhTreeDTest, TestExtentFilter) {
     ASSERT_EQ(N, num_e * 2);
 }
 
-TEST(PhTreeDTest, TestRangeBasedForLoop) {
+TEST(PhTreeMMDFilterTest, TestRangeBasedForLoop) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -632,7 +632,7 @@ void testQuery(TestPoint<DIM>& min, TestPoint<DIM>& max, size_t N, int& result) 
     ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeDTest, TestWindowQuery0) {
+TEST(PhTreeMMDFilterTest, TestWindowQuery0) {
     const dimension_t dim = 3;
     TestPoint<dim> p{-10000, -10000, -10000};
     int n = 0;
@@ -640,7 +640,7 @@ TEST(PhTreeDTest, TestWindowQuery0) {
     ASSERT_EQ(0, n);
 }
 
-TEST(PhTreeDTest, TestWindowQuery1) {
+TEST(PhTreeMMDFilterTest, TestWindowQuery1) {
     size_t N = 1000;
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
@@ -662,7 +662,7 @@ TEST(PhTreeDTest, TestWindowQuery1) {
     ASSERT_EQ(N, n);
 }
 
-TEST(PhTreeDTest, TestWindowQueryMany) {
+TEST(PhTreeMMDFilterTest, TestWindowQueryMany) {
     const dimension_t dim = 3;
     TestPoint<dim> min{-100, -100, -100};
     TestPoint<dim> max{100, 100, 100};
@@ -672,7 +672,7 @@ TEST(PhTreeDTest, TestWindowQueryMany) {
     ASSERT_GE(100, n);
 }
 
-TEST(PhTreeDTest, TestWindowQueryAll) {
+TEST(PhTreeMMDFilterTest, TestWindowQueryAll) {
     const dimension_t dim = 3;
     const size_t N = 10000;
     TestPoint<dim> min{-10000, -10000, -10000};
@@ -682,7 +682,7 @@ TEST(PhTreeDTest, TestWindowQueryAll) {
     ASSERT_EQ(N, n);
 }
 
-TEST(PhTreeDTest, TestWindowQueryManyMoving) {
+TEST(PhTreeMMDFilterTest, TestWindowQueryManyMoving) {
     size_t N = 10000;
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
@@ -716,7 +716,7 @@ TEST(PhTreeDTest, TestWindowQueryManyMoving) {
     ASSERT_GE(5000, nn);
 }
 
-TEST(PhTreeDTest, TestWindowForEachQueryManyMoving) {
+TEST(PhTreeMMDFilterTest, TestWindowForEachQueryManyMoving) {
     size_t N = 10000;
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
@@ -757,7 +757,7 @@ TEST(PhTreeDTest, TestWindowForEachQueryManyMoving) {
     ASSERT_GE(5000, nn);
 }
 
-TEST(PhTreeDTest, TestWindowQueryIterators) {
+TEST(PhTreeMMDFilterTest, TestWindowQueryIterators) {
     size_t N = 1000;
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
@@ -780,7 +780,7 @@ TEST(PhTreeDTest, TestWindowQueryIterators) {
     ASSERT_EQ(N, n);
 }
 
-TEST(PhTreeDTest, TestWindowQueryFilter) {
+TEST(PhTreeMMDFilterTest, TestWindowQueryFilter) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -801,7 +801,7 @@ TEST(PhTreeDTest, TestWindowQueryFilter) {
     ASSERT_GE(50, num_e);
 }
 
-TEST(PhTreeDTest, TestKnnQuery) {
+TEST(PhTreeMMDFilterTest, TestKnnQuery) {
     // deliberately allowing outside of main points range
     DoubleRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -853,7 +853,7 @@ struct PhDistanceLongL1 {
     };
 };
 
-TEST(PhTreeDTest, TestKnnQueryFilterAndDistanceL1) {
+TEST(PhTreeMMDFilterTest, TestKnnQueryFilterAndDistanceL1) {
     // deliberately allowing outside of main points range
     DoubleRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -895,7 +895,7 @@ TEST(PhTreeDTest, TestKnnQueryFilterAndDistanceL1) {
     }
 }
 
-TEST(PhTreeDTest, TestKnnQueryIterator) {
+TEST(PhTreeMMDFilterTest, TestKnnQueryIterator) {
     // deliberately allowing outside of main points range
     DoubleRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -922,7 +922,7 @@ TEST(PhTreeDTest, TestKnnQueryIterator) {
     ASSERT_EQ(Nq, n);
 }
 
-TEST(PhTreeDTest, SmokeTestPoint0) {
+TEST(PhTreeMMDFilterTest, SmokeTestPoint0) {
     // Test edge case: empty tree
     TestPoint<3> p{1, 2, 3};
     TestTree<3, Id> tree;
@@ -943,7 +943,7 @@ TEST(PhTreeDTest, SmokeTestPoint0) {
     ASSERT_TRUE(tree.empty());
 }
 
-TEST(PhTreeDTest, SmokeTestPointInfinity) {
+TEST(PhTreeMMDFilterTest, SmokeTestPointInfinity) {
     // Test inifnity.
     double positive_infinity = std::numeric_limits<double>::infinity();
     double negative_infinity = -positive_infinity;
@@ -1002,7 +1002,7 @@ TEST(PhTreeDTest, SmokeTestPointInfinity) {
     ASSERT_TRUE(tree.empty());
 }
 
-TEST(PhTreeDTest, SmokeTestTreeAPI) {
+TEST(PhTreeMMDFilterTest, SmokeTestTreeAPI) {
     std::map<int, Id*> mapPtr;
     PhTreeD<3, Id*> treePtr;
     Id* idPtr = new Id(1);

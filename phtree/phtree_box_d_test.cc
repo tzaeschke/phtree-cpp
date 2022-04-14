@@ -172,7 +172,7 @@ void SmokeTestBasicOps(size_t N) {
     PhTreeDebugHelper::CheckConsistency(tree);
 }
 
-TEST(PhTreeDTest, SmokeTestBasicOps) {
+TEST(PhTreeMMDFilterTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<1>(100);
     SmokeTestBasicOps<3>(10000);
     SmokeTestBasicOps<6>(10000);
@@ -181,7 +181,7 @@ TEST(PhTreeDTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<31>(100);
 }
 
-TEST(PhTreeDTest, TestDebug) {
+TEST(PhTreeMMDFilterTest, TestDebug) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;

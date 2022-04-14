@@ -583,11 +583,15 @@ TEST(PhTreeMMBoxDTest, TestExtent) {
 
 template <dimension_t DIM, typename T>
 struct FilterEvenId {
-    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<2 * DIM>&, const T& value) const {
-        return value._i % 2 == 0;
+    template <typename BucketT>
+    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<2 * DIM>&, const BucketT&) const {
+        return true;
     }
     [[nodiscard]] constexpr bool IsNodeValid(const PhPoint<2 * DIM>&, int) const {
         return true;
+    }
+    [[nodiscard]] constexpr bool IsBucketEntryValid(const PhPoint<2 * DIM>&, const T& value) const {
+        return value._i % 2 == 0;
     }
 };
 
