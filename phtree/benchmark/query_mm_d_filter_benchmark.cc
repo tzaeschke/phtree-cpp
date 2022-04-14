@@ -322,11 +322,6 @@ void PhTree3DLegacyWQ(benchmark::State& state, Arguments&&... arguments) {
 }
 
 // index type, scenario name, data_type, num_entities, avg_query_result_size
-BENCHMARK_CAPTURE(PhTree3DSphereITWQ, _100, 100.0)
-    ->RangeMultiplier(10)
-    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-    ->Unit(benchmark::kMillisecond);
-
 BENCHMARK_CAPTURE(PhTree3DSphereWQ, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
@@ -338,6 +333,11 @@ BENCHMARK_CAPTURE(PhTree3DSphere, _100, 100.0)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_CAPTURE(PhTree3DWQ, _100, 100.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3DSphereITWQ, _100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
