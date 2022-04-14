@@ -35,6 +35,8 @@ More information about PH-Trees (including a Java implementation) is available [
 
 * [Filters](#filters)
 
+* [Filters for MultiMaps](#filters-for-multimaps)
+
 * [Distance Functions](#distance-functions)
 
 [Converters](#converters)
@@ -176,7 +178,7 @@ for (auto it = tree.begin_knn_query(5, {1, 1, 1}); it != tree.end(); ++it) {
 }
 ```
 
-<a id="Filters"></a>
+<a id="filters"></a>
 
 ##### Filters
 
@@ -204,6 +206,39 @@ struct FilterByValueId {
 for (auto it = tree.begin_query({1, 1, 1}, {3, 3, 3}, FilterByValueId<3, T>())); it != tree.end(); ++it) {
     ...
 }
+```
+Note: The filter example works only for the 'map' version of the PH-Tree, such as `PhTree`, `PhTreeD`, ... .   
+Filters for the `PhTreeMultiMap` are discussed in the next section.
+
+<a id="filters-for-multimaps"></a>
+
+#### Filters for MultiMaps
+
+The `PhTreeMultiMap` requires a different type of filter. In order to function  as a multimap, it uses a collections
+("buckets") as entries for each occupied coordinate. The buckets allow it to store several values per coordinate.
+When using a filter, the PH-Tree will check `IsEntryValid` for every *bucket* (this is different from version 1.x.x
+where it called `IsEntryValid` for every entry in a bucket but never for the bucket itself). 
+Since 2.0.0 there is a new function required in every multimap filter: `IsBucketEntryValid`. It is called once for
+every entry in a bucket if the bucket passed `IsEntryValid`. An example of a geometric filter can be found
+in `phtree/common/filter.h` in `FilterMultiMapAABB`.
+
+```C++
+template <dimension_t DIM, typename T>
+struct FilterMultiMapByValueId {
+    template <typename BucketT>
+    [[nodiscard]] constexpr bool IsEntryValid(const PhPoint<DIM>& key, const BucketT& bucket) const {
+        // Arbitrary example: Only allow keys/buckets with a certain property, eg. keys that lie within a given sphere.
+        return check_some_geometric_propert_of_key(key);
+    }
+    [[nodiscard]] constexpr bool IsBucketEntryValid(const PhPoint<DIM>& key, const T& value) const {
+        // Arbitrary example: Only allow values with even values of id_
+        return value.id_ % 2 == 0;
+    }
+    [[nodiscard]] constexpr bool IsNodeValid(const PhPoint<DIM>& prefix, int bits_to_ignore) const {
+        // Allow all nodes
+        return true;
+    }
+};
 ```
 
 <a id="distance-functions"></a>
