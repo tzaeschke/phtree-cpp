@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
-- Nothing yet
+- **API BREAKING CHANGE**: Allow filtering on buckets in multimaps. Multimap filters have different functions
+  and function signatures than normal `PhTree` filters. [#26](https://github.com/tzaeschke/phtree-cpp/issues/26)
 
 ## [1.2.0] - 2022-04-14
 ### Changed
