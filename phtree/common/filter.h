@@ -105,19 +105,16 @@ struct FilterNoOp {
  * The AABB filter can be used to query a point tree for an axis aligned bounding box (AABB).
  * The result is equivalent to that of the 'begin_query(...)' function.
  */
-template <typename CONVERTER = ConverterIEEE<3>>
+template <typename CONVERTER>
 class FilterAABB {
     using KeyExternal = typename CONVERTER::KeyExternal;
     using KeyInternal = typename CONVERTER::KeyInternal;
     using ScalarInternal = typename CONVERTER::ScalarInternal;
-
     static constexpr auto DIM = CONVERTER::DimInternal;
 
   public:
     FilterAABB(
-        const KeyExternal& min_include,
-        const KeyExternal& max_include,
-        CONVERTER converter = CONVERTER())
+        const KeyExternal& min_include, const KeyExternal& max_include, const CONVERTER& converter)
     : min_external_{min_include}
     , max_external_{max_include}
     , min_internal_{converter.pre(min_include)}
@@ -130,13 +127,13 @@ class FilterAABB {
     void set(const KeyExternal& min_include, const KeyExternal& max_include) {
         min_external_ = min_include;
         max_external_ = max_include;
-        min_internal_ = converter_.pre(min_include);
-        max_internal_ = converter_.pre(max_include);
+        min_internal_ = converter_.get().pre(min_include);
+        max_internal_ = converter_.get().pre(max_include);
     }
 
     template <typename T>
     [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T& /*value*/) const {
-        auto point = converter_.post(key);
+        auto point = converter_.get().post(key);
         for (dimension_t i = 0; i < DIM; ++i) {
             if (point[i] < min_external_[i] || point[i] > max_external_[i]) {
                 return false;
@@ -163,42 +160,39 @@ class FilterAABB {
     }
 
   private:
-    const KeyExternal min_external_;
-    const KeyExternal max_external_;
-    const KeyInternal min_internal_;
-    const KeyInternal max_internal_;
-    const CONVERTER converter_;
+    KeyExternal min_external_;
+    KeyExternal max_external_;
+    KeyInternal min_internal_;
+    KeyInternal max_internal_;
+    std::reference_wrapper<const CONVERTER> converter_;
 };
 
 /*
  * The sphere filter can be used to query a point tree for a sphere.
  */
-template <
-    typename CONVERTER = ConverterIEEE<3>,
-    typename DISTANCE = DistanceEuclidean<CONVERTER::DimInternal>>
+template <typename CONVERTER, typename DISTANCE>
 class FilterSphere {
     using KeyExternal = typename CONVERTER::KeyExternal;
     using KeyInternal = typename CONVERTER::KeyInternal;
     using ScalarInternal = typename CONVERTER::ScalarInternal;
-    using ScalarExternal = typename CONVERTER::ScalarExternal;
-
     static constexpr auto DIM = CONVERTER::DimInternal;
 
   public:
+    template <typename DIST = DistanceEuclidean<CONVERTER::DimExternal>>
     FilterSphere(
         const KeyExternal& center,
-        const ScalarExternal& radius,
-        CONVERTER converter = CONVERTER(),
-        DISTANCE distance_function = DISTANCE())
+        const double radius,
+        const CONVERTER& converter,
+        DIST&& distance_function = DIST())
     : center_external_{center}
     , center_internal_{converter.pre(center)}
     , radius_{radius}
     , converter_{converter}
-    , distance_function_{distance_function} {};
+    , distance_function_(std::forward<DIST>(distance_function)){};
 
     template <typename T>
     [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
-        KeyExternal point = converter_.post(key);
+        KeyExternal point = converter_.get().post(key);
         return distance_function_(center_external_, point) <= radius_;
     }
 
@@ -226,17 +220,23 @@ class FilterSphere {
             closest_in_bounds[i] = std::clamp(center_internal_[i], lo, hi);
         }
 
-        KeyExternal closest_point = converter_.post(closest_in_bounds);
+        KeyExternal closest_point = converter_.get().post(closest_in_bounds);
         return distance_function_(center_external_, closest_point) <= radius_;
     }
 
   private:
-    const KeyExternal center_external_;
-    const KeyInternal center_internal_;
-    const ScalarExternal radius_;
-    const CONVERTER converter_;
-    const DISTANCE distance_function_;
+    KeyExternal center_external_;
+    KeyInternal center_internal_;
+    double radius_;
+    std::reference_wrapper<const CONVERTER> converter_;
+    DISTANCE distance_function_;
 };
+// deduction guide
+template <
+    typename CONV,
+    typename DIST = DistanceEuclidean<CONV::DimExternal>,
+    typename P = typename CONV::KeyExternal>
+FilterSphere(const P&, double, const CONV&, DIST&& fn = DIST()) -> FilterSphere<CONV, DIST>;
 
 /*
  * AABB filter for MultiMaps.
@@ -247,7 +247,7 @@ class FilterMultiMapAABB : public FilterAABB<CONVERTER> {
     using KeyInternal = typename CONVERTER::KeyInternal;
 
   public:
-    FilterMultiMapAABB(const Key& min_include, const Key& max_include, const CONVERTER& converter)
+    FilterMultiMapAABB(const Key& min_include, const Key& max_include, CONVERTER& converter)
     : FilterAABB<CONVERTER>(min_include, max_include, converter){};
 
     template <typename ValueT>
@@ -265,7 +265,7 @@ class FilterMultiMapSphere : public FilterSphere<CONVERTER, DISTANCE> {
     using KeyInternal = typename CONVERTER::KeyInternal;
 
   public:
-    template <typename DIST = DistanceEuclidean<CONVERTER::DimInternal>>
+    template <typename DIST = DistanceEuclidean<CONVERTER::DimExternal>>
     FilterMultiMapSphere(
         const Key& center, double radius, const CONVERTER& converter, DIST&& dist_fn = DIST())
     : FilterSphere<CONVERTER, DIST>(center, radius, converter, std::forward<DIST>(dist_fn)){};
@@ -276,7 +276,7 @@ class FilterMultiMapSphere : public FilterSphere<CONVERTER, DISTANCE> {
     }
 };
 // deduction guide
-template <typename CONV, typename DIST = DistanceEuclidean<CONV::DimInternal>, typename P>
+template <typename CONV, typename DIST = DistanceEuclidean<CONV::DimExternal>, typename P>
 FilterMultiMapSphere(const P&, double, const CONV&, DIST&& fn = DIST())
     -> FilterMultiMapSphere<CONV, DIST>;
 

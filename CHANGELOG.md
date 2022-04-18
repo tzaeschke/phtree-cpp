@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- **API BREAKING CHANGE**: API of filters have been changed to be more correct, explicit and flexible.
+  [#21](https://github.com/tzaeschke/phtree-cpp/issues/21)
+  - Correctness: Converters and distance functions are not copied unnecessarily anymore.
+  - Explicit: 
+    Filters *must* have a mandatory parameter for a converter reference. This ensures that the correct
+            converter is used, probably `tree.converter()`.
+  - Flexible: 
+    Distance functions can be provided through a universal reference (forwarding reference).
+    Also, filters are now movable and copyable. 
+  
 - **API BREAKING CHANGE**: Allow filtering on buckets in multimaps. Multimap filters have different functions
   and function signatures than normal `PhTree` filters. [#26](https://github.com/tzaeschke/phtree-cpp/issues/26)
 

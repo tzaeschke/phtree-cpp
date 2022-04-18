@@ -40,10 +40,11 @@ class PhTree {
         typename std::conditional<(DIM == DimInternal), QueryPoint, QueryIntersect>::type;
 
   public:
+    // Unless specified otherwise this is just PhBox<DIM, SCALAR_EXTERNAL>
     using QueryBox = typename CONVERTER::QueryBoxExternal;
 
-    template <typename CONVERTER2 = CONVERTER>
-    explicit PhTree(CONVERTER2&& converter = CONVERTER())
+    template <typename CONV = CONVERTER>
+    explicit PhTree(CONV&& converter = CONV())
     : tree_{&converter_}, converter_{converter} {}
 
     PhTree(const PhTree& other) = delete;

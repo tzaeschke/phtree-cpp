@@ -491,6 +491,33 @@ void referenceSphereQuery(
     }
 }
 
+template <dimension_t DIM>
+void referenceAABBQuery(
+    std::vector<TestPoint<DIM>>& points,
+    TestPoint<DIM>& center,
+    double radius,
+    std::set<size_t>& result) {
+    for (size_t i = 0; i < points.size(); i++) {
+        auto& p = points[i];
+        bool inside = true;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            inside &= std::abs(p[i] - center[i]) <= radius;
+        }
+
+        if (inside) {
+            result.insert(i);
+        }
+    }
+}
+
+template <dimension_t DIM>
+PhBoxD<DIM> QueryBox(PhPointD<DIM>& center, double radius) {
+    typename TestTree<DIM, size_t>::QueryBox query_box{
+        {center[0] - radius, center[1] - radius, center[2] - radius},
+        {center[0] + radius, center[1] + radius, center[2] + radius}};
+    return query_box;
+}
+
 // We use 'int&' because gtest does not compile with assertions in non-void functions.
 template <dimension_t DIM>
 void testSphereQuery(TestPoint<DIM>& center, double radius, size_t N, int& result) {
@@ -512,33 +539,27 @@ void testSphereQuery(TestPoint<DIM>& center, double radius, size_t N, int& resul
     ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQuery0) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{-10000, -10000, -10000};
-    int n = 0;
-    testSphereQuery<dim>(p, 0.1, 100, n);
-    ASSERT_EQ(0, n);
+template <dimension_t DIM>
+void testSphereQueryWithBox(TestPoint<DIM>& center, double radius, size_t N, int& result) {
+    TestTree<DIM, size_t> tree;
+    std::vector<TestPoint<DIM>> points;
+    populate(tree, points, N);
+
+    std::set<size_t> referenceResult;
+    referenceSphereQuery(points, center, radius, referenceResult);
+
+    result = 0;
+    auto query_box = QueryBox(center, radius);
+    auto filter = FilterMultiMapSphere(center, radius, tree.converter());
+    for (auto it = tree.begin_query(query_box, filter); it != tree.end(); it++) {
+        auto& x = *it;
+        ASSERT_GE(x, 0);
+        ASSERT_EQ(referenceResult.count(x), 1);
+        result++;
+    }
+    ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryMany) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{0, 0, 0};
-    int n = 0;
-    testSphereQuery<dim>(p, 1000, 1000, n);
-    ASSERT_GT(n, 400);
-    ASSERT_LT(n, 800);
-}
-
-TEST(PhTreeMMDFilterTest, TestSphereQueryAll) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{0, 0, 0};
-    int n = 0;
-    testSphereQuery<dim>(p, 10000, 1000, n);
-    ASSERT_EQ(1000, n);
-}
-
-
-// We use 'int&' because gtest does not compile with assertions in non-void functions.
 template <dimension_t DIM>
 void testSphereQueryForEach(TestPoint<DIM>& center, double radius, size_t N, int& result) {
     TestTree<DIM, size_t> tree;
@@ -556,36 +577,109 @@ void testSphereQueryForEach(TestPoint<DIM>& center, double radius, size_t N, int
         ++result;
     };
     tree.for_each(callback, filter);
-//    for (auto it = tree.begin(filter); it != tree.end(); it++) {
-//        auto& x = *it;
-//        ASSERT_GE(x, 0);
-//        ASSERT_EQ(referenceResult.count(x), 1);
-//        result++;
-//    }
+    ASSERT_EQ(referenceResult.size(), result);
+}
+template <dimension_t DIM>
+void testSphereQueryForEachQueryBox(TestPoint<DIM>& center, double radius, size_t N, int& result) {
+    TestTree<DIM, size_t> tree;
+    std::vector<TestPoint<DIM>> points;
+    populate(tree, points, N);
+
+    std::set<size_t> referenceResult;
+    referenceSphereQuery(points, center, radius, referenceResult);
+
+    result = 0;
+    auto query_box = QueryBox(center, radius);
+    auto filter = FilterMultiMapSphere(center, radius, tree.converter());
+    auto callback = [&result, &referenceResult](PhPointD<DIM>, const size_t& x) {
+        ASSERT_GE(x, 0);
+        ASSERT_EQ(referenceResult.count(x), 1);
+        ++result;
+    };
+    tree.for_each(query_box, callback, filter);
     ASSERT_EQ(referenceResult.size(), result);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryForEach0) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{-10000, -10000, -10000};
+template <dimension_t DIM>
+void testAABBQuery(TestPoint<DIM>& center, double radius, size_t N, int& result) {
+    TestTree<DIM, size_t> tree;
+    std::vector<TestPoint<DIM>> points;
+    populate(tree, points, N);
+
+    std::set<size_t> referenceResult;
+    referenceAABBQuery(points, center, radius, referenceResult);
+
+    result = 0;
+    auto query_box = QueryBox(center, radius);
+    auto filter = FilterMultiMapAABB(query_box.min(), query_box.max(), tree.converter());
+    for (auto it = tree.begin(filter); it != tree.end(); it++) {
+        auto& x = *it;
+        ASSERT_GE(x, 0);
+        ASSERT_EQ(referenceResult.count(x), 1);
+        result++;
+    }
+    ASSERT_EQ(referenceResult.size(), result);
+}
+
+template <dimension_t DIM, typename QUERY>
+void Query0(QUERY query) {
+    TestPoint<DIM> p{-10000, -10000, -10000};
     int n = 0;
-    testSphereQueryForEach<dim>(p, 0.1, 100, n);
+    query(p, 0.1, 100, n);
     ASSERT_EQ(0, n);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryForEachMany) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{0, 0, 0};
+template <dimension_t DIM, typename QUERY>
+void QueryMany(QUERY query) {
+    TestPoint<DIM> p{0, 0, 0};
     int n = 0;
-    testSphereQueryForEach<dim>(p, 1000, 1000, n);
+    query(p, 1000, 1000, n);
     ASSERT_GT(n, 400);
     ASSERT_LT(n, 800);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryForEachAll) {
-    const dimension_t dim = 3;
-    TestPoint<dim> p{0, 0, 0};
+template <dimension_t DIM, typename QUERY>
+void QueryManyAABB(QUERY query) {
+    TestPoint<DIM> p{0, 0, 0};
     int n = 0;
-    testSphereQueryForEach<dim>(p, 10000, 1000, n);
+    query(p, 1000, 1000, n);
+    ASSERT_EQ(n, 1000);
+}
+
+template <dimension_t DIM, typename QUERY>
+void QueryAll(QUERY query) {
+    TestPoint<DIM> p{0, 0, 0};
+    int n = 0;
+    query(p, 10000, 1000, n);
     ASSERT_EQ(1000, n);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQuery) {
+    Query0<3>(&testSphereQuery<3>);
+    QueryMany<3>(&testSphereQuery<3>);
+    QueryAll<3>(&testSphereQuery<3>);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryWithQueryBox) {
+    Query0<3>(&testSphereQueryWithBox<3>);
+    QueryMany<3>(&testSphereQueryWithBox<3>);
+    QueryAll<3>(&testSphereQueryWithBox<3>);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryForEach) {
+    Query0<3>(&testSphereQueryForEach<3>);
+    QueryMany<3>(&testSphereQueryForEach<3>);
+    QueryAll<3>(&testSphereQueryForEach<3>);
+}
+
+TEST(PhTreeMMDFilterTest, TestSphereQueryForEachWithQueryBox) {
+    Query0<3>(&testSphereQueryForEachQueryBox<3>);
+    QueryMany<3>(&testSphereQueryForEachQueryBox<3>);
+    QueryAll<3>(&testSphereQueryForEachQueryBox<3>);
+}
+
+TEST(PhTreeMMDFilterTest, TestAABBQuery) {
+    Query0<3>(&testAABBQuery<3>);
+    QueryManyAABB<3>(&testAABBQuery<3>);
+    QueryAll<3>(&testAABBQuery<3>);
 }

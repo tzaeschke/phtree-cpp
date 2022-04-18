@@ -21,7 +21,8 @@
 using namespace improbable::phtree;
 
 TEST(PhTreeFilterTest, FilterSphereTest) {
-    FilterSphere<ConverterNoOp<2, scalar_64_t>, DistanceEuclidean<2>> filter{{5, 3}, 5};
+    ConverterNoOp<2, scalar_64_t> conv{};
+    FilterSphere filter{{5, 3}, 5, conv, DistanceEuclidean<2>{}};
     // root is always valid
     ASSERT_TRUE(filter.IsNodeValid({0, 0}, 63));
     // valid because node encompasses the circle
@@ -44,8 +45,9 @@ TEST(PhTreeFilterTest, FilterSphereTest) {
     ASSERT_FALSE(filter.IsEntryValid({3, 8}, nullptr));
 }
 
-TEST(PhTreeFilterTest, BoxFilterTest) {
-    FilterAABB<ConverterNoOp<2, scalar_64_t>> filter{{3, 3}, {7, 7}};
+TEST(PhTreeFilterTest, FilterAABBTest) {
+    ConverterNoOp<2, scalar_64_t> conv{};
+    FilterAABB filter{{3, 3}, {7, 7}, conv};
     // root is always valid
     ASSERT_TRUE(filter.IsNodeValid({0, 0}, 63));
     // valid because node encompasses the AABB
@@ -63,4 +65,62 @@ TEST(PhTreeFilterTest, FilterNoOpSmokeTest) {
     auto filter = FilterNoOp();
     ASSERT_TRUE(filter.IsNodeValid<PhPoint<3>>({3, 7, 2}, 10));
     ASSERT_TRUE(filter.IsEntryValid<PhPoint<3>>({3, 7, 2}, 10));
+}
+
+template <typename FILTER>
+void TestAssignability() {
+    ASSERT_TRUE(std::is_copy_constructible_v<FILTER>);
+    ASSERT_TRUE(std::is_copy_assignable_v<FILTER>);
+    ASSERT_TRUE(std::is_move_constructible_v<FILTER>);
+    ASSERT_TRUE(std::is_move_assignable_v<FILTER>);
+}
+
+TEST(PhTreeFilterTest, FilterAssignableTest) {
+    using CONV = ConverterIEEE<3>;
+    using DIST = DistanceEuclidean<3>;
+    TestAssignability<FilterNoOp>();
+    TestAssignability<FilterAABB<CONV>>();
+    TestAssignability<FilterSphere<CONV, DIST>>();
+    TestAssignability<FilterMultiMapAABB<CONV>>();
+    TestAssignability<FilterMultiMapSphere<CONV, DIST>>();
+}
+
+TEST(PhTreeFilterTest, ConverterAssignableTest) {
+    TestAssignability<ConverterIEEE<3>>();
+    TestAssignability<ScalarConverterIEEE>();
+}
+
+class TestConverter : public ConverterMultiply<2, 1, 1> {
+  public:
+    TestConverter() = default;
+
+    TestConverter(const TestConverter&) = delete;
+    TestConverter(TestConverter&&) = delete;
+    TestConverter& operator=(const TestConverter&) = delete;
+    TestConverter& operator=(TestConverter&&) = delete;
+};
+
+TEST(PhTreeFilterTest, ConstructFilterAABBTest) {
+    TestConverter conv;
+    FilterAABB filter1{{3, 3}, {7, 7}, conv};
+    ASSERT_TRUE(filter1.IsNodeValid({0, 0}, 63));
+
+    FilterAABB filter2{{3, 3}, {7, 7}, TestConverter()};
+    ASSERT_TRUE(filter2.IsNodeValid({0, 0}, 63));
+}
+
+TEST(PhTreeFilterTest, ConstructFilterSphereTest) {
+    DistanceL1<2> dist;
+    TestConverter conv;
+    FilterSphere filter1a{{3, 3}, 7, conv};
+    ASSERT_TRUE(filter1a.IsNodeValid({0, 0}, 63));
+    FilterSphere filter1b{{3, 3}, 7, conv, {}};
+    ASSERT_TRUE(filter1b.IsNodeValid({0, 0}, 63));
+    FilterSphere filter1c{{3, 3}, 7, conv, dist};
+    ASSERT_TRUE(filter1c.IsNodeValid({0, 0}, 63));
+    FilterSphere filter1d{{3, 3}, 7, conv, DistanceL1<2>{}};
+    ASSERT_TRUE(filter1d.IsNodeValid({0, 0}, 63));
+
+    FilterSphere filter2{{3, 3}, 7, TestConverter()};
+    ASSERT_TRUE(filter2.IsNodeValid({0, 0}, 63));
 }
