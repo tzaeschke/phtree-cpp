@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added FilterBoxAABB and FilterSphereAABB as examples for filtering a PH-Tree with box keys
+  [#33](https://github.com/tzaeschke/phtree-cpp/issues/33)
 ### Changed
 - Removed restrictions on bazel version [#35](https://github.com/tzaeschke/phtree-cpp/issues/35)
 - **API BREAKING CHANGE**: API of filters have been changed to be more correct, explicit and flexible.

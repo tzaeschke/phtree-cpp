@@ -239,6 +239,142 @@ template <
 FilterSphere(const P&, double, const CONV&, DIST&& fn = DIST()) -> FilterSphere<CONV, DIST>;
 
 /*
+ * AABB filter for box keys.
+ * It detects all boxes that overlap partially or fully with the query box.
+ */
+template <typename CONVERTER>
+class FilterBoxAABB {
+    using KeyInternal = typename CONVERTER::KeyInternal;
+    using ScalarInternal = typename CONVERTER::ScalarInternal;
+    using QueryPoint = typename CONVERTER::QueryPointExternal;
+    using QueryPointInternal = typename CONVERTER::QueryPointInternal;
+    static constexpr auto DIM = CONVERTER::DimExternal;
+
+  public:
+    FilterBoxAABB(
+        const QueryPoint& min_include, const QueryPoint& max_include, const CONVERTER& converter)
+    : min_internal_{converter.pre_query(min_include)}
+    , max_internal_{converter.pre_query(max_include)}
+    , converter_{converter} {};
+
+    /*
+     * This function allows resizing/shifting the AABB while iterating over the tree.
+     */
+    void set(const QueryPoint& min_include, const QueryPoint& max_include) {
+        min_internal_ = converter_.get().pre_query(min_include);
+        max_internal_ = converter_.get().pre_query(max_include);
+    }
+
+    template <typename T>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T& /*value*/) const {
+        for (dimension_t i = 0; i < DIM; ++i) {
+            if (key[i + DIM] < min_internal_[i] || key[i] > max_internal_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+        // Let's assume that we always want to traverse the root node (bits_to_ignore == 64)
+        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+            return true;
+        }
+        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_max_bits = ~node_min_bits;
+
+        for (dimension_t i = 0; i < DIM; ++i) {
+            if ((prefix[i] | node_max_bits) < min_internal_[i] ||
+                (prefix[i + DIM] & node_min_bits) > max_internal_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  private:
+    QueryPointInternal min_internal_;
+    QueryPointInternal max_internal_;
+    std::reference_wrapper<const CONVERTER> converter_;
+};
+
+/*
+ * The box sphere filter can be used to query a PH-Tree for boxes that intersect with a sphere.
+ */
+template <typename CONVERTER, typename DISTANCE>
+class FilterBoxSphere {
+    using KeyInternal = typename CONVERTER::KeyInternal;
+    using ScalarInternal = typename CONVERTER::ScalarInternal;
+    using QueryPoint = typename CONVERTER::QueryPointExternal;
+    using QueryPointInternal = typename CONVERTER::QueryPointInternal;
+    static constexpr auto DIM = CONVERTER::DimExternal;
+
+  public:
+    template <typename DIST = DistanceEuclidean<DIM>>
+    FilterBoxSphere(
+        const QueryPoint& center,
+        const double radius,
+        const CONVERTER& converter,
+        DIST&& distance_function = DIST())
+    : center_external_{center}
+    , center_internal_{converter.pre_query(center)}
+    , radius_{radius}
+    , converter_{converter}
+    , distance_function_(std::forward<DIST>(distance_function)){};
+
+    template <typename T>
+    [[nodiscard]] bool IsEntryValid(const KeyInternal& key, const T&) const {
+        QueryPointInternal closest_in_bounds;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            // choose value closest to center for each dimension
+            closest_in_bounds[i] = std::clamp(center_internal_[i], key[i], key[i + DIM]);
+        }
+        QueryPoint closest_point = converter_.get().post_query(closest_in_bounds);
+        return distance_function_(center_external_, closest_point) <= radius_;
+    }
+
+    /*
+     * Calculate whether AABB of all possible points in the node intersects with the sphere.
+     */
+    [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
+        // we always want to traverse the root node (bits_to_ignore == 64)
+
+        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+            return true;
+        }
+
+        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_max_bits = ~node_min_bits;
+
+        QueryPointInternal closest_in_bounds;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            // calculate lower and upper bound for dimension for given node
+            ScalarInternal lo = prefix[i] & node_min_bits;
+            ScalarInternal hi = prefix[i + DIM] | node_max_bits;
+
+            // choose value closest to center for dimension
+            closest_in_bounds[i] = std::clamp(center_internal_[i], lo, hi);
+        }
+
+        QueryPoint closest_point = converter_.get().post_query(closest_in_bounds);
+        return distance_function_(center_external_, closest_point) <= radius_;
+    }
+
+  private:
+    QueryPoint center_external_;
+    QueryPointInternal center_internal_;
+    double radius_;
+    std::reference_wrapper<const CONVERTER> converter_;
+    DISTANCE distance_function_;
+};
+// deduction guide
+template <
+    typename CONV,
+    typename DIST = DistanceEuclidean<CONV::DimExternal>,
+    typename P = typename CONV::KeyExternal>
+FilterBoxSphere(const P&, double, const CONV&, DIST&& fn = DIST()) -> FilterBoxSphere<CONV, DIST>;
+
+/*
  * AABB filter for MultiMaps.
  */
 template <typename CONVERTER>
@@ -276,7 +412,10 @@ class FilterMultiMapSphere : public FilterSphere<CONVERTER, DISTANCE> {
     }
 };
 // deduction guide
-template <typename CONV, typename DIST = DistanceEuclidean<CONV::DimExternal>, typename P>
+template <
+    typename CONV,
+    typename DIST = DistanceEuclidean<CONV::DimExternal>,
+    typename P = typename CONV::KeyExternal>
 FilterMultiMapSphere(const P&, double, const CONV&, DIST&& fn = DIST())
     -> FilterMultiMapSphere<CONV, DIST>;
 

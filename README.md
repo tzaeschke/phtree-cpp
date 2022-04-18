@@ -186,7 +186,8 @@ All queries allow specifying an additional filter. The filter is called for ever
 returned (subject to query constraints) and to every node in the tree that the query decides to traverse (also subject
 to query constraints). Returning `true` in the filter does not change query behaviour, returning `false` means that the
 current value or child node is not returned or traversed. An example of a geometric filter can be found
-in `phtree/common/filter.h` in `FilterAABB`.
+in `phtree/common/filter.h` in `FilterAABB` or `FilterSphere` (for examples with box keys see
+`FilterBoxAABB` or `FilterBoxSphere`).
 
 ```C++
 template <dimension_t DIM, typename T>
@@ -207,20 +208,21 @@ for (auto it = tree.begin_query({1, 1, 1}, {3, 3, 3}, FilterByValueId<3, T>()));
     ...
 }
 ```
-Note: The filter example works only for the 'map' version of the PH-Tree, such as `PhTree`, `PhTreeD`, ... .   
-Filters for the `PhTreeMultiMap` are discussed in the next section.
+
+Note: The filter example works only for the 'map' version of the PH-Tree, such as `PhTree`, `PhTreeD`, ... . Filters for
+the `PhTreeMultiMap` are discussed in the next section.
 
 <a id="filters-for-multimaps"></a>
 
 #### Filters for MultiMaps
 
-The `PhTreeMultiMap` requires a different type of filter. In order to function  as a multimap, it uses a collections
-("buckets") as entries for each occupied coordinate. The buckets allow it to store several values per coordinate.
-When using a filter, the PH-Tree will check `IsEntryValid` for every *bucket* (this is different from version 1.x.x
-where it called `IsEntryValid` for every entry in a bucket but never for the bucket itself). 
-Since 2.0.0 there is a new function required in every multimap filter: `IsBucketEntryValid`. It is called once for
-every entry in a bucket if the bucket passed `IsEntryValid`. An example of a geometric filter can be found
-in `phtree/common/filter.h` in `FilterMultiMapAABB`.
+The `PhTreeMultiMap` requires a different type of filter. In order to function as a multimap, it uses a collections
+("buckets") as entries for each occupied coordinate. The buckets allow it to store several values per coordinate. When
+using a filter, the PH-Tree will check `IsEntryValid` for every *bucket* (this is different from version 1.x.x where it
+called `IsEntryValid` for every entry in a bucket but never for the bucket itself). Since 2.0.0 there is a new function
+required in every multimap filter: `IsBucketEntryValid`. It is called once for every entry in a bucket if the bucket
+passed `IsEntryValid`. An example of a geometric filter can be found in `phtree/common/filter.h` in `FilterMultiMapAABB`
+.
 
 ```C++
 template <dimension_t DIM, typename T>

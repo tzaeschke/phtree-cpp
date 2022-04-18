@@ -126,7 +126,9 @@ class ConverterBase {
     using KeyExternal = KEY_EXTERNAL;
     using KeyInternal = PhPoint<DIM_INTERNAL, SCALAR_INTERNAL>;
     using QueryBoxExternal = QUERY_POINT_EXTERNAL;
-    using QueryBoxInternal = PhBox<DIM_INTERNAL, SCALAR_INTERNAL>;
+    using QueryBoxInternal = PhBox<DIM_EXTERNAL, SCALAR_INTERNAL>;
+    using QueryPointExternal = PhPoint<DIM_EXTERNAL, SCALAR_EXTERNAL>;
+    using QueryPointInternal = PhPoint<DIM_EXTERNAL, SCALAR_INTERNAL>;
 };
 
 /*
@@ -174,6 +176,8 @@ template <
     typename CONVERT = ScalarConverterIEEE>
 class SimplePointConverter : public ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL> {
     using BASE = ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL>;
+
+  public:
     using Point = typename BASE::KeyExternal;
     using PointInternal = typename BASE::KeyInternal;
     using QueryBox = typename BASE::QueryBoxExternal;
@@ -215,9 +219,14 @@ template <
     typename CONVERT = ScalarConverterIEEE>
 class SimpleBoxConverter : public ConverterBoxBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL> {
     using BASE = ConverterBoxBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL>;
+
+  public:
     using Box = typename BASE::KeyExternal;
     using PointInternal = typename BASE::KeyInternal;
     using QueryBox = typename BASE::QueryBoxExternal;
+    using QueryBoxInternal = typename BASE::QueryBoxInternal;
+    using QueryPoint = typename BASE::QueryPointExternal;
+    using QueryPointInternal = typename BASE::QueryPointInternal;
 
     static_assert(std::is_same<Box, PhBox<DIM, SCALAR_EXTERNAL>>::value);
     static_assert(std::is_same<PointInternal, PhPoint<2 * DIM, SCALAR_INTERNAL>>::value);
@@ -243,12 +252,28 @@ class SimpleBoxConverter : public ConverterBoxBase<DIM, SCALAR_EXTERNAL, SCALAR_
     }
 
     auto pre_query(const QueryBox& query_box) const {
-        PhBox<DIM, SCALAR_INTERNAL> out;
+        QueryBoxInternal out;
         auto& min = out.min();
         auto& max = out.max();
         for (dimension_t i = 0; i < DIM; ++i) {
             min[i] = converter_.pre(query_box.min()[i]);
             max[i] = converter_.pre(query_box.max()[i]);
+        }
+        return out;
+    }
+
+    auto pre_query(const QueryPoint& query_point) const {
+        QueryPointInternal out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = converter_.pre(query_point[i]);
+        }
+        return out;
+    }
+
+    auto post_query(const QueryPointInternal& query_point) const {
+        QueryPoint out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = converter_.post(query_point[i]);
         }
         return out;
     }
