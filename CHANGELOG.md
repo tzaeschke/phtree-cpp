@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
-- Removed restrictions on bazel version
+- Removed restrictions on bazel version [#35](https://github.com/tzaeschke/phtree-cpp/issues/35)
 - **API BREAKING CHANGE**: API of filters have been changed to be more correct, explicit and flexible.
   [#21](https://github.com/tzaeschke/phtree-cpp/issues/21)
   - Correctness: Converters and distance functions are not copied unnecessarily anymore.
