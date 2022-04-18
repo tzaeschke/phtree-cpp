@@ -11,8 +11,7 @@ http_archive(
 load("@bazel_skylib//lib:versions.bzl", "versions")
 
 versions.check(
-    minimum_bazel_version = "3.0.0",
-    maximum_bazel_version = "4.2.2",
+    minimum_bazel_version = "2.0.0",
 )
 
 # NOTE: We make third_party/ its own bazel workspace because it allows to run `bazel build ...` without
