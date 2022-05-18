@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Added try_emplace(key, value) and try_emplace(iter_hint, key, value)
+  [#40](https://github.com/tzaeschke/phtree-cpp/issues/40)
 - Added FilterBoxAABB and FilterSphereAABB as examples for filtering a PH-Tree with box keys
   [#33](https://github.com/tzaeschke/phtree-cpp/issues/33)
 ### Changed

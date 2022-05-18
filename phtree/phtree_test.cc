@@ -184,10 +184,12 @@ void SmokeTestBasicOps(size_t N) {
         ASSERT_EQ(tree.end(), tree.find(p));
 
         Id id(i);
-        if (i % 2 == 0) {
+        if (i % 4 == 0) {
             ASSERT_TRUE(tree.emplace(p, i).second);
-        } else {
+        } else if (i % 4 == 1) {
             ASSERT_TRUE(tree.insert(p, id).second);
+        } else {
+            ASSERT_TRUE(tree.try_emplace(p, i).second);
         }
         ASSERT_EQ(tree.count(p), 1);
         ASSERT_NE(tree.end(), tree.find(p));
@@ -564,6 +566,39 @@ TEST(PhTreeTest, TestUpdateWithEmplaceHint) {
 
     tree.emplace_hint(tree.end(), {11, 21, 31}, 421);
     tree.emplace_hint(tree.begin(), {1, 2, 3}, 42);
+    ASSERT_EQ(2, tree.size());
+}
+
+TEST(PhTreeTest, TestUpdateWithTryEmplaceHint) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<int, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t d_n = 0;
+    for (auto& p : points) {
+        auto pOld = p;
+        d_n = (d_n + 1) % deltas.size();
+        int delta = deltas[d_n];
+        TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+        auto iter = tree.find(pOld);
+        int n = tree.erase(iter);
+        ASSERT_EQ(1, n);
+        tree.try_emplace(iter, pNew, 42);
+        ASSERT_EQ(1, tree.count(pNew));
+        if (delta != 0.0) {
+            ASSERT_EQ(0, tree.count(pOld));
+        }
+        p = pNew;
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    tree.try_emplace(tree.end(), {11, 21, 31}, 421);
+    tree.try_emplace(tree.begin(), {1, 2, 3}, 42);
     ASSERT_EQ(2, tree.size());
 }
 

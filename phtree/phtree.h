@@ -93,6 +93,22 @@ class PhTree {
     }
 
     /*
+     * See emplace().
+     */
+    template <typename... Args>
+    std::pair<T&, bool> try_emplace(const Key& key, Args&&... args) {
+        return tree_.emplace(converter_.pre(key), std::forward<Args>(args)...);
+    }
+
+    /*
+     * See emplace_hint().
+     */
+    template <typename ITERATOR, typename... Args>
+    std::pair<T&, bool> try_emplace(const ITERATOR& iterator, const Key& key, Args&&... args) {
+        return tree_.emplace_hint(iterator, converter_.pre(key), std::forward<Args>(args)...);
+    }
+
+    /*
      * See std::map::insert().
      *
      * @return a pair consisting of the inserted element (or to the element that prevented the
