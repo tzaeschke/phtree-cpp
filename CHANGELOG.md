@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added FilterBoxAABB and FilterSphereAABB as examples for filtering a PH-Tree with box keys
   [#33](https://github.com/tzaeschke/phtree-cpp/issues/33)
 ### Changed
+- **API BREAKING CHANGE**: Removed internal use of std::optional(). This may break usage of emplace() that did
+  not provide exactly matching constructor parameter types. E.g. previously an 'int' parameter would match
+  a 'size_t' constructor argument type. This now fails. [#38](https://github.com/tzaeschke/phtree-cpp/issues/38)
 - Removed restrictions on bazel version [#35](https://github.com/tzaeschke/phtree-cpp/issues/35)
 - **API BREAKING CHANGE**: API of filters have been changed to be more correct, explicit and flexible.
   [#21](https://github.com/tzaeschke/phtree-cpp/issues/21)

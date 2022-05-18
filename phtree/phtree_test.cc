@@ -73,6 +73,10 @@ struct Id {
         ++construct_count_;
     }
 
+    explicit Id(const int i) : _i{i} {
+        ++construct_count_;
+    }
+
     Id(const Id& other) {
         ++copy_construct_count_;
         _i = other._i;

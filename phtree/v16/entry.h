@@ -21,15 +21,11 @@
 #include "node.h"
 #include <cassert>
 #include <memory>
-#include <optional>
 
 namespace improbable::phtree::v16 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
-
-template <dimension_t DIM, typename T, typename SCALAR>
-struct EntryVariant;
 
 /*
  * Nodes in the PH-Tree contain up to 2^DIM Entries, one in each geometric quadrant.
@@ -73,20 +69,15 @@ class Entry {
     /*
      * Construct entry with existing T.
      */
-    Entry(const KeyT& k, std::optional<ValueT>&& value) noexcept
-    : kd_key_{k}, value_{std::move(value)}, union_type_{VALUE}, postfix_len_{0} {
-        //        value.reset();  // std::optional's move constructor does not destruct the previous
-    }
+    Entry(const KeyT& k, ValueT&& value) noexcept
+    : kd_key_{k}, value_{std::move(value)}, union_type_{VALUE}, postfix_len_{0} {}
 
     /*
      * Construct entry with new T or moved T.
      */
     template <typename... Args>
     explicit Entry(const KeyT& k, Args&&... args) noexcept
-    : kd_key_{k}
-    , value_{std::in_place, std::forward<Args>(args)...}
-    , union_type_{VALUE}
-    , postfix_len_{0} {}
+    : kd_key_{k}, value_{std::forward<Args>(args)...}, union_type_{VALUE}, postfix_len_{0} {}
 
     Entry(const Entry& other) = delete;
     Entry& operator=(const Entry& other) = delete;
@@ -123,7 +114,7 @@ class Entry {
 
     [[nodiscard]] T& GetValue() const {
         assert(union_type_ == VALUE);
-        return const_cast<T&>(*value_);
+        return const_cast<T&>(value_);
     }
 
     [[nodiscard]] NodeT& GetNode() const {
@@ -154,7 +145,7 @@ class Entry {
         return parent_postfix_len - GetNodePostfixLen() - 1 > 0;
     }
 
-    [[nodiscard]] std::optional<ValueT>&& ExtractValue() noexcept {
+    [[nodiscard]] ValueT&& ExtractValue() noexcept {
         assert(IsValue());
         union_type_ = EMPTY;
         return std::move(value_);
@@ -182,7 +173,7 @@ class Entry {
         if (union_type_ == NODE) {
             new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
         } else if (union_type_ == VALUE) {
-            new (&value_) std::optional<ValueT>{std::move(other.value_)};
+            new (&value_) ValueT{std::move(other.value_)};
         } else {
             assert(false && "Assigning from an EMPTY variant is a waste of time.");
         }
@@ -190,7 +181,7 @@ class Entry {
 
     void DestroyUnion() noexcept {
         if (union_type_ == VALUE) {
-            value_.~optional();
+            value_.~ValueT();
         } else if (union_type_ == NODE) {
             node_.~unique_ptr();
         } else {
@@ -202,16 +193,16 @@ class Entry {
     KeyT kd_key_;
     union {
         std::unique_ptr<NodeT> node_;
-        std::optional<ValueT> value_;
+        ValueT value_;
     };
-    alignas(2) std::uint16_t union_type_;
+    std::uint16_t union_type_;
     // The length (number of bits) of post fixes (the part of the coordinate that is 'below' the
     // current node). If a variable prefix_len would refer to the number of bits in this node's
     // prefix, and if we assume 64 bit values, the following would always hold:
     // prefix_len + 1 + postfix_len = 64.
     // The '+1' accounts for the 1 bit that is represented by the local node's hypercube,
     // i.e. the same bit that is used to create the lookup keys in entries_.
-    alignas(2) std::uint16_t postfix_len_;
+    std::uint16_t postfix_len_;
 };
 
 }  // namespace improbable::phtree::v16
