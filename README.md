@@ -111,6 +111,8 @@ PhPointD<3> p{1.1, 1.0, 10.};
 // Some operations
 tree.emplace(p, my_data);
 tree.emplace_hint(hint, p, my_data);
+tree.try_emplace(p, my_data);
+tree.try_emplace(hint, p, my_data);
 tree.insert(p, my_data);
 tree[p] = my_data;
 tree.count(p);

@@ -69,7 +69,7 @@ class PhTree {
      */
     template <typename... Args>
     std::pair<T&, bool> emplace(const Key& key, Args&&... args) {
-        return tree_.emplace(converter_.pre(key), std::forward<Args>(args)...);
+        return tree_.try_emplace(converter_.pre(key), std::forward<Args>(args)...);
     }
 
     /*
@@ -89,23 +89,7 @@ class PhTree {
      */
     template <typename ITERATOR, typename... Args>
     std::pair<T&, bool> emplace_hint(const ITERATOR& iterator, const Key& key, Args&&... args) {
-        return tree_.emplace_hint(iterator, converter_.pre(key), std::forward<Args>(args)...);
-    }
-
-    /*
-     * See emplace().
-     */
-    template <typename... Args>
-    std::pair<T&, bool> try_emplace(const Key& key, Args&&... args) {
-        return tree_.emplace(converter_.pre(key), std::forward<Args>(args)...);
-    }
-
-    /*
-     * See emplace_hint().
-     */
-    template <typename ITERATOR, typename... Args>
-    std::pair<T&, bool> try_emplace(const ITERATOR& iterator, const Key& key, Args&&... args) {
-        return tree_.emplace_hint(iterator, converter_.pre(key), std::forward<Args>(args)...);
+        return tree_.try_emplace(iterator, converter_.pre(key), std::forward<Args>(args)...);
     }
 
     /*
@@ -116,6 +100,22 @@ class PhTree {
      */
     std::pair<T&, bool> insert(const Key& key, const T& value) {
         return tree_.insert(converter_.pre(key), value);
+    }
+
+    /*
+     * See emplace().
+     */
+    template <typename... Args>
+    std::pair<T&, bool> try_emplace(const Key& key, Args&&... args) {
+        return tree_.try_emplace(converter_.pre(key), std::forward<Args>(args)...);
+    }
+
+    /*
+     * See emplace_hint().
+     */
+    template <typename ITERATOR, typename... Args>
+    std::pair<T&, bool> try_emplace(const ITERATOR& iterator, const Key& key, Args&&... args) {
+        return tree_.try_emplace(iterator, converter_.pre(key), std::forward<Args>(args)...);
     }
 
     /*

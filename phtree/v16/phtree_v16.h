@@ -92,7 +92,7 @@ class PhTreeV16 {
      * entry instead of inserting a new one.
      */
     template <typename... Args>
-    std::pair<T&, bool> emplace(const KeyT& key, Args&&... args) {
+    std::pair<T&, bool> try_emplace(const KeyT& key, Args&&... args) {
         auto* current_entry = &root_;
         bool is_inserted = false;
         while (current_entry->IsNode()) {
@@ -104,7 +104,7 @@ class PhTreeV16 {
     }
 
     /*
-     * The emplace_hint() method uses an iterator as hint for insertion.
+     * The try_emplace(hint, key, value) method uses an iterator as hint for insertion.
      * The hint is ignored if it is not useful or is equal to end().
      *
      * Iterators should normally not be used after the tree has been modified. As an exception to
@@ -116,12 +116,12 @@ class PhTreeV16 {
      * auto iter = tree.find(key1);
      * auto value = iter.second(); // The value may become invalid in erase()
      * erase(iter);
-     * emplace_hint(iter, key2, value);  // the iterator can still be used as hint here
+     * try_emplace(iter, key2, value);  // the iterator can still be used as hint here
      */
     template <typename ITERATOR, typename... Args>
-    std::pair<T&, bool> emplace_hint(const ITERATOR& iterator, const KeyT& key, Args&&... args) {
+    std::pair<T&, bool> try_emplace(const ITERATOR& iterator, const KeyT& key, Args&&... args) {
         if constexpr (!std::is_same_v<ITERATOR, IteratorWithParent<T, CONVERT>>) {
-            return emplace(key, std::forward<Args>(args)...);
+            return try_emplace(key, std::forward<Args>(args)...);
         } else {
             // This function can be used to insert a value close to a known value
             // or close to a recently removed value. The hint can only be used if the new key is
@@ -129,20 +129,20 @@ class PhTreeV16 {
             // The idea behind using the 'parent' is twofold:
             // - The 'parent' node is one level above the iterator position, it is spatially
             //   larger and has a better probability of containing the new position, allowing for
-            //   fast track emplace.
+            //   fast track try_emplace.
             // - Using 'parent' allows a scenario where the iterator was previously used with
             //   erase(iterator). This is safe because erase() will never erase the 'parent' node.
 
             if (!iterator.GetParentNodeEntry()) {
-                // No hint available, use standard emplace()
-                return emplace(key, std::forward<Args>(args)...);
+                // No hint available, use standard try_emplace()
+                return try_emplace(key, std::forward<Args>(args)...);
             }
 
             auto* parent_entry = iterator.GetParentNodeEntry();
             if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
                 parent_entry->GetNodePostfixLen() + 1) {
                 // replace higher up in the tree
-                return emplace(key, std::forward<Args>(args)...);
+                return try_emplace(key, std::forward<Args>(args)...);
             }
 
             // replace in node
@@ -167,7 +167,7 @@ class PhTreeV16 {
      * insertion) and a bool denoting whether the insertion took place.
      */
     std::pair<T&, bool> insert(const KeyT& key, const T& value) {
-        return emplace(key, value);
+        return try_emplace(key, value);
     }
 
     /*
@@ -175,7 +175,7 @@ class PhTreeV16 {
      * and returned.
      */
     T& operator[](const KeyT& key) {
-        return emplace(key).first;
+        return try_emplace(key).first;
     }
 
     /*

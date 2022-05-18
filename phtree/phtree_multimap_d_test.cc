@@ -152,10 +152,12 @@ void SmokeTestBasicOps(size_t N) {
         }
 
         Id id(i);
-        if (i % 2 == 0) {
+        if (i % 4 == 0) {
             ASSERT_TRUE(tree.emplace(p, id).second);
-        } else {
+        } else if (i % 4 == 0) {
             ASSERT_TRUE(tree.insert(p, id).second);
+        } else{
+            ASSERT_TRUE(tree.try_emplace(p, id).second);
         }
         ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
         ASSERT_NE(tree.end(), tree.find(p));

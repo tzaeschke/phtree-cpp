@@ -229,7 +229,7 @@ class PhTreeMultiMap {
      */
     template <typename... Args>
     std::pair<T&, bool> emplace(const Key& key, Args&&... args) {
-        auto& outer_iter = tree_.emplace(converter_.pre(key)).first;
+        auto& outer_iter = tree_.try_emplace(converter_.pre(key)).first;
         auto bucket_iter = outer_iter.emplace(std::forward<Args>(args)...);
         size_ += bucket_iter.second ? 1 : 0;
         return {const_cast<T&>(*bucket_iter.first), bucket_iter.second};
@@ -252,7 +252,7 @@ class PhTreeMultiMap {
      */
     template <typename ITERATOR, typename... Args>
     std::pair<T&, bool> emplace_hint(const ITERATOR& iterator, const Key& key, Args&&... args) {
-        auto result_ph = tree_.emplace_hint(iterator.GetIteratorOfPhTree(), converter_.pre(key));
+        auto result_ph = tree_.try_emplace(iterator.GetIteratorOfPhTree(), converter_.pre(key));
         auto& bucket = result_ph.first;
         if (result_ph.second) {
             // new bucket
@@ -279,6 +279,22 @@ class PhTreeMultiMap {
      */
     std::pair<T&, bool> insert(const Key& key, const T& value) {
         return emplace(key, value);
+    }
+
+    /*
+     * See emplace().
+     */
+    template <typename... Args>
+    std::pair<T&, bool> try_emplace(const Key& key, Args&&... args) {
+        return emplace(key, std::forward<Args>(args)...);
+    }
+
+    /*
+     * See emplace_hint().
+     */
+    template <typename ITERATOR, typename... Args>
+    std::pair<T&, bool> try_emplace(const ITERATOR& iterator, const Key& key, Args&&... args) {
+        return emplace_hint(iterator, key, std::forward<Args>(args)...);
     }
 
     /*
@@ -405,7 +421,7 @@ class PhTreeMultiMap {
         const Key& old_key, const Key& new_key, const T& value, bool always_erase = false) {
         // Be smart: insert first, if the target-map already contains the entry we can avoid erase()
         auto new_key_pre = converter_.pre(new_key);
-        auto& new_bucket = tree_.emplace(new_key_pre).first;
+        auto& new_bucket = tree_.try_emplace(new_key_pre).first;
         auto new_result = new_bucket.emplace(value);
         if (!new_result.second) {
             // Entry is already in correct place -> abort
