@@ -151,11 +151,14 @@ class Node {
      * is returned and nothing is removed.
      *
      * @param key The key of the key/value pair to be erased
-     * @param parent The parent node of the current node (=nullptr) if this is the root node.
+     * @param parent_entry The parent node of the current node (=nullptr) if this is the root node.
+     * @param allow_move_into_parent Whether the node can be merged into the parent if only 1
+     * entry is left.
      * @param found This is and output parameter and will be set to 'true' if a value was removed.
      * @return A child node if the provided key leads to a child node.
      */
-    EntryT* Erase(const KeyT& key, EntryT* parent_entry, bit_width_t postfix_len, bool& found) {
+    EntryT* Erase(const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
+        auto postfix_len = parent_entry->GetNodePostfixLen();
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         auto it = entries_.find(hc_pos);
         if (it != entries_.end() && DoesEntryMatch(it->second, key, postfix_len)) {
@@ -165,7 +168,7 @@ class Node {
             entries_.erase(it);
 
             found = true;
-            if (parent_entry != nullptr && GetEntryCount() == 1) {
+            if (allow_move_into_parent && GetEntryCount() == 1) {
                 // We take the remaining entry from the current node and inserts it into the
                 // parent_entry where it replaces (and implicitly deletes) the current node.
                 parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));

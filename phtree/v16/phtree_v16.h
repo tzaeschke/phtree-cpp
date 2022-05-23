@@ -146,17 +146,14 @@ class PhTreeV16 {
             }
 
             // replace in node
-            auto* current_entry = parent_entry;
+            auto* entry = parent_entry;
             bool is_inserted = false;
-            while (current_entry->IsNode()) {
-                current_entry = &current_entry->GetNode().Emplace(
-                    is_inserted,
-                    key,
-                    current_entry->GetNodePostfixLen(),
-                    std::forward<Args>(args)...);
+            while (entry->IsNode()) {
+                entry = &entry->GetNode().Emplace(
+                    is_inserted, key, entry->GetNodePostfixLen(), std::forward<Args>(args)...);
             }
             num_entries_ += is_inserted;
-            return {current_entry->GetValue(), is_inserted};
+            return {entry->GetValue(), is_inserted};
         }
     }
 
@@ -225,17 +222,12 @@ class PhTreeV16 {
      * @return '1' if a value was found, otherwise '0'.
      */
     size_t erase(const KeyT& key) {
-        auto* current_entry = &root_;
-        // We do not pass in the root entry as parent of a node because we do not want the
-        // root entry to be modified. The reason is simply that a lot of the code in this class
-        // becomes a lot simpler if we can assume the root entry to contain a node.
-        EntryT* non_root_current_entry = nullptr;
+        auto* entry = &root_;
+        // We do not want the root entry to be modified. The reason is simply that a lot of the
+        // code in this class becomes simpler if we can assume the root entry to contain a node.
         bool found = false;
-        while (current_entry) {
-            auto* child_entry = current_entry->GetNode().Erase(
-                key, non_root_current_entry, current_entry->GetNodePostfixLen(), found);
-            current_entry = child_entry;
-            non_root_current_entry = child_entry;
+        while (entry) {
+            entry = entry->GetNode().Erase(key, entry, entry != &root_, found);
         }
         num_entries_ -= found;
         return found;
@@ -243,8 +235,6 @@ class PhTreeV16 {
 
     /*
      * See std::map::erase(). Removes any value at the given iterator location.
-     *
-     *
      *
      * WARNING
      * While this is guaranteed to work correctly, only iterators returned from find()
@@ -265,12 +255,8 @@ class PhTreeV16 {
                 return erase(iter_rich.GetCurrentResult()->GetKey());
             }
             bool found = false;
-            assert(iter_rich.GetCurrentNodeEntry() && iter_rich.GetCurrentNodeEntry()->IsNode());
-            iter_rich.GetCurrentNodeEntry()->GetNode().Erase(
-                iter_rich.GetCurrentResult()->GetKey(),
-                iter_rich.GetCurrentNodeEntry(),
-                iter_rich.GetCurrentNodeEntry()->GetNodePostfixLen(),
-                found);
+            EntryT* entry = iter_rich.GetCurrentNodeEntry();
+            entry->GetNode().Erase(iter_rich.GetCurrentResult()->GetKey(), entry, true, found);
             num_entries_ -= found;
             return found;
         }
