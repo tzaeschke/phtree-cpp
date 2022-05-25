@@ -144,15 +144,22 @@ class b_plus_tree_map {
         return try_emplace_base(key, std::forward<Args>(args)...);
     }
 
-    void erase(key_t key) {
+    template <typename... Args>
+    auto try_emplace(const IterT& hint, key_t key, Args&&... args) {
+        return try_emplace_base(hint, key, std::forward<Args>(args)...);
+    }
+
+    size_t erase(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
             node = node->as_inner()->find(key);
             if (node == nullptr) {
-                return;
+                return 0;
             }
         }
-        size_ -= node->as_leaf()->erase_key(key, *this);
+        auto n = node->as_leaf()->erase_key(key, *this);
+        size_ -= n;
+        return n;
     }
 
     void erase(const IterT& iterator) {
@@ -180,6 +187,15 @@ class b_plus_tree_map {
         while (!node->is_leaf()) {
             node = node->as_inner()->find_or_last(key);
         }
+        return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    auto try_emplace_base(const IterT& hint, key_t key, Args&&... args) {
+        // TODO sanity checkes: correct node?    ==end()?
+        // TODO use hint inside node
+        // TODO can we use this in the PH-TreeV16?
+        auto node = hint.node_;
         return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
     }
 
@@ -441,7 +457,7 @@ class b_plus_tree_map {
         auto try_emplace(key_t key, TreeT& tree, size_t& entry_count, Args&&... args) {
             auto it = this->lower_bound(key);
             if (it != this->data_.end() && it->first == key) {
-                return std::make_pair(it, false);
+                return std::make_pair(IterT(this, it), false);
             }
             ++entry_count;
 
@@ -452,7 +468,7 @@ class b_plus_tree_map {
                 std::piecewise_construct,
                 std::forward_as_tuple(key),
                 std::forward_as_tuple(std::forward<Args>(args)...));
-            return std::make_pair(x, true);
+            return std::make_pair(IterT(this, x), true);
         }
 
         bool erase_key(key_t key, TreeT& tree) {
@@ -649,6 +665,125 @@ class b_plus_tree_map {
     NodeT* root_;
     size_t size_;
 };
+
+template<typename KeyT, typename HashT = std::hash<KeyT>,
+          typename PredT = std::equal_to<KeyT>>
+class b_plus_tree_hash_set {
+    static constexpr size_t COUNT_MAX = 10000;
+    static constexpr HashT hash_{};
+    using key_t = std::uint64_t;
+    class iterator;
+    using IterT = iterator;
+
+  public:
+    b_plus_tree_hash_set() : map_{} {};
+
+    b_plus_tree_hash_set(const b_plus_tree_hash_set&) = default;
+    b_plus_tree_hash_set(b_plus_tree_hash_set&&)  noexcept = default;
+    b_plus_tree_hash_set& operator=(const b_plus_tree_hash_set&) = default;
+    b_plus_tree_hash_set& operator=(b_plus_tree_hash_set&&)  noexcept = default;
+    TODO implement proper copy/move functions for b_plus_tree_map that allow copy/move w/o SEGV
+    ~b_plus_tree_hash_set() = default;
+
+    auto begin() const {
+        return IterT(map_.begin());
+    }
+
+    auto end() const {
+        return IterT(map_.end());
+    }
+
+    auto find(const KeyT& key) const {
+        return IterT(map_.find(hash_(key)));
+    }
+
+    template <typename... Args>
+    auto emplace(Args&&... args) {
+        return try_emplace(std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    auto emplace_hint(const IterT& hint, Args&&... args) {
+        KeyT key(std::forward<Args>(args)...);
+        auto result = map_.try_emplace(hint.map_iter_, hash_(key), std::move(key));
+        return iterator(result.first);
+    }
+
+    template <typename... Args>
+    auto try_emplace(Args&&... args) {
+        KeyT key(std::forward<Args>(args)...);
+        auto result = map_.try_emplace(hash_(key), std::move(key));
+        return std::make_pair(iterator(result.first), result.second);
+    }
+
+    auto erase(const KeyT& key) {
+        return map_.erase(hash_(key));
+    }
+
+    auto erase(const IterT& iterator) {
+        map_.erase(iterator.map_iter_);
+    }
+
+    auto size() const {
+        return map_.size();
+    }
+
+    auto empty() const {
+        return map_.size() == 0;
+    }
+
+  private:
+    class iterator {
+        using T = KeyT;
+        using MapIterType = decltype(std::declval<b_plus_tree_map<KeyT, COUNT_MAX>>().begin());
+        friend b_plus_tree_hash_set<KeyT, HashT, PredT>;
+
+      public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = T*;
+        using reference = T&;
+
+        explicit iterator(MapIterType map_iter) noexcept : map_iter_{map_iter} {}
+
+        // end() iterator
+        iterator() noexcept : map_iter_{} {}
+
+        auto& operator*() const noexcept {
+            return const_cast<T&>(map_iter_->second);
+        }
+
+        auto* operator->() const noexcept {
+            return const_cast<T*>(&map_iter_->second);  /// TODO remove cast?
+        }
+
+        auto& operator++() noexcept {
+            ++map_iter_;
+            return *this;
+        }
+
+        auto operator++(int) noexcept {
+            IterT iterator(*this);
+            ++(*this);
+            return iterator;
+        }
+
+        friend bool operator==(const IterT& left, const IterT& right) noexcept {
+            return left.map_iter_ == right.map_iter_;
+        }
+
+        friend bool operator!=(const IterT& left, const IterT& right) noexcept {
+            return !(left == right);
+        }
+
+      private:
+        MapIterType map_iter_;
+    };
+
+    b_plus_tree_map<KeyT, COUNT_MAX> map_;
+};
+
 }  // namespace improbable::phtree
 
 #endif  // PHTREE_COMMON_B_PLUS_TREE_H
