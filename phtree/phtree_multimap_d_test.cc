@@ -1122,34 +1122,43 @@ void test_tree(TREE& tree) {
     Id id3{3};
     tree.insert(p, id3);
     ASSERT_EQ(tree.size(), 3);
-    ASSERT_EQ(tree.find(p)->_i, 3);
+    ASSERT_EQ(tree.count(p), 3);
+    ASSERT_EQ(tree.find(p, Id(1))->_i, 1);
+    ASSERT_EQ(tree.find(p, Id(2))->_i, 2);
+    ASSERT_EQ(tree.find(p, Id(3))->_i, 3);
 
     auto q_window = tree.begin_query({p, p});
-    ASSERT_EQ(3, q_window->_i);
+    std::set<int> wq_result;
+    wq_result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(2, q_window->_i);
+    wq_result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(1, q_window->_i);
+    wq_result.emplace(q_window->_i);
     ++q_window;
     ASSERT_EQ(q_window, tree.end());
+    ASSERT_EQ(3, wq_result.size());
 
     auto q_extent = tree.begin();
-    ASSERT_EQ(3, q_extent->_i);
+    std::set<int> eq_result;
+    eq_result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(2, q_extent->_i);
+    eq_result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(1, q_extent->_i);
+    eq_result.emplace(q_extent->_i);
     ++q_extent;
     ASSERT_EQ(q_extent, tree.end());
+    ASSERT_EQ(3, eq_result.size());
 
     auto q_knn = tree.begin_knn_query(10, p, DistanceEuclidean<3>());
-    ASSERT_EQ(3, q_knn->_i);
+    std::set<int> knn_result;
+    knn_result.emplace(q_knn->_i);
     ++q_knn;
-    ASSERT_EQ(2, q_knn->_i);
+    knn_result.emplace(q_knn->_i);
     ++q_knn;
-    ASSERT_EQ(1, q_knn->_i);
+    knn_result.emplace(q_knn->_i);
     ++q_knn;
     ASSERT_EQ(q_knn, tree.end());
+    ASSERT_EQ(3, knn_result.size());
 
     ASSERT_EQ(1, tree.erase(p, Id{1}));
     ASSERT_EQ(2, tree.size());
@@ -1160,7 +1169,7 @@ void test_tree(TREE& tree) {
     ASSERT_TRUE(tree.empty());
 }
 
-TEST(PhTreeTest, TestMoveConstruct) {
+TEST(PhTreeMMDTest, TestMoveConstruct) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     PhTreeMultiMapD<3, Id> tree1;
@@ -1171,7 +1180,7 @@ TEST(PhTreeTest, TestMoveConstruct) {
     tree.~PhTreeMultiMap();
 }
 
-TEST(PhTreeTest, TestMoveAssign) {
+TEST(PhTreeMMDTest, TestMoveAssign) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     PhTreeMultiMapD<3, Id> tree1;
@@ -1183,7 +1192,7 @@ TEST(PhTreeTest, TestMoveAssign) {
     tree.~PhTreeMultiMap();
 }
 
-TEST(PhTreeTest, TestMovableIterators) {
+TEST(PhTreeMMDTest, TestMovableIterators) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();

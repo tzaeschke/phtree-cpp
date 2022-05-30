@@ -18,6 +18,7 @@
 #define PHTREE_PHTREE_MULTIMAP_H
 
 #include "common/common.h"
+#include "common/b_plus_tree_hash_map.h"
 #include "v16/phtree_v16.h"
 #include <unordered_set>
 

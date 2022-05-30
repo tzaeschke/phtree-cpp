@@ -11,6 +11,7 @@ cc_library(
         "distance.h",
         "filter.h",
         "flat_array_map.h",
+        "b_plus_tree_hash_map.h",
         "b_plus_tree_map.h",
         "flat_sparse_map.h",
         "tree_stats.h",
@@ -92,6 +93,19 @@ cc_test(
     timeout = "long",
     srcs = [
         "flat_array_map_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":common",
+        "//phtree/testing/gtest_main",
+    ],
+)
+
+cc_test(
+    name = "b_plus_tree_hash_map_test",
+    timeout = "long",
+    srcs = [
+        "b_plus_tree_hash_map_test.cc",
     ],
     linkstatic = True,
     deps = [

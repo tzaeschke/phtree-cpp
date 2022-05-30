@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_COMMON_B_PLUS_TREE_H
-#define PHTREE_COMMON_B_PLUS_TREE_H
+#ifndef PHTREE_COMMON_B_PLUS_TREE_HASH_MAP_H
+#define PHTREE_COMMON_B_PLUS_TREE_HASH_MAP_H
 
 #include "bits.h"
 #include <cassert>
@@ -31,11 +31,13 @@
 namespace improbable::phtree {
 
 /*
- * The b_plus_tree_map is a B+tree implementation that uses a hierarchy of horizontally
+ * The b_plus_tree_hash_map is a B+tree implementation that uses a hierarchy of horizontally
  * connected nodes for fast traversal through all entries.
  *
+ *
  * Behavior:
- * This is a key-value map. Keys are unique, so for every key there is at most one entry.
+ * This is a hash map. It uses hashes as key but of course allows multiple entries per key as long
+ * as the values are no equal.
  *
  * The individual nodes have at most M entries.
  * The tree has O(log n) lookup and O(M log n) insertion/removal time complexity,
@@ -59,12 +61,9 @@ namespace improbable::phtree {
  *   - There is no guarantee that siblings are on the same depth of the tree.
  * - The tree is not balanced
  *
- * TODO since this is a "map" (with 1:1 mapping of key:value), we could optimize splitting and
- *   merging by trying to reduce `dead space`
- *   (space between key1 and key2 that exceeds (key2 - key1)).
  */
 template <typename T, std::uint64_t COUNT_MAX>
-class b_plus_tree_map {
+class b_plus_tree_hash_map {
     class bpt_node_base;
     template <typename ThisT, typename EntryT>
     class bpt_node_data;
@@ -82,22 +81,23 @@ class b_plus_tree_map {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner;
     using LeafIteratorT = decltype(std::vector<bpt_entry_leaf>().begin());
-    using TreeT = b_plus_tree_map<T, COUNT_MAX>;
+    using TreeT = b_plus_tree_hash_map<T, COUNT_MAX>;
 
   public:
-    explicit b_plus_tree_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
+    explicit b_plus_tree_hash_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
-    b_plus_tree_map(const b_plus_tree_map& other) : size_{other.size_} {
+    b_plus_tree_hash_map(const b_plus_tree_hash_map& other) : size_{other.size_} {
         root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
                                        : new NInnerT(*other.root_->as_inner());
     }
 
-    b_plus_tree_map(b_plus_tree_map&& other) noexcept : root_{other.root_}, size_{other.size_} {
+    b_plus_tree_hash_map(b_plus_tree_hash_map&& other) noexcept
+    : root_{other.root_}, size_{other.size_} {
         other.root_ = nullptr;
         other.size_ = 0;
     }
 
-    b_plus_tree_map& operator=(const b_plus_tree_map& other) {
+    b_plus_tree_hash_map& operator=(const b_plus_tree_hash_map& other) {
         assert(this != &other);
         delete root_;
         root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
@@ -106,7 +106,7 @@ class b_plus_tree_map {
         return *this;
     }
 
-    b_plus_tree_map& operator=(b_plus_tree_map&& other) noexcept {
+    b_plus_tree_hash_map& operator=(b_plus_tree_hash_map&& other) noexcept {
         delete root_;
         root_ = other.root_;
         other.root_ = nullptr;
@@ -115,7 +115,7 @@ class b_plus_tree_map {
         return *this;
     }
 
-    ~b_plus_tree_map() {
+    ~b_plus_tree_hash_map() {
         delete root_;
         root_ = nullptr;
     }
@@ -132,7 +132,7 @@ class b_plus_tree_map {
     }
 
     [[nodiscard]] auto find(key_t key) const noexcept {
-        return const_cast<b_plus_tree_map&>(*this).find(key);
+        return const_cast<b_plus_tree_hash_map&>(*this).find(key);
     }
 
     [[nodiscard]] auto lower_bound(key_t key) noexcept {
@@ -614,8 +614,8 @@ class b_plus_tree_map {
     };
 
     class bpt_iterator {
-        using EntryT = typename b_plus_tree_map<T, COUNT_MAX>::bpt_entry_leaf;
-        friend b_plus_tree_map<T, COUNT_MAX>;
+        using EntryT = typename b_plus_tree_hash_map<T, COUNT_MAX>::bpt_entry_leaf;
+        friend b_plus_tree_hash_map<T, COUNT_MAX>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -697,6 +697,126 @@ class b_plus_tree_map {
     NodeT* root_;
     size_t size_;
 };
+
+template <typename KeyT, typename HashT = std::hash<KeyT>, typename PredT = std::equal_to<KeyT>>
+class b_plus_tree_hash_set {
+    static constexpr size_t COUNT_MAX = 10000;
+    static constexpr HashT hash_{};
+    class iterator;
+    using IterT = iterator;
+
+  public:
+    b_plus_tree_hash_set() : map_{} {};
+
+    b_plus_tree_hash_set(const b_plus_tree_hash_set&) = default;
+    b_plus_tree_hash_set(b_plus_tree_hash_set&&) noexcept = default;
+    b_plus_tree_hash_set& operator=(const b_plus_tree_hash_set&) = default;
+    b_plus_tree_hash_set& operator=(b_plus_tree_hash_set&&) noexcept = default;
+    ~b_plus_tree_hash_set() = default;
+
+    auto begin() const {
+        return IterT(map_.begin());
+    }
+
+    auto end() const {
+        return IterT(map_.end());
+    }
+
+    auto find(const KeyT& key) const {
+        return IterT(map_.find(hash_(key)));
+    }
+
+    template <typename... Args>
+    auto emplace(Args&&... args) {
+        return try_emplace(std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    auto emplace_hint(const IterT& hint, Args&&... args) {
+        KeyT key(std::forward<Args>(args)...);
+        auto result = map_.try_emplace(hint.map_iter_, hash_(key), std::move(key));
+        return iterator(result.first);
+    }
+
+    template <typename... Args>
+    auto try_emplace(Args&&... args) {
+        KeyT key(std::forward<Args>(args)...);
+        auto result = map_.try_emplace(hash_(key), std::move(key));
+        return std::make_pair(iterator(result.first), result.second);
+    }
+
+    auto erase(const KeyT& key) {
+        return map_.erase(hash_(key));
+    }
+
+    auto erase(const IterT& iterator) {
+        map_.erase(iterator.map_iter_);
+    }
+
+    auto size() const {
+        return map_.size();
+    }
+
+    auto empty() const {
+        return map_.size() == 0;
+    }
+
+    void _check() {
+        // TODO
+    }
+
+  private:
+    class iterator {
+        using T = KeyT;
+        using MapIterType = decltype(std::declval<b_plus_tree_hash_map<KeyT, COUNT_MAX>>().begin());
+        friend b_plus_tree_hash_set<KeyT, HashT, PredT>;
+
+      public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using pointer = T*;
+        using reference = T&;
+
+        explicit iterator(MapIterType map_iter) noexcept : map_iter_{map_iter} {}
+
+        // end() iterator
+        iterator() noexcept : map_iter_{} {}
+
+        auto& operator*() const noexcept {
+            return const_cast<T&>(map_iter_->second);
+        }
+
+        auto* operator->() const noexcept {
+            return const_cast<T*>(&map_iter_->second);  /// TODO remove cast?
+        }
+
+        auto& operator++() noexcept {
+            ++map_iter_;
+            return *this;
+        }
+
+        auto operator++(int) noexcept {
+            IterT iterator(*this);
+            ++(*this);
+            return iterator;
+        }
+
+        friend bool operator==(const IterT& left, const IterT& right) noexcept {
+            return left.map_iter_ == right.map_iter_;
+        }
+
+        friend bool operator!=(const IterT& left, const IterT& right) noexcept {
+            return !(left == right);
+        }
+
+      private:
+        MapIterType map_iter_;
+    };
+
+    b_plus_tree_hash_map<KeyT, COUNT_MAX> map_;
+};
+
 }  // namespace improbable::phtree
 
-#endif  // PHTREE_COMMON_B_PLUS_TREE_H
+#endif  // PHTREE_COMMON_B_PLUS_TREE_HASH_MAP_H
