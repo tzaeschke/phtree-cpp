@@ -119,7 +119,7 @@ TEST(PhTreeBptHashMapTest, SmokeTest) {
 
     int val = 0;
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, max_size> test_map;
+        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t key = cube_distribution(random_engine);
@@ -163,6 +163,7 @@ TEST(PhTreeBptHashSetTest, SmokeTestNonUnique) {
         for (int j = 0; j < 2 * max_size; j++) {
             size_t key = cube_distribution(random_engine);
             Id id(key);
+            std::cout << "i=" << i << " j=" << j << " k/n=" << key << "/" << n << std::endl;
             bool hasVal = test_map.find(id) != test_map.end();
             bool hasValRef = reference_map.find(id) != reference_map.end();
             ASSERT_EQ(hasVal, hasValRef);
@@ -170,8 +171,6 @@ TEST(PhTreeBptHashSetTest, SmokeTestNonUnique) {
             reference_map.emplace(id);
             test_map.emplace(id);
             test_map._check();
-
-            std::cout << "i=" << i << " j=" << j << " k/n=" << key << "/" << n << std::endl;
 
             ASSERT_EQ(test_map.size(), reference_map.size());
             for (auto id : reference_map) {
@@ -195,7 +194,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, max_size> test_map;
+        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -229,7 +228,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithErase) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, max_size> test_map{};
+        b_plus_tree_hash_map<size_t, Id, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map{};
         std::unordered_map<size_t, size_t> reference_map{};
         std::vector<size_t> key_list{};
         for (int j = 0; j < 2 * max_size; j++) {
@@ -279,7 +278,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestLowerBound) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, max_size> test_map;
+        b_plus_tree_hash_map<size_t, Id, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
