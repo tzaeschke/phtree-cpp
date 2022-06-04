@@ -171,20 +171,15 @@ class b_plus_tree_hash_set {
     template <typename... Args>
     auto emplace(Args&&... args) {
         T t(std::forward<Args>(args)...);
-        auto hash = HashT{}(t);
+        hash_t hash = HashT{}(t);
         return try_emplace_base(hash, std::move(t));
     }
 
-//    template <typename... Args>
-//    auto try_emplace(T key, Args&&... args) {
-//        return try_emplace_base(key, std::forward<Args>(args)...);
-//    }
-
     template <typename... Args>
-    auto try_emplace(const IterT& hint, Args&&... args) {
+    auto emplace_hint(const IterT& hint, Args&&... args) {
         T t(std::forward<Args>(args)...);
         auto hash = HashT{}(t);
-        return try_emplace_base(hint, hash, std::move(t));
+        return try_emplace_base_hint(hint, hash, std::move(t));
     }
 
     size_t erase(const T& value) {
@@ -220,7 +215,7 @@ class b_plus_tree_hash_set {
     }
 
   private:
-    template <typename T2>
+    template <typename T2 = T>
     auto try_emplace_base(hash_t hash, T2&& t) {
         auto node = root_;
         while (!node->is_leaf()) {
@@ -230,7 +225,7 @@ class b_plus_tree_hash_set {
     }
 
     template <typename T2> // TODO universal ref?? -> Probably no, we always pass in a rvalue...
-    auto try_emplace_base(const IterT& hint, hash_t hash, T2&& t) {
+    auto try_emplace_base_hint(const IterT& hint, hash_t hash, T2&& t) {
         // TODO sanity checkes: correct node?    ==end()?
         // TODO use hint inside node
         // TODO can we use this in the PH-TreeV16?
@@ -335,7 +330,7 @@ class b_plus_tree_hash_set {
                 // Nothing to merge, just remove node. This should be rare, i.e. only happens when
                 // a rare 1-entry node has its last entry removed.
                 remove_from_siblings();
-                parent_->remove_node(max_key_old, tree);
+                parent_->remove_node(max_key_old, this, tree);
                 return;
             }
 
@@ -352,7 +347,7 @@ class b_plus_tree_hash_set {
                         data_[0].second = nullptr;
                     }
                     auto prev_node = prev_node_;  // create copy because (this) will be deleted
-                    parent_->remove_node(max_key_old, tree);
+                    parent_->remove_node(max_key_old, this, tree);
                     if (prev_node->parent_ != nullptr) {
                         hash_t old1 = (prev_data.end() - 2)->first;
                         hash_t new1 = (prev_data.end() - 1)->first;
@@ -369,7 +364,7 @@ class b_plus_tree_hash_set {
                         next_data.emplace(next_data.begin(), std::move(data_[0]));
                         data_[0].second = nullptr;
                     }
-                    parent_->remove_node(max_key_old, tree);
+                    parent_->remove_node(max_key_old, this, tree);
                     return;
                 }
                 // This node is too small but there is nothing we can do.
@@ -409,7 +404,7 @@ class b_plus_tree_hash_set {
         }
 
       private:
-        ThisT* split_node(key_t key, TreeT& tree) {
+        ThisT* split_node(hash_t key, TreeT& tree) {
             auto max_key = data_.back().first;
             if (this->parent_ == nullptr) {
                 auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
@@ -488,10 +483,11 @@ class b_plus_tree_hash_set {
             auto it = this->lower_bound(hash);
             PredT equals{};
             IterT iter_full(this, it);
-            while (!iter_full.is_end() && it->first == value) {
-                if (equals(it->second, value)) {
+            while (!iter_full.is_end() && iter_full.hash() == hash) {
+                if (equals(*iter_full, value)) {
                     return iter_full;
                 }
+                ++iter_full;
             }
             return IterT();
         }
@@ -504,12 +500,15 @@ class b_plus_tree_hash_set {
             return IterT();
         }
 
-        [[nodiscard]] auto lower_bound(hash_t hash, const T& value) noexcept {
-            IterT iter_full(this, this->lower_bound(hash));
-            while (!iter_full.is_end() && iter_full->first == hash) {
-                if (PredT{}(iter_full->second, value)) {
+        // TODO remobve/rename !?!?!?
+        [[nodiscard]] auto lower_bound2(hash_t hash, const T& value) noexcept {
+            auto it = this->lower_bound(hash);
+            IterT iter_full(this, it);
+            while (!iter_full.is_end() && iter_full.hash() == hash) {
+                if (PredT{}(*iter_full, value)) {
                     break;
                 }
+                ++iter_full;
             }
             return iter_full;
         }
@@ -535,8 +534,8 @@ class b_plus_tree_hash_set {
             PredT equals{}; // static?
 
             IterT full_iter(this, it);
-            while (!full_iter.is_end() && full_iter->first == hash) {
-                if (equals(full_iter->second, t)) {
+            while (!full_iter.is_end() && full_iter.hash() == hash) {
+                if (equals(*full_iter, t)) {
                     return std::make_pair(full_iter, false);
                 }
                 ++full_iter;
@@ -565,8 +564,8 @@ class b_plus_tree_hash_set {
             auto iter_node = this->lower_bound(hash);
             IterT iter_full(this, iter_node);
             while (!iter_full.is_end() && iter_full->first == hash) {
-                if (PredT{}(iter_full->second, value)) {
-                    this->erase_entry(iter_full, tree);
+                if (PredT{}(*iter_full, value)) {
+                    this->erase_entry(iter_full.iter_, tree);
                     return true;
                 }
             }
@@ -668,10 +667,15 @@ class b_plus_tree_hash_set {
         }
 
         void remove_node(hash_t key_remove, NodeT* node, TreeT& tree) {
-            // TODO node
             auto it_to_erase = this->lower_bound(key_remove);
-            delete it_to_erase->second;
-            this->erase_entry(it_to_erase, tree);
+            while (it_to_erase != this->data_.end() && it_to_erase->first == key_remove) {
+                if (it_to_erase->second == node) {
+                    delete it_to_erase->second;
+                    this->erase_entry(it_to_erase, tree);
+                }
+                ++it_to_erase;
+            }
+            assert(false && "Node not found!");
         }
     };
 
@@ -713,12 +717,12 @@ class b_plus_tree_hash_set {
 
         auto& operator*() const noexcept {
             assert(AssertNotEnd());
-            return const_cast<EntryT&>(*iter_);
+            return const_cast<T&>(iter_->second);
         }
 
         auto* operator->() const noexcept {
             assert(AssertNotEnd());
-            return const_cast<EntryT*>(&*iter_);
+            return const_cast<T*>(&iter_->second);
         }
 
         auto& operator++() noexcept {
@@ -755,6 +759,10 @@ class b_plus_tree_hash_set {
             return node_ != nullptr;
         }
 
+        hash_t hash() {
+            return iter_->first;
+        }
+
         NLeafT* node_;
         LeafIteratorT iter_;
     };
@@ -788,7 +796,7 @@ class b_plus_tree_hash_map {
     }
 
     auto find(const KeyT& key) const {
-        return IterT(map_.find(key, {}));
+        return IterT(map_.find(EntryT{key, {}}));
     }
 
     template <typename... Args>
@@ -799,19 +807,28 @@ class b_plus_tree_hash_map {
     template <typename... Args>
     auto emplace_hint(const IterT& hint, Args&&... args) {
         EntryT key(std::forward<Args>(args)...);
-        auto result = map_.try_emplace(hint.map_iter_, std::move(key)); // TODO forward?
+        auto result = map_.emplace_hint(hint.map_iter_, std::move(key)); // TODO forward?
         return iterator(result.first);
     }
 
     template <typename... Args>
     auto try_emplace(Args&&... args) {
-        EntryT key(std::forward<Args>(args)...);
-        auto result = map_.try_emplace(std::move(key));// TODO forward?
+        //EntryT key(std::forward<Args>(args)...);
+        //auto result = map_.emplace(std::move(key));// TODO forward?
+        auto result = map_.emplace(std::make_pair(std::forward<Args>(args)...));// TODO forward?
         return std::make_pair(iterator(result.first), result.second);
     }
 
+    template <typename... Args>
+    auto try_emplace(const IterT& hint, Args&&... args) {
+        //EntryT key(std::forward<Args>(args)...);
+        EntryT key = std::make_pair(std::forward<Args>(args)...);
+        auto result = map_.emplace_hint(hint.map_iter_, std::move(key)); // TODO forward?
+        return iterator(result.first);
+    }
+
     auto erase(const KeyT& key) {
-        return map_.erase(key);
+        return map_.erase({key, {}});
     }
 
     auto erase(const IterT& iterator) {
@@ -831,10 +848,22 @@ class b_plus_tree_hash_map {
     }
 
   private:
+    struct EntryHashT {
+        size_t operator()(const EntryT& x) const {
+            return HashT{}(x.first);
+        }
+    };
+
+    struct EntryEqualsT {
+        bool operator()(const EntryT& x, const EntryT& y) const {
+            return PredT{}(x.first, y.first);
+        }
+    };
+
     class iterator {
         using T = EntryT;
-        using MapIterType = decltype(std::declval<b_plus_tree_hash_set<EntryT, HashT, PredT, COUNT_MAX>>().begin());
-        friend b_plus_tree_hash_map<KeyT, HashT, PredT>;
+        using MapIterType = decltype(std::declval<b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT, COUNT_MAX>>().begin());
+        friend b_plus_tree_hash_map<KeyT, ValueT, HashT, PredT, COUNT_MAX>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -849,11 +878,11 @@ class b_plus_tree_hash_map {
         iterator() noexcept : map_iter_{} {}
 
         auto& operator*() const noexcept {
-            return const_cast<T&>(map_iter_->second);
+            return const_cast<T&>(*map_iter_);
         }
 
         auto* operator->() const noexcept {
-            return const_cast<T*>(&map_iter_->second);  /// TODO remove cast?
+            return const_cast<T*>(&*map_iter_);  /// TODO remove cast?
         }
 
         auto& operator++() noexcept {
@@ -877,18 +906,6 @@ class b_plus_tree_hash_map {
 
       private:
         MapIterType map_iter_;
-    };
-
-    struct EntryHashT {
-        size_t operator()(const EntryT& x) const {
-            return HashT{}(x.first);
-        }
-    };
-
-    struct EntryEqualsT {
-        size_t operator()(const EntryT& x) const {
-            return PredT{}(x.first);
-        }
     };
 
     b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT, COUNT_MAX> map_;
