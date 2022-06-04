@@ -672,6 +672,7 @@ class b_plus_tree_hash_set {
                 if (it_to_erase->second == node) {
                     delete it_to_erase->second;
                     this->erase_entry(it_to_erase, tree);
+                    return;
                 }
                 ++it_to_erase;
             }
