@@ -34,7 +34,7 @@ std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
 
 const double GLOBAL_MAX = 10000;
 
-enum Scenario { TREE_WITH_MAP, MULTI_MAP };
+enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD };
 
 using payload_t = scalar_64_t;
 
@@ -50,7 +50,10 @@ template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
     SCENARIO == TREE_WITH_MAP,
     PhTreeD<DIM, BucketType, CONVERTER<SCENARIO, DIM>>,
-    PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>>>;
+    typename std::conditional_t<
+        SCENARIO == MULTI_MAP,
+        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
+        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::unordered_set<payload_t>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
@@ -125,6 +128,12 @@ void InsertEntry(
     tree.emplace(point, data);
 }
 
+template <dimension_t DIM>
+void InsertEntry(
+    TestMap<Scenario::MULTI_MAP_STD, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+    tree.emplace(point, data);
+}
+
 template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type UpdateEntry(
     TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
@@ -153,7 +162,7 @@ typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type Updat
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::MULTI_MAP, size_t>::type UpdateEntry(
+typename std::enable_if<SCENARIO != Scenario::TREE_WITH_MAP, size_t>::type UpdateEntry(
     TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
@@ -226,15 +235,27 @@ void PhTreeMultiMap3D(benchmark::State& state, Arguments&&... arguments) {
     benchmark.Benchmark(state);
 }
 
+template <typename... Arguments>
+void PhTreeMultiMapStd3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MULTI_MAP_STD> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
 // index type, scenario name, data_type, num_entities, updates_per_round, move_distance
 // PhTree
-BENCHMARK_CAPTURE(PhTree3D, UPDATE_1000, UPDATES_PER_ROUND)
-    ->RangeMultiplier(10)
-    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-    ->Unit(benchmark::kMillisecond);
+//BENCHMARK_CAPTURE(PhTree3D, UPDATE_1000, UPDATES_PER_ROUND)
+//    ->RangeMultiplier(10)
+//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+//    ->Unit(benchmark::kMillisecond);
+//
+//// PhTreeMultiMap
+//BENCHMARK_CAPTURE(PhTreeMultiMap3D, UPDATE_1000, UPDATES_PER_ROUND)
+//    ->RangeMultiplier(10)
+//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+//    ->Unit(benchmark::kMillisecond);
 
-// PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMap3D, UPDATE_1000, UPDATES_PER_ROUND)
+// PhTreeMultiMap wit std::unordered_set
+BENCHMARK_CAPTURE(PhTreeMultiMapStd3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
