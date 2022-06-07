@@ -156,7 +156,7 @@ void SmokeTestBasicOps(size_t N) {
             ASSERT_TRUE(tree.emplace(p, id).second);
         } else if (i % 4 == 0) {
             ASSERT_TRUE(tree.insert(p, id).second);
-        } else{
+        } else {
             ASSERT_TRUE(tree.try_emplace(p, id).second);
         }
         ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
@@ -498,7 +498,7 @@ TEST(PhTreeMMDTest, TestUpdateWithEmplaceHint) {
     ASSERT_EQ(2, tree.size());
 }
 
-TEST(PhTreeMMDTest, TestUpdateWithRelocate) {
+void TestUpdateWithRelocate(bool use_existing) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -512,7 +512,12 @@ TEST(PhTreeMMDTest, TestUpdateWithRelocate) {
         auto pOld = p;
         d_n = (d_n + 1) % deltas.size();
         double delta = deltas[d_n];
-        TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+        TestPoint<dim> pNew;
+        if (use_existing) {
+            pNew = delta > 0.0 ? points[(i + 17) % N] : pOld;
+        } else {
+            pNew = {pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+        }
         ASSERT_EQ(1, tree.relocate(pOld, pNew, Id(i)));
         if (delta > 0.0) {
             // second time fails because value has already been moved
@@ -525,6 +530,14 @@ TEST(PhTreeMMDTest, TestUpdateWithRelocate) {
 
     ASSERT_EQ(N, tree.size());
     tree.clear();
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateDelta) {
+    TestUpdateWithRelocate(false);
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateToExisting) {
+    TestUpdateWithRelocate(true);
 }
 
 TEST(PhTreeMMDTest, TestEraseByIterator) {
