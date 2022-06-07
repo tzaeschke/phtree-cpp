@@ -194,35 +194,6 @@ TEST(PhTreeBptHashSetTest, SmokeTestSameHash) {
     };
 
     SmokeTestSetNonUnique<DumbHash>();
-//    for (int i = 0; i < 10; i++) {
-//        b_plus_tree_hash_set<Id, DumbHash> test_map;
-//        std::unordered_set<Id> reference_map;
-//        int n = 0;
-//        for (int j = 0; j < 2 * max_size; j++) {
-//            size_t key = cube_distribution(random_engine);
-//            Id id(key);
-// //           std::cout << "i=" << i << " j=" << j << " k/n=" << key << "/" << n << std::endl;
-//            bool hasVal = test_map.find(id) != test_map.end();
-//            bool hasValRef = reference_map.find(id) != reference_map.end();
-//            ASSERT_EQ(hasVal, hasValRef);
-//
-//            reference_map.emplace(id);
-//            test_map.emplace(id);
-//            test_map._check();
-//
-//            ASSERT_EQ(test_map.size(), reference_map.size());
-//            for (auto id : reference_map) {
-//                Id& idMap = *test_map.find(id);
-//                ASSERT_EQ(idMap, id);
-//            }
-//            for (auto id : test_map) {
-//                const Id& vRef = *reference_map.find(id);
-//                Id& vMap = *test_map.find(id);  // TODO require const?
-//                ASSERT_EQ(vMap, vRef);
-//            }
-//            ++n;
-//        }
-//    }
 }
 
 TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
@@ -260,7 +231,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
 
 template <typename HashT>
 void SmokeTestWithErase() {
-    const int max_size = 20;
+    const int max_size = 200;
 
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
@@ -286,9 +257,6 @@ void SmokeTestWithErase() {
             Id id(key);
             std::cout << "Erase: i=" << i << " x=" << x << "  key=" << key << std::endl;
             // This may try to erase an entry that does not exist!
-            if (i == 1) {
-                assert(true); // TODO
-            }
             if (key % 2 == 0) {
                 test_map.erase(id);
             } else {
@@ -301,10 +269,6 @@ void SmokeTestWithErase() {
             reference_map.erase(id);
             for (auto it : reference_map) {
                 const Id& vRef = it.first;
-                if (i == 1) {
-                   // ASSERT_EQ(test_map.count(vRef), 1);
-                   assert(true); // TODO
-                }
                 Id& vMap = test_map.find(vRef)->first;
                 ASSERT_EQ(vMap, vRef);
             }
@@ -330,7 +294,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithEraseSameHash) {
             return 42;
         }
     };
-    // TODO SmokeTestWithErase<DumbHash>();
+    SmokeTestWithErase<DumbHash>();
 }
 
 

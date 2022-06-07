@@ -84,7 +84,7 @@ class b_plus_tree_hash_set {
     class bpt_node_inner;
     class bpt_iterator;
 
-    using hash_t = std::uint64_t;
+    using hash_t = std::uint64_t; // TODO 32bit?
 
     using bpt_entry_inner = std::pair<hash_t, bpt_node_base*>;
     using bpt_entry_leaf = std::pair<hash_t, T>;
@@ -153,17 +153,17 @@ class b_plus_tree_hash_set {
         return const_cast<b_plus_tree_hash_set&>(*this).find(value) != end();
     }
 
-    [[nodiscard]] auto lower_bound(const T& value) noexcept {
-        auto node = root_;
-        auto hash = HashT{}(value);
-        while (!node->is_leaf()) {
-            node = node->as_inner()->find(hash);
-            if (node == nullptr) {
-                return end();
-            }
-        }
-        return node->as_leaf()->lower_bound_as_iter(hash, value);
-    }
+//    [[nodiscard]] auto lower_bound(const T& value) noexcept {
+//        auto node = root_;
+//        auto hash = HashT{}(value);
+//        while (!node->is_leaf()) {
+//            node = node->as_inner()->find(hash);
+//            if (node == nullptr) {
+//                return end();
+//            }
+//        }
+//        return node->as_leaf()->lower_bound_as_iter(hash, value);
+//    }
 
     [[nodiscard]] auto begin() noexcept {
         return IterT(root_);
@@ -366,7 +366,7 @@ class b_plus_tree_hash_set {
                     if (prev_node->parent_ != nullptr) {
                         hash_t old1 = (prev_data.end() - 2)->first;
                         hash_t new1 = (prev_data.end() - 1)->first;
-                        prev_node->parent_->update_key(old1, new1);
+                        prev_node->parent_->update_key(old1, new1, prev_node);
                     }
                     return;
                 } else if (next_node_ != nullptr && next_node_->data_.size() < this->M_max()) {
@@ -385,14 +385,14 @@ class b_plus_tree_hash_set {
                 // This node is too small but there is nothing we can do.
             }
             if (it_to_erase == data_.end()) {
-                parent_->update_key(max_key_old, data_.back().first);
+                parent_->update_key(max_key_old, data_.back().first, this);
             }
         }
 
         auto prepare_emplace(hash_t key, TreeT& tree, DataIteratorT& it_in_out) {
             if (data_.size() < this->M_max()) {
                 if (this->parent_ != nullptr && key > data_.back().first) {
-                    this->parent_->update_key(data_.back().first, key);
+                    this->parent_->update_key(data_.back().first, key, this);
                 }
                 return static_cast<ThisT*>(this);
             }
@@ -458,7 +458,7 @@ class b_plus_tree_hash_set {
                 split_key = key;
             }
             this->parent_->update_key_and_add_node(
-                max_key, split_key, std::max(max_key, key), node2, tree);
+                max_key, split_key, std::max(max_key, key), this, node2, tree);
 
             // Return node for insertion of new value
             return key > split_key ? node2 : static_cast<ThisT*>(this);
@@ -486,14 +486,6 @@ class b_plus_tree_hash_set {
 
         ~bpt_node_leaf() noexcept = default;
 
-//        [[nodiscard]] IterT find(hash_t hash) noexcept {
-//            auto it = this->lower_bound(hash);
-//            if (it != this->data_.end() && it->first == key) {
-//                return IterT(this, it);
-//            }
-//            return IterT();
-//        }
-
         [[nodiscard]] IterT find(hash_t hash, const T& value) noexcept {
             auto it = this->lower_bound(hash);
             PredT equals{};
@@ -507,13 +499,13 @@ class b_plus_tree_hash_set {
             return IterT();
         }
 
-        [[nodiscard]] IterT lower_bound_as_iter(hash_t hash) noexcept {
-            auto it = this->lower_bound(hash);
-            if (it != this->data_.end()) {
-                return IterT(this, it);
-            }
-            return IterT();
-        }
+//        [[nodiscard]] IterT lower_bound_as_iter(hash_t hash) noexcept {
+//            auto it = this->lower_bound(hash);
+//            if (it != this->data_.end()) {
+//                return IterT(this, it);
+//            }
+//            return IterT();
+//        }
 
         // TODO remobve/rename !?!?!?
         [[nodiscard]] auto lower_bound2(hash_t hash, const T& value) noexcept {
@@ -620,6 +612,17 @@ class b_plus_tree_hash_set {
             }
         }
 
+        [[nodiscard]] auto lower_bound_node(hash_t hash, const NodeT* node) noexcept {
+            auto it = this->lower_bound(hash);
+            while (it != this->data_.end() && it->first == hash) {
+                if (it->second == node) {
+                    return it;
+                }
+                ++it;
+            }
+            return this->data_.end();
+        }
+
         [[nodiscard]] NodeT* find(hash_t hash) noexcept {
             auto it = this->lower_bound(hash);
             return it != this->data_.end() ? it->second : nullptr;
@@ -650,17 +653,17 @@ class b_plus_tree_hash_set {
             }
         }
 
-        void update_key(hash_t old_key, hash_t new_key) {
+        void update_key(hash_t old_key, hash_t new_key, NodeT* node) {
             if (old_key == new_key) {
                 return; // This can happen due to multiple entries with same hash.
             }
             assert(new_key != old_key);
-            auto it = this->lower_bound(old_key);
+            auto it = this->lower_bound_node(old_key, node);
             assert(it != this->data_.end());
             assert(it->first == old_key);
             it->first = new_key;
             if (this->parent_ != nullptr && ++it == this->data_.end()) {
-                this->parent_->update_key(old_key, new_key);
+                this->parent_->update_key(old_key, new_key, this);
             }
         }
 
@@ -672,10 +675,10 @@ class b_plus_tree_hash_set {
          * - Node1: key1_old > key1_new; Node 1 vs 2: key2 > new_key1
          */
         void update_key_and_add_node(
-            hash_t key1_old, hash_t key1_new, hash_t key2, NodeT* child2, TreeT& tree) {
+            hash_t key1_old, hash_t key1_new, hash_t key2, NodeT* child1, NodeT* child2, TreeT& tree) {
             //assert(key2 > key1_new);
             assert(key1_old >= key1_new);
-            auto it2 = this->lower_bound(key1_old) + 1;
+            auto it2 = this->lower_bound_node(key1_old, child1) + 1;
 
             auto dest = this->prepare_emplace(key2, tree, it2);
             // prepare_emplace() guarantees that child2 is in the same node as child1
