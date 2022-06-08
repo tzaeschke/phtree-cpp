@@ -75,7 +75,7 @@ namespace improbable::phtree {
  * - The tree is not balanced
  *
  */
-template <typename T, typename HashT = std::hash<T>, typename PredT = std::equal_to<T>, std::uint64_t COUNT_MAX = 1000000>
+template <typename T, typename HashT = std::hash<T>, typename PredT = std::equal_to<T>>
 class b_plus_tree_hash_set {
     class bpt_node_base;
     template <typename ThisT, typename EntryT>
@@ -84,7 +84,7 @@ class b_plus_tree_hash_set {
     class bpt_node_inner;
     class bpt_iterator;
 
-    using hash_t = std::uint64_t; // TODO 32bit?
+    using hash_t = std::uint32_t;
 
     using bpt_entry_inner = std::pair<hash_t, bpt_node_base*>;
     using bpt_entry_leaf = std::pair<hash_t, T>;
@@ -94,7 +94,7 @@ class b_plus_tree_hash_set {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner;
     using LeafIteratorT = decltype(std::vector<bpt_entry_leaf>().begin());
-    using TreeT = b_plus_tree_hash_set<T, HashT, PredT, COUNT_MAX>;
+    using TreeT = b_plus_tree_hash_set<T, HashT, PredT>;
 
   public:
     explicit b_plus_tree_hash_set() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
@@ -153,18 +153,6 @@ class b_plus_tree_hash_set {
         return const_cast<b_plus_tree_hash_set&>(*this).find(value) != end();
     }
 
-//    [[nodiscard]] auto lower_bound(const T& value) noexcept {
-//        auto node = root_;
-//        auto hash = HashT{}(value);
-//        while (!node->is_leaf()) {
-//            node = node->as_inner()->find(hash);
-//            if (node == nullptr) {
-//                return end();
-//            }
-//        }
-//        return node->as_leaf()->lower_bound_as_iter(hash, value);
-//    }
-
     [[nodiscard]] auto begin() noexcept {
         return IterT(root_);
     }
@@ -196,20 +184,23 @@ class b_plus_tree_hash_set {
         return node->as_leaf()->try_emplace(hash, *this, size_, std::move(t));
     }
 
-
     template <typename... Args>
     auto emplace_hint(const IterT& hint, Args&&... args) {
-        assert(hint != end());
-        assert(hint.node_->is_leaf());
-        // TODO sanity checks: correct node?
-        // TODO use hint inside node
-        // TODO can we use this in the PH-TreeV16?
+        if (empty() || hint.is_end() || !hint.node_->is_leaf()) {
+            return emplace(std::forward<Args>(args)...).first;
+        }
+
         T t(std::forward<Args>(args)...);
         auto hash = HashT{}(t);
-        auto node = hint.node_;
-        return node->as_leaf()->try_emplace(hash, *this, size_, std::move(t)).first;
-    }
+        auto node = hint.node_->as_leaf();
 
+        // The following may drop a valid hint but is easy to check.
+        if (node->data_.begin()->first > hash || (node->data_.end() - 1)->first < hash) {
+            return emplace(std::move(t)).first;
+        }
+
+        return node->try_emplace(hash, *this, size_, std::move(t)).first;
+    }
 
     size_t erase(const T& value) {
         auto node = root_;
@@ -281,15 +272,12 @@ class b_plus_tree_hash_set {
         using DataIteratorT = decltype(std::vector<EntryT>().begin());
         friend IterT;
 
-        constexpr static size_t M_leaf = std::min(size_t(4), COUNT_MAX);
-        // Default MAX is 32. Special case for small COUNT with smaller inner leaf or
-        // trees with a single inner leaf. '*2' is added because leaf filling is not compact.
-        constexpr static size_t M_inner = std::min(size_t(16), COUNT_MAX / M_leaf * 2);
-        // TODO This could be improved but requires a code change to move > 1 entry when merging.
+        constexpr static size_t M_leaf = 16;
+        constexpr static size_t M_inner = 16;
+        // A value >2 requires a code change to move > 1 entry when merging.
         constexpr static size_t M_leaf_min = 2;   // std::max((size_t)2, M_leaf >> 2);
         constexpr static size_t M_inner_min = 2;  // std::max((size_t)2, M_inner >> 2);
-        // There is no point in allocating more leaf space than the max amount of entries.
-        constexpr static size_t M_leaf_init = std::min(size_t(8), COUNT_MAX);
+        constexpr static size_t M_leaf_init = 8;
         constexpr static size_t M_inner_init = 4;
 
       public:
@@ -473,7 +461,7 @@ class b_plus_tree_hash_set {
             }
         }
 
-      protected:
+      public:
         std::vector<EntryT> data_;
         ThisT* prev_node_;
         ThisT* next_node_;
@@ -499,14 +487,6 @@ class b_plus_tree_hash_set {
             return IterT();
         }
 
-//        [[nodiscard]] IterT lower_bound_as_iter(hash_t hash) noexcept {
-//            auto it = this->lower_bound(hash);
-//            if (it != this->data_.end()) {
-//                return IterT(this, it);
-//            }
-//            return IterT();
-//        }
-
         // TODO remobve/rename !?!?!?
         [[nodiscard]] auto lower_bound2(hash_t hash, const T& value) noexcept {
             auto it = this->lower_bound(hash);
@@ -520,50 +500,23 @@ class b_plus_tree_hash_set {
             return iter_full;
         }
 
-        template <typename... Args>
-        auto try_emplace(hash_t hash, TreeT& tree, size_t& entry_count, Args&&... args) {
+        auto try_emplace(hash_t hash, TreeT& tree, size_t& entry_count, T&& t) {
             auto it = this->lower_bound(hash);
 
-            if (it == this->data_.end() || it->first != hash) {
-                // fast track insert
-                ++entry_count;
-                auto dest = this->prepare_emplace(hash, tree, it);
-                auto x = dest->data_.emplace(
-                    it,
-                    std::piecewise_construct,
-                    std::forward_as_tuple(hash),
-                    std::forward_as_tuple(std::forward<Args>(args)...));
-                return std::make_pair(IterT(this, x), true);
-            }
-
-            // Hash collision !
-            T t(std::forward<Args>(args)...);
-            PredT equals{}; // static?
-
-            IterT full_iter(this, it);
-            while (!full_iter.is_end() && full_iter.hash() == hash) {
-                if (equals(*full_iter, t)) {
-                    return std::make_pair(full_iter, false);
+            if (it != this->data_.end() && it->first == hash) {
+                // Hash collision !
+                PredT equals{};  // static?
+                IterT full_iter(this, it);
+                while (!full_iter.is_end() && full_iter.hash() == hash) {
+                    if (equals(*full_iter, t)) {
+                        return std::make_pair(full_iter, false);
+                    }
+                    ++full_iter;
                 }
-                ++full_iter;
             }
-//            if (it != this->data_.end() && it->first == key) {
-//                return std::make_pair(IterT(this, it), false);
-//            }
             ++entry_count;
-
             auto dest = this->prepare_emplace(hash, tree, it);
-
-            //            auto x = dest->data_.emplace(
-            //                it,
-            //                std::piecewise_construct,
-            //                std::forward_as_tuple(key),
-            //                std::forward_as_tuple(std::forward<Args>(args)...));
-            auto x = dest->data_.emplace(
-                it,  // TODO "it"? Should we use sorted insert?
-                std::piecewise_construct,
-                std::forward_as_tuple(hash),
-                std::forward_as_tuple(std::move(t)));
+            auto x = dest->data_.emplace(it, hash, std::move(t));
             return std::make_pair(IterT(this, x), true);
         }
 
@@ -585,7 +538,11 @@ class b_plus_tree_hash_set {
         }
 
         void _check(
-            size_t& count, NInnerT* parent, NLeafT*& prev_leaf, hash_t& known_min, hash_t known_max) {
+            size_t& count,
+            NInnerT* parent,
+            NLeafT*& prev_leaf,
+            hash_t& known_min,
+            hash_t known_max) {
             this->_check_data(parent, known_max);
 
             assert(prev_leaf == this->prev_node_);
@@ -638,7 +595,11 @@ class b_plus_tree_hash_set {
         }
 
         void _check(
-            size_t& count, NInnerT* parent, NLeafT*& prev_leaf, hash_t& known_min, hash_t known_max) {
+            size_t& count,
+            NInnerT* parent,
+            NLeafT*& prev_leaf,
+            hash_t& known_min,
+            hash_t known_max) {
             this->_check_data(parent, known_max);
 
             assert(this->parent_ == nullptr || known_max == this->data_.back().first);
@@ -655,7 +616,7 @@ class b_plus_tree_hash_set {
 
         void update_key(hash_t old_key, hash_t new_key, NodeT* node) {
             if (old_key == new_key) {
-                return; // This can happen due to multiple entries with same hash.
+                return;  // This can happen due to multiple entries with same hash.
             }
             assert(new_key != old_key);
             auto it = this->lower_bound_node(old_key, node);
@@ -675,8 +636,13 @@ class b_plus_tree_hash_set {
          * - Node1: key1_old > key1_new; Node 1 vs 2: key2 > new_key1
          */
         void update_key_and_add_node(
-            hash_t key1_old, hash_t key1_new, hash_t key2, NodeT* child1, NodeT* child2, TreeT& tree) {
-            //assert(key2 > key1_new);
+            hash_t key1_old,
+            hash_t key1_new,
+            hash_t key2,
+            NodeT* child1,
+            NodeT* child2,
+            TreeT& tree) {
+            // assert(key2 > key1_new);
             assert(key1_old >= key1_new);
             auto it2 = this->lower_bound_node(key1_old, child1) + 1;
 
@@ -703,8 +669,8 @@ class b_plus_tree_hash_set {
     };
 
     class bpt_iterator {
-        using EntryT = typename b_plus_tree_hash_set<T, HashT, PredT, COUNT_MAX>::bpt_entry_leaf;
-        friend b_plus_tree_hash_set<T, HashT, PredT, COUNT_MAX>;
+        using EntryT = typename b_plus_tree_hash_set<T, HashT, PredT>::bpt_entry_leaf;
+        friend b_plus_tree_hash_set<T, HashT, PredT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -714,7 +680,8 @@ class b_plus_tree_hash_set {
         using reference = T&;
 
         // Arbitrary position iterator
-        explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept : node_{it==node->data_.end() ? nullptr : node}, iter_{it} {
+        explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept
+        : node_{it == node->data_.end() ? nullptr : node}, iter_{it} {
             assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
         }
 
@@ -777,6 +744,7 @@ class b_plus_tree_hash_set {
         bool is_end() const noexcept {
             return node_ == nullptr;
         }
+
       private:
         [[nodiscard]] inline bool AssertNotEnd() const noexcept {
             return node_ != nullptr;
@@ -795,7 +763,11 @@ class b_plus_tree_hash_set {
     size_t size_;
 };
 
-template <typename KeyT, typename ValueT, typename HashT = std::hash<KeyT>, typename PredT = std::equal_to<KeyT>, size_t COUNT_MAX = 10000>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashT = std::hash<KeyT>,
+    typename PredT = std::equal_to<KeyT>>
 class b_plus_tree_hash_map {
     class iterator;
     using IterT = iterator;
@@ -819,8 +791,11 @@ class b_plus_tree_hash_map {
     }
 
     auto find(const KeyT& key) const {
-        // TODO provide find(key) in set()?
         return IterT(map_.find(EntryT{key, {}}));
+    }
+
+    auto count(const KeyT& key) const {
+        return map_.count(EntryT{key, {}});
     }
 
     template <typename... Args>
@@ -830,24 +805,20 @@ class b_plus_tree_hash_map {
 
     template <typename... Args>
     auto emplace_hint(const IterT& hint, Args&&... args) {
-        EntryT key(std::forward<Args>(args)...);
-        auto result = map_.emplace_hint(hint.map_iter_, std::move(key)); // TODO forward?
-        return iterator(result.first);
+        auto result = map_.emplace_hint(hint.map_iter_, std::forward<Args>(args)...);
+        return iterator(result);
     }
 
     template <typename... Args>
     auto try_emplace(Args&&... args) {
-        //EntryT key(std::forward<Args>(args)...);
-        //auto result = map_.emplace(std::move(key));// TODO forward?
-        auto result = map_.emplace(std::make_pair(std::forward<Args>(args)...));// TODO forward?
+        auto result = map_.emplace(std::forward<Args>(args)...);
         return std::make_pair(iterator(result.first), result.second);
     }
 
     template <typename... Args>
     auto try_emplace(const IterT& hint, Args&&... args) {
-        //EntryT key(std::forward<Args>(args)...);
-        EntryT key = std::make_pair(std::forward<Args>(args)...);
-        auto result = map_.emplace_hint(hint.map_iter_, std::move(key)); // TODO forward?
+        // EntryT key = std::make_pair(std::forward<Args>(args)...);
+        auto result = map_.emplace_hint(hint.map_iter_, std::forward<Args>(args)...);
         return iterator(result.first);
     }
 
@@ -864,11 +835,11 @@ class b_plus_tree_hash_map {
     }
 
     auto empty() const {
-        return map_.size() == 0;
+        return map_.empty();
     }
 
     void _check() {
-        // TODO
+        map_._check();
     }
 
   private:
@@ -886,8 +857,10 @@ class b_plus_tree_hash_map {
 
     class iterator {
         using T = EntryT;
-        using MapIterType = decltype(std::declval<b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT, COUNT_MAX>>().begin());
-        friend b_plus_tree_hash_map<KeyT, ValueT, HashT, PredT, COUNT_MAX>;
+        using MapIterType =
+            decltype(std::declval<b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT>>()
+                         .begin());
+        friend b_plus_tree_hash_map<KeyT, ValueT, HashT, PredT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -902,11 +875,11 @@ class b_plus_tree_hash_map {
         iterator() noexcept : map_iter_{} {}
 
         auto& operator*() const noexcept {
-            return const_cast<T&>(*map_iter_);
+            return *map_iter_;
         }
 
         auto* operator->() const noexcept {
-            return const_cast<T*>(&*map_iter_);  /// TODO remove cast?
+            return &*map_iter_;
         }
 
         auto& operator++() noexcept {
@@ -932,7 +905,7 @@ class b_plus_tree_hash_map {
         MapIterType map_iter_;
     };
 
-    b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT, COUNT_MAX> map_;
+    b_plus_tree_hash_set<EntryT, EntryHashT, EntryEqualsT> map_;
 };
 
 }  // namespace improbable::phtree

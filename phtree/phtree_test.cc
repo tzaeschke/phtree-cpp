@@ -102,10 +102,6 @@ struct Id {
         return _i == rhs._i;
     }
 
-    bool operator==(Id&& rhs) const {
-        return _i == rhs._i;
-    }
-
     ~Id() {
         ++destruct_count_;
     }

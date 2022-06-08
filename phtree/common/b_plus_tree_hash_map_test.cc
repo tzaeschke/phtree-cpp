@@ -29,7 +29,7 @@ static int copy_assign_count_ = 0;
 static int move_assign_count_ = 0;
 static int destruct_count_ = 0;
 
-static void reset_id_counters() {
+[[maybe_unused]] static void reset_id_counters() {
     default_construct_count_ = 0;
     construct_count_ = 0;
     copy_construct_count_ = 0;
@@ -39,7 +39,7 @@ static void reset_id_counters() {
     destruct_count_ = 0;
 }
 
-static void print_id_counters() {
+[[maybe_unused]] static void print_id_counters() {
     std::cout << "dc=" << default_construct_count_ << " c=" << construct_count_
               << " cc=" << copy_construct_count_ << " mc=" << move_construct_count_
               << " ca=" << copy_assign_count_ << " ma=" << move_assign_count_
@@ -84,11 +84,6 @@ struct Id {
         return _i == rhs._i;
     }
 
-    // TODO why is this here?
-//    bool operator==(Id&& rhs) const {
-//        return _i == rhs._i;
-//    }
-
     ~Id() {
         ++destruct_count_;
     }
@@ -105,33 +100,69 @@ struct hash<Id> {
 };
 };  // namespace std
 
-TEST(PhTreeBptHashMapTest, SmokeTest) {
-    const int max_size = 200;
+template <typename R, typename K, typename V, typename END>
+void CheckMapResult(const R& result, END end, const K& key, const V& val) {
+    ASSERT_NE(result, end);
+    ASSERT_EQ(result->first, key);
+    ASSERT_EQ(result->second, val);
+}
+
+template <typename R, typename K, typename V>
+void CheckMapResultPair(const R& result, bool expected_success, const K& key, const V& val) {
+    assert(result.second == expected_success);
+    ASSERT_EQ(result.second, expected_success);
+    ASSERT_EQ(result.first->first, key);
+    ASSERT_EQ(result.first->second, val);
+}
+
+template <typename HashT>
+void SmokeTestMap() {
+    const int N = 300;
     std::default_random_engine random_engine{0};
-    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
+    std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     int val = 0;
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
-        std::map<size_t, size_t> reference_map;
-        for (int j = 0; j < 2 * max_size; j++) {
+        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<Id>> test_map;
+        std::unordered_map<Id, size_t> reference_map;
+        for (int j = 0; j < N; j++) {
             size_t key = cube_distribution(random_engine);
-            bool hasVal = test_map.find(key) != test_map.end();
-            bool hasValRef = reference_map.find(key) != reference_map.end();
+            Id id(key);
+            bool hasVal = test_map.find(id) != test_map.end();
+            bool hasValRef = reference_map.find(id) != reference_map.end();
             ASSERT_EQ(hasVal, hasValRef);
 
-            reference_map.emplace(key, val);
-            test_map.emplace(key, val);
-            test_map._check();
+            if (!hasVal) {
+                if (key % 4 == 0) {
+                    CheckMapResultPair(test_map.emplace(id, val), true, id, val);
+                    CheckMapResultPair(test_map.emplace(id, val), false, id, val);
+                } else if (key % 4 == 1) {
+                    CheckMapResultPair(test_map.try_emplace(id, val), true, id, val);
+                    CheckMapResultPair(test_map.try_emplace(id, val), false, id, val);
+                } else if (key % 4 == 2) {
+                    // Leaf-hint of questionable quality
+                    auto hint = test_map.find(Id(key - 1));
+                    CheckMapResult(test_map.emplace_hint(hint, id, val), test_map.end(), id, val);
+                    CheckMapResult(test_map.emplace_hint(hint, id, val), test_map.end(), id, val);
+                } else {
+                    auto hint = j % 2 == 0 ? test_map.begin() : test_map.end();
+                    // Bad hint
+                    CheckMapResult(test_map.emplace_hint(hint, id, val), test_map.end(), id, val);
+                    CheckMapResult(test_map.emplace_hint(hint, id, val), test_map.end(), id, val);
+                }
+                test_map._check();
+                reference_map.emplace(id, val);
+            }
 
             ASSERT_EQ(test_map.size(), reference_map.size());
             for (auto it : reference_map) {
-                size_t kRef = it.first;
+                const Id& kRef = it.first;
                 size_t vMap = test_map.find(kRef)->second;
                 ASSERT_EQ(vMap, it.second);
+                ASSERT_TRUE(test_map.count(kRef));
             }
             for (auto it : test_map) {
-                size_t k = it.first;
+                Id& k = it.first;
                 size_t vRef = reference_map.find(k)->second;
                 size_t vMap = test_map.find(k)->second;
                 ASSERT_EQ(vMap, vRef);
@@ -141,16 +172,29 @@ TEST(PhTreeBptHashMapTest, SmokeTest) {
     }
 }
 
-template<typename Hash>
-void SmokeTestSetNonUnique() {
-    const int max_size = 200;
+TEST(PhTreeBptHashMapTest, SmokeTestNonUnique) {
+    SmokeTestMap<std::hash<Id>>();
+}
+
+TEST(PhTreeBptHashMapTest, SmokeTestSameHash) {
+    struct DumbHash {
+        size_t operator()(const Id&) const {
+            return 42;
+        }
+    };
+    SmokeTestMap<DumbHash>();
+}
+
+template <typename Hash>
+void SmokeTestSet() {
+    const int N = 200;
     std::default_random_engine random_engine{0};
-    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
+    std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     for (int i = 0; i < 10; i++) {
         b_plus_tree_hash_set<Id, Hash> test_map;
         std::unordered_set<Id> reference_map;
-        for (int j = 0; j < 2 * max_size; j++) {
+        for (int j = 0; j < N; j++) {
             {
                 size_t key = cube_distribution(random_engine);
                 Id id(key);
@@ -178,33 +222,27 @@ void SmokeTestSetNonUnique() {
 }
 
 TEST(PhTreeBptHashSetTest, SmokeTestNonUnique) {
-    SmokeTestSetNonUnique<std::hash<Id>>();
+    SmokeTestSet<std::hash<Id>>();
 }
 
 TEST(PhTreeBptHashSetTest, SmokeTestSameHash) {
-    const int max_size = 200;
-
-    std::default_random_engine random_engine{0};
-    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
-
     struct DumbHash {
         size_t operator()(const Id&) const {
             return 42;
         }
     };
-
-    SmokeTestSetNonUnique<DumbHash>();
+    SmokeTestSet<DumbHash>();
 }
 
 TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
-    const int max_size = 200;
+    const int N = 200;
     std::default_random_engine random_engine{0};
-    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
+    std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
+        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>> test_map;
         std::map<size_t, size_t> reference_map;
-        for (int j = 0; j < 2 * max_size; j++) {
+        for (int j = 0; j < N; j++) {
             size_t val = cube_distribution(random_engine);
             bool hasVal = test_map.find(val) != test_map.end();
             bool hasValRef = reference_map.find(val) != reference_map.end();
@@ -231,16 +269,15 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
 
 template <typename HashT>
 void SmokeTestWithErase() {
-    const int max_size = 200;
-
+    const int N = 200;
     std::default_random_engine random_engine{0};
-    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
+    std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<Id>, max_size> test_map{};
+        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<Id>> test_map{};
         std::unordered_map<Id, size_t> reference_map{};
         std::vector<size_t> key_list{};
-        for (int j = 0; j < 2 * max_size; j++) {
+        for (int j = 0; j < N; j++) {
             size_t key = cube_distribution(random_engine);
             Id id(key);
             bool hasVal = test_map.find(id) != test_map.end();
@@ -255,7 +292,6 @@ void SmokeTestWithErase() {
         std::shuffle(key_list.begin(), key_list.end(), random_engine);
         for (auto key : key_list) {
             Id id(key);
-            std::cout << "Erase: i=" << i << " x=" << x << "  key=" << key << std::endl;
             // This may try to erase an entry that does not exist!
             if (key % 2 == 0) {
                 test_map.erase(id);
@@ -296,50 +332,3 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithEraseSameHash) {
     };
     SmokeTestWithErase<DumbHash>();
 }
-
-
-
-//TEST(PhTreeBptHashMapTest, SmokeTestLowerBound) {
-//    const int max_size = 200;
-//
-//    std::default_random_engine random_engine{0};
-//    std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
-//
-//    for (int i = 0; i < 10; i++) {
-//        b_plus_tree_hash_map<size_t, Id, std::hash<size_t>, std::equal_to<size_t>, max_size> test_map;
-//        std::map<size_t, size_t> reference_map;
-//        for (int j = 0; j < 2 * max_size; j++) {
-//            size_t val = cube_distribution(random_engine);
-//            bool hasVal = test_map.find(val) != test_map.end();
-//            bool hasValRef = reference_map.find(val) != reference_map.end();
-//            ASSERT_EQ(hasVal, hasValRef);
-//            if (!hasVal) {
-//                reference_map.emplace(val, val);
-//                test_map.try_emplace(val, val);
-//            }
-//            ASSERT_EQ(test_map.size(), reference_map.size());
-//            for (auto it : reference_map) {
-//                size_t vRef = it.first;
-//                size_t vMap = test_map.lower_bound(vRef)->second;
-//                ASSERT_EQ(vMap, vRef);
-//            }
-//            for (auto it : test_map) {
-//                size_t v = it.first;
-//                size_t vRef = reference_map.find(v)->second;
-//                size_t vMap = test_map.lower_bound(v)->second;
-//                ASSERT_EQ(vMap, vRef);
-//            }
-//            for (size_t v = 0; v < max_size + 5; ++v) {
-//                auto itRef = reference_map.lower_bound(v);
-//                auto itMap = test_map.lower_bound(v);
-//                if (itRef == reference_map.end()) {
-//                    ASSERT_EQ(itMap, test_map.end());
-//                } else {
-//                    ASSERT_NE(itMap, test_map.end());
-//                    // ASSERT_EQ(v, itRef->second);
-//                    ASSERT_EQ(itRef->second, itMap->second);
-//                }
-//            }
-//        }
-//    }
-//}
