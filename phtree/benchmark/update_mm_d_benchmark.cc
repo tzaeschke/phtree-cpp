@@ -243,16 +243,16 @@ void PhTreeMultiMapStd3D(benchmark::State& state, Arguments&&... arguments) {
 
 // index type, scenario name, data_type, num_entities, updates_per_round, move_distance
 // PhTree
-//BENCHMARK_CAPTURE(PhTree3D, UPDATE_1000, UPDATES_PER_ROUND)
-//    ->RangeMultiplier(10)
-//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-//    ->Unit(benchmark::kMillisecond);
-//
-//// PhTreeMultiMap
-//BENCHMARK_CAPTURE(PhTreeMultiMap3D, UPDATE_1000, UPDATES_PER_ROUND)
-//    ->RangeMultiplier(10)
-//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-//    ->Unit(benchmark::kMillisecond);
+BENCHMARK_CAPTURE(PhTree3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTreeMultiMap
+BENCHMARK_CAPTURE(PhTreeMultiMap3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap wit std::unordered_set
 BENCHMARK_CAPTURE(PhTreeMultiMapStd3D, UPDATE_1000, UPDATES_PER_ROUND)

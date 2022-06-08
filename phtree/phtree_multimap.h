@@ -17,8 +17,8 @@
 #ifndef PHTREE_PHTREE_MULTIMAP_H
 #define PHTREE_PHTREE_MULTIMAP_H
 
-#include "common/common.h"
 #include "common/b_plus_tree_hash_map.h"
+#include "common/common.h"
 #include "v16/phtree_v16.h"
 #include <unordered_set>
 
@@ -187,8 +187,7 @@ template <
     dimension_t DIM,
     typename T,
     typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>,
-    //typename BUCKET = std::unordered_set<T>,
-    typename BUCKET = b_plus_tree_hash_set<T>, // TODO void?
+    typename BUCKET = b_plus_tree_hash_set<T>,
     bool POINT_KEYS = true,
     typename DEFAULT_QUERY_TYPE = QueryPoint>
 class PhTreeMultiMap {
@@ -695,16 +694,14 @@ template <
     dimension_t DIM,
     typename T,
     typename CONVERTER = ConverterIEEE<DIM>,
-    //typename BUCKET = std::unordered_set<T>>
-    typename BUCKET = b_plus_tree_hash_set<T>> // TODO void?
-    using PhTreeMultiMapD = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
+    typename BUCKET = b_plus_tree_hash_set<T>>
+using PhTreeMultiMapD = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
 
 template <
     dimension_t DIM,
     typename T,
     typename CONVERTER_BOX,
-    //typename BUCKET = std::unordered_set<T>>
-    typename BUCKET = b_plus_tree_hash_set<T>> // TODO void?
+    typename BUCKET = b_plus_tree_hash_set<T>>
 using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
 
 /**
@@ -717,8 +714,7 @@ template <
     dimension_t DIM,
     typename T,
     typename CONVERTER_BOX = ConverterBoxIEEE<DIM>,
-    //typename BUCKET = std::unordered_set<T>>
-    typename BUCKET = b_plus_tree_hash_set<T>> // TODO void?
+    typename BUCKET = b_plus_tree_hash_set<T>>
 using PhTreeMultiMapBoxD = PhTreeMultiMapBox<DIM, T, CONVERTER_BOX, BUCKET>;
 
 }  // namespace improbable::phtree
