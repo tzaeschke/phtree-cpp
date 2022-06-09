@@ -180,17 +180,15 @@ class b_plus_tree_map {
         return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
     }
 
-    size_t erase(key_t key) {
+    void erase(key_t key) {
         auto node = root_;
         while (!node->is_leaf()) {
             node = node->as_inner()->find(key);
             if (node == nullptr) {
-                return 0;
+                return;
             }
         }
-        auto n = node->as_leaf()->erase_key(key, *this);
-        size_ -= n;
-        return n;
+        size_ -= node->as_leaf()->erase_key(key, *this);
     }
 
     void erase(const IterT& iterator) {
@@ -437,7 +435,7 @@ class b_plus_tree_map {
             }
         }
 
-      public:
+      protected:
         std::vector<EntryT> data_;
         ThisT* prev_node_;
         ThisT* next_node_;
