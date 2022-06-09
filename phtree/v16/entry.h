@@ -77,7 +77,7 @@ class Entry {
      */
     template <typename... Args>
     explicit Entry(const KeyT& k, Args&&... args) noexcept
-    : kd_key_{k}, value_{std::forward<Args>(args)...}, union_type_{VALUE}, postfix_len_{0} {}
+    : kd_key_{k}, value_(std::forward<Args>(args)...), union_type_{VALUE}, postfix_len_{0} {}
 
     Entry(const Entry& other) = delete;
     Entry& operator=(const Entry& other) = delete;
