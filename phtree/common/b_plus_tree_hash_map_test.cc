@@ -115,6 +115,19 @@ void CheckMapResultPair(const R& result, bool expected_success, const K& key, co
     ASSERT_EQ(result.first->second, val);
 }
 
+template <typename R, typename K, typename END>
+void CheckSetResult(const R& result, END end, const K& key) {
+    ASSERT_NE(result, end);
+    ASSERT_EQ(*result, key);
+}
+
+template <typename R, typename K>
+void CheckSetResultPair(const R& result, bool expected_success, const K& key) {
+    assert(result.second == expected_success);
+    ASSERT_EQ(result.second, expected_success);
+    ASSERT_EQ(*result.first, key);
+}
+
 template <typename HashT>
 void SmokeTestMap() {
     const int N = 300;
@@ -133,13 +146,23 @@ void SmokeTestMap() {
             ASSERT_EQ(hasVal, hasValRef);
 
             if (!hasVal) {
-                if (key % 4 == 0) {
+                if (key % 6 == 0) {
                     CheckMapResultPair(test_map.emplace(id, val), true, id, val);
                     CheckMapResultPair(test_map.emplace(id, val), false, id, val);
-                } else if (key % 4 == 1) {
+                } else if (key % 6 == 1) {
                     CheckMapResultPair(test_map.try_emplace(id, val), true, id, val);
                     CheckMapResultPair(test_map.try_emplace(id, val), false, id, val);
-                } else if (key % 4 == 2) {
+                } else if (key % 6 == 2) {
+                    // Leaf-hint of questionable quality
+                    auto hint = test_map.find(Id(key - 1));
+                    CheckMapResult(test_map.try_emplace(hint, id, val), test_map.end(), id, val);
+                    CheckMapResult(test_map.try_emplace(hint, id, val), test_map.end(), id, val);
+                } else if (key % 6 == 3) {
+                    auto hint = j % 2 == 0 ? test_map.begin() : test_map.end();
+                    // Bad hint
+                    CheckMapResult(test_map.try_emplace(hint, id, val), test_map.end(), id, val);
+                    CheckMapResult(test_map.try_emplace(hint, id, val), test_map.end(), id, val);
+                } else if (key % 6 == 4) {
                     // Leaf-hint of questionable quality
                     auto hint = test_map.find(Id(key - 1));
                     CheckMapResult(test_map.emplace_hint(hint, id, val), test_map.end(), id, val);
@@ -202,9 +225,24 @@ void SmokeTestSet() {
                 bool hasValRef = reference_map.find(id) != reference_map.end();
                 ASSERT_EQ(hasVal, hasValRef);
 
-                reference_map.emplace(id);
-                test_map.emplace(id);
-                test_map._check();
+                if (!hasVal) {
+                    if (key % 3 == 0) {
+                        CheckSetResultPair(test_map.emplace(id), true, id);
+                        CheckSetResultPair(test_map.emplace(key), false, id);
+                    } else if (key % 3 == 1) {
+                        // Leaf-hint of questionable quality
+                        auto hint = test_map.find(Id(key - 1));
+                        CheckSetResult(test_map.emplace_hint(hint, id), test_map.end(), id);
+                        CheckSetResult(test_map.emplace_hint(hint, key), test_map.end(), id);
+                    } else {
+                        auto hint = j % 2 == 0 ? test_map.begin() : test_map.end();
+                        // Bad hint
+                        CheckSetResult(test_map.emplace_hint(hint, id), test_map.end(), id);
+                        CheckSetResult(test_map.emplace_hint(hint, key), test_map.end(), id);
+                    }
+                    test_map._check();
+                    reference_map.emplace(id);
+                }
             }
 
             ASSERT_EQ(test_map.size(), reference_map.size());

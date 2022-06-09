@@ -21,6 +21,7 @@
 #include <cassert>
 #include <tuple>
 #include <vector>
+#include <unordered_map>
 
 /*
  * PLEASE do not include this file directly, it is included via common.h.
@@ -133,7 +134,7 @@ class b_plus_tree_hash_set {
         root_ = nullptr;
     }
 
-    [[nodiscard]] auto find(const T& value) noexcept {
+    [[nodiscard]] auto find(const T& value) {
         auto node = root_;
         auto hash = HashT{}(value);
         while (!node->is_leaf()) {
@@ -145,11 +146,11 @@ class b_plus_tree_hash_set {
         return node->as_leaf()->find(hash, value);
     }
 
-    [[nodiscard]] auto find(const T& value) const noexcept {
+    [[nodiscard]] auto find(const T& value) const {
         return const_cast<b_plus_tree_hash_set&>(*this).find(value);
     }
 
-    [[nodiscard]] size_t count(const T& value) const noexcept {
+    [[nodiscard]] size_t count(const T& value) const {
         return const_cast<b_plus_tree_hash_set&>(*this).find(value) != end();
     }
 
@@ -186,9 +187,10 @@ class b_plus_tree_hash_set {
 
     template <typename... Args>
     auto emplace_hint(const IterT& hint, Args&&... args) {
-        if (empty() || hint.is_end() || !hint.node_->is_leaf()) {
+        if (empty() || hint.is_end()) {
             return emplace(std::forward<Args>(args)...).first;
         }
+        assert(hint.node_->is_leaf());
 
         T t(std::forward<Args>(args)...);
         auto hash = HashT{}(t);
@@ -377,21 +379,26 @@ class b_plus_tree_hash_set {
             }
         }
 
-        auto prepare_emplace(hash_t key, TreeT& tree, DataIteratorT& it_in_out) {
+        struct SplitResult {
+            ThisT* node_;
+            DataIteratorT iter_;
+        };
+
+        SplitResult check_split(hash_t key, TreeT& tree, const DataIteratorT& it) {
             if (data_.size() < this->M_max()) {
                 if (this->parent_ != nullptr && key > data_.back().first) {
                     this->parent_->update_key(data_.back().first, key, this);
                 }
-                return static_cast<ThisT*>(this);
+                return {static_cast<ThisT*>(this), it};
             }
 
             ThisT* dest = this->split_node(key, tree);
             if (dest != this) {
                 // The insertion pos in node2 can be calculated:
-                auto old_pos = it_in_out - data_.begin();
-                it_in_out = dest->data_.begin() + old_pos - data_.size();
+                auto old_pos = it - data_.begin();
+                return {dest, dest->data_.begin() + old_pos - data_.size()};
             }
-            return dest;
+            return {dest, it};
         }
 
         void _check_data(NInnerT* parent, hash_t known_max) {
@@ -475,9 +482,8 @@ class b_plus_tree_hash_set {
         ~bpt_node_leaf() noexcept = default;
 
         [[nodiscard]] IterT find(hash_t hash, const T& value) noexcept {
-            auto it = this->lower_bound(hash);
             PredT equals{};
-            IterT iter_full(this, it);
+            IterT iter_full(this, this->lower_bound(hash));
             while (!iter_full.is_end() && iter_full.hash() == hash) {
                 if (equals(*iter_full, value)) {
                     return iter_full;
@@ -487,12 +493,11 @@ class b_plus_tree_hash_set {
             return IterT();
         }
 
-        // TODO remobve/rename !?!?!?
-        [[nodiscard]] auto lower_bound2(hash_t hash, const T& value) noexcept {
-            auto it = this->lower_bound(hash);
-            IterT iter_full(this, it);
+        [[nodiscard]] auto lower_bound_value(hash_t hash, const T& value) noexcept {
+            PredT equals{};
+            IterT iter_full(this, this->lower_bound(hash));
             while (!iter_full.is_end() && iter_full.hash() == hash) {
-                if (PredT{}(*iter_full, value)) {
+                if (equals(*iter_full, value)) {
                     break;
                 }
                 ++iter_full;
@@ -502,7 +507,6 @@ class b_plus_tree_hash_set {
 
         auto try_emplace(hash_t hash, TreeT& tree, size_t& entry_count, T&& t) {
             auto it = this->lower_bound(hash);
-
             if (it != this->data_.end() && it->first == hash) {
                 // Hash collision !
                 PredT equals{};  // static?
@@ -514,21 +518,21 @@ class b_plus_tree_hash_set {
                     ++full_iter;
                 }
             }
+            //            auto it = this->lower_bound_value(hash, t);
+            //            if (!it.is_end() && PredT{}(*it, t)) {
+            //                return std::make_pair(it, false);
+            //            }
             ++entry_count;
-            auto dest = this->prepare_emplace(hash, tree, it);
-            auto x = dest->data_.emplace(it, hash, std::move(t));
-            return std::make_pair(IterT(this, x), true);
+            auto split_result = this->check_split(hash, tree, it);
+            auto it2 = split_result.node_->data_.emplace(split_result.iter_, hash, std::move(t));
+            return std::make_pair(IterT(split_result.node_, it2), true);
         }
 
         bool erase_key(hash_t hash, const T& value, TreeT& tree) {
-            auto iter_node = this->lower_bound(hash);
-            IterT iter_full(this, iter_node);
-            while (!iter_full.is_end() && iter_full.iter_->first == hash) {
-                if (PredT{}(*iter_full, value)) {
-                    iter_full.node_->erase_entry(iter_full.iter_, tree);
-                    return true;
-                }
-                ++iter_full;
+            auto iter = this->lower_bound_value(hash, value);
+            if (!iter.is_end() && PredT{}(*iter, value)) {
+                iter.node_->erase_entry(iter.iter_, tree);
+                return true;
             }
             return false;
         }
@@ -646,12 +650,12 @@ class b_plus_tree_hash_set {
             assert(key1_old >= key1_new);
             auto it2 = this->lower_bound_node(key1_old, child1) + 1;
 
-            auto dest = this->prepare_emplace(key2, tree, it2);
-            // prepare_emplace() guarantees that child2 is in the same node as child1
-            assert(it2 != dest->data_.begin());
+            auto split_result = this->check_split(key2, tree, it2);
+            // check_split() guarantees that child2 is in the same node as child1
+            assert(split_result.iter_ != split_result.node_->data_.begin());
             (it2 - 1)->first = key1_new;
-            child2->parent_ = dest;
-            dest->data_.emplace(it2, key2, child2);
+            child2->parent_ = split_result.node_;
+            child2->parent_->data_.emplace(it2, key2, child2);
         }
 
         void remove_node(hash_t key_remove, NodeT* node, TreeT& tree) {
@@ -805,21 +809,19 @@ class b_plus_tree_hash_map {
 
     template <typename... Args>
     auto emplace_hint(const IterT& hint, Args&&... args) {
-        auto result = map_.emplace_hint(hint.map_iter_, std::forward<Args>(args)...);
-        return iterator(result);
+        return try_emplace(hint, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
-    auto try_emplace(Args&&... args) {
-        auto result = map_.emplace(std::forward<Args>(args)...);
+    auto try_emplace(const KeyT& key, Args&&... args) {
+        auto result = map_.emplace(key, std::forward<Args>(args)...);
         return std::make_pair(iterator(result.first), result.second);
     }
 
     template <typename... Args>
-    auto try_emplace(const IterT& hint, Args&&... args) {
-        // EntryT key = std::make_pair(std::forward<Args>(args)...);
-        auto result = map_.emplace_hint(hint.map_iter_, std::forward<Args>(args)...);
-        return iterator(result.first);
+    auto try_emplace(const IterT& hint, const KeyT& key, Args&&... args) {
+        auto result = map_.emplace_hint(hint.map_iter_, key, std::forward<Args>(args)...);
+        return iterator(result);
     }
 
     auto erase(const KeyT& key) {
