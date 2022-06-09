@@ -32,7 +32,7 @@ namespace {
 
 const double GLOBAL_MAX = 10000;
 
-enum Scenario { TREE_WITH_MAP, MULTI_MAP };
+enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD };
 
 using TestPoint = PhPointD<3>;
 using QueryBox = PhBoxD<3>;
@@ -52,7 +52,10 @@ template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
     SCENARIO == TREE_WITH_MAP,
     PhTreeD<DIM, BucketType, CONVERTER<SCENARIO, DIM>>,
-    PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>>>;
+    typename std::conditional_t<
+        SCENARIO == MULTI_MAP,
+        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
+        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::unordered_set<payload_t>>>>;
 
 template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
@@ -120,6 +123,14 @@ void InsertEntry(
     tree.emplace(point, data);
 }
 
+template <dimension_t DIM>
+void InsertEntry(
+    TestMap<Scenario::MULTI_MAP_STD, DIM>& tree,
+    const PhPointD<DIM>& point,
+    const payload_t& data) {
+    tree.emplace(point, data);
+}
+
 bool CheckPosition(const payload_t& entity, const TestPoint& center, double radius) {
     const auto& point = entity;
     double dx = center[0] - point[0];
@@ -159,6 +170,13 @@ typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, int>::type CountEnt
 
 template <dimension_t DIM, Scenario SCENARIO>
 int CountEntries(TestMap<Scenario::MULTI_MAP, DIM>& tree, const Query& query) {
+    CounterMultiMap counter{query.center, query.radius, 0};
+    tree.for_each(query.box, counter);
+    return counter.n_;
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
+int CountEntries(TestMap<Scenario::MULTI_MAP_STD, DIM>& tree, const Query& query) {
     CounterMultiMap counter{query.center, query.radius, 0};
     tree.for_each(query.box, counter);
     return counter.n_;
@@ -209,8 +227,14 @@ void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
 }
 
 template <typename... Arguments>
-void PhTreeMultiMapM3D(benchmark::State& state, Arguments&&... arguments) {
+void PhTreeMultiMap3D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, Scenario::MULTI_MAP> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTreeMultiMapStd3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MULTI_MAP_STD> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
@@ -222,7 +246,13 @@ BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMapM3D, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTreeMultiMap3D, WQ_100, 100.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTreeMultiMap
+BENCHMARK_CAPTURE(PhTreeMultiMapStd3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

@@ -372,7 +372,7 @@ class b_plus_tree_map {
             }
         }
 
-        auto prepare_emplace(key_t key, TreeT& tree, DataIteratorT& it_in_out) {
+        auto check_split(key_t key, TreeT& tree, DataIteratorT& it_in_out) {
             if (data_.size() < this->M_max()) {
                 if (this->parent_ != nullptr && key > data_.back().first) {
                     this->parent_->update_key(data_.back().first, key);
@@ -493,7 +493,7 @@ class b_plus_tree_map {
             }
             ++entry_count;
 
-            auto dest = this->prepare_emplace(key, tree, it);
+            auto dest = this->check_split(key, tree, it);
 
             auto x = dest->data_.emplace(
                 it,
@@ -598,8 +598,8 @@ class b_plus_tree_map {
             assert(key1_old >= key1_new);
             auto it2 = this->lower_bound(key1_old) + 1;
 
-            auto dest = this->prepare_emplace(key2, tree, it2);
-            // prepare_emplace() guarantees that child2 is in the same node as child1
+            auto dest = this->check_split(key2, tree, it2);
+            // check_split() guarantees that child2 is in the same node as child1
             assert(it2 != dest->data_.begin());
             (it2 - 1)->first = key1_new;
             child2->parent_ = dest;
