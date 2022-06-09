@@ -168,17 +168,16 @@ class b_plus_tree_map {
 
     template <typename... Args>
     auto emplace(Args&&... args) {
-        return try_emplace_base(std::forward<Args>(args)...);
+        return try_emplace(std::forward<Args>(args)...);
     }
 
     template <typename... Args>
     auto try_emplace(key_t key, Args&&... args) {
-        return try_emplace_base(key, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    auto try_emplace(const IterT& hint, key_t key, Args&&... args) {
-        return try_emplace_base(hint, key, std::forward<Args>(args)...);
+        auto node = root_;
+        while (!node->is_leaf()) {
+            node = node->as_inner()->find_or_last(key);
+        }
+        return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
     }
 
     size_t erase(key_t key) {
@@ -213,24 +212,6 @@ class b_plus_tree_map {
     }
 
   private:
-    template <typename... Args>
-    auto try_emplace_base(key_t key, Args&&... args) {
-        auto node = root_;
-        while (!node->is_leaf()) {
-            node = node->as_inner()->find_or_last(key);
-        }
-        return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    auto try_emplace_base(const IterT& hint, key_t key, Args&&... args) {
-        // TODO sanity checkes: correct node?    ==end()?
-        // TODO use hint inside node
-        // TODO can we use this in the PH-TreeV16?
-        auto node = hint.node_;
-        return node->as_leaf()->try_emplace(key, *this, size_, std::forward<Args>(args)...);
-    }
-
     class bpt_node_base {
       public:
         explicit bpt_node_base(bool is_leaf, NInnerT* parent) noexcept
@@ -456,7 +437,7 @@ class b_plus_tree_map {
             }
         }
 
-      protected:
+      public:
         std::vector<EntryT> data_;
         ThisT* prev_node_;
         ThisT* next_node_;

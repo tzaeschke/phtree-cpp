@@ -252,7 +252,7 @@ void SmokeTestSet() {
             }
             for (auto id : test_map) {
                 const Id& vRef = *reference_map.find(id);
-                Id& vMap = *test_map.find(id);  // TODO require const?
+                Id& vMap = *test_map.find(id);
                 ASSERT_EQ(vMap, vRef);
             }
         }

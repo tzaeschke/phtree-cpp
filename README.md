@@ -411,10 +411,10 @@ void test() {
 **Problem**: The PH-Tree appears to be losing updates/insertions.
 
 **Solution**: Remember that the PH-Tree is a *map*, keys will not be inserted if an identical key already exists. The
-easiest solution is to use one of the `PhTreeMultiMap` implementations. Alternatively, this can be solved by turning the
-PH-Tree into a multi-map, for example by using something like `std::map` or `std::set` as member type:
-`PhTree<3, std::set<MyDataClass>>`. The `set` instances can then be used to handle key conflicts by storing multiple
-entries for the same key. The logic to handle conflicts must currently be implemented manually by the user.
+easiest solution is to use one of the `PhTreeMultiMap` implementations. Alternatively, this can be solved by turning a
+`PhTree` into a multi-map, for example by using something like `std::map` or `std::set` as member type:
+`PhTree<3, T, CONVERTER, std::set<MyDataClass>>`. The `set` instances can then be used to handle key conflicts by 
+storing multiple entries for the same key. The logic to handle conflicts must currently be implemented manually.
 
 ----------------------------------
 
