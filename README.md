@@ -109,6 +109,7 @@ auto tree = PhTreeD<3, MyData>();
 PhPointD<3> p{1.1, 1.0, 10.};
 
 // Some operations
+tree.relocate(p1, p2); // Move an entry from point 1 to point 2
 tree.emplace(p, my_data);
 tree.emplace_hint(hint, p, my_data);
 tree.try_emplace(p, my_data);
@@ -124,7 +125,7 @@ tree.empty();
 tree.clear();
 
 // Multi-map only
-tree.relocate(p_old, p_new, value);
+tree.relocate_all(p1, p2);
 tree.estimate_count(query);
 ```
 
@@ -474,14 +475,17 @@ There are numerous ways to improve performance. The following list gives an over
 
 1) **Use `for_each` instead of iterators**. This should improve performance of queries by 10%-20%.
 
-2) **Use `emplace_hint` if possible**. When updating the position of an entry, the naive way is to use `erase()`
-   /`emplace()`. With `emplace_hint`, insertion can avoid navigation to the target node if the insertion coordinate is
-   close to the removal coordinate.
-    ```c++
-    auto iter = tree.find(old_position);
-    tree.erase(iter);
-    tree.emplace_hint(iter, new_position, value);
-    ```
+2) **Use `relocate()` if possible**. When updating the position of an entry, the naive way is to use `erase()`
+   /`emplace()`. With `relocate`, insertion can avoid a lot of duplicate navigation in the tree if the insertion
+   coordinate is close to the removal coordinate.
+   ```c++
+   relocate(old_position, new_position);
+   ```
+   The multi-map version relocates all values unless a 'value' is specified to identify the value to be relocated: 
+   ```c++
+   relocate_all(old_position, new_position);
+   relocate(old_position, new_position, value);
+   ```
 
 3) **Store pointers instead of large data objects**. For example, use `PhTree<3, MyLargeClass*>` instead of
    `PhTree<3, MyLargeClass>` if `MyLargeClass` is large.

@@ -122,6 +122,10 @@ class Entry {
         return *node_;
     }
 
+    void SetKey(const KeyT& key) noexcept {
+        kd_key_ = key;
+    }
+
     void SetNode(std::unique_ptr<NodeT>&& node, bit_width_t postfix_len) noexcept {
         postfix_len_ = static_cast<std::uint16_t>(postfix_len);
         DestroyUnion();

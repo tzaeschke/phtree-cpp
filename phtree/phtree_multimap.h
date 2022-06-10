@@ -418,7 +418,7 @@ class PhTreeMultiMap {
      * execution cost of this method. The default is 'false'.
      * @return '1' if a value was found and reinserted, otherwise '0'.
      */
-    size_t relocate(
+    size_t relocate1(
         const Key& old_key, const Key& new_key, const T& value, bool always_erase = false) {
         // Be smart: insert first, if the target-map already contains the entry we can avoid erase()
         auto new_key_pre = converter_.pre(new_key);
@@ -453,6 +453,67 @@ class PhTreeMultiMap {
             tree_.erase(old_outer_iter);
         }
         return 1;
+    }
+
+    size_t relocate(
+        const Key& old_key, const Key& new_key, const T& value) {
+        auto new_key_pre = converter_.pre(new_key);
+        auto old_key_pre = converter_.pre(old_key);
+        auto pair = tree_.find_two(old_key_pre, new_key_pre, true);
+        auto& iter_old = pair.first;
+        auto& iter_new = pair.second;
+
+        if (iter_old.IsEnd()) {
+            if (iter_new->empty()) {
+                tree_.erase(iter_new);
+            }
+            return 0;
+        }
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        auto& bucket_old = *iter_old;
+        auto bucket_iter_old = bucket_old.find(value);
+        if (bucket_iter_old == bucket_old.end()) {
+            if (iter_new->empty()) {
+                tree_.erase(iter_new);
+            }
+            return 0;
+        }
+        // Status: OLD value exists!
+        if (iter_old == iter_new) {
+            assert(old_key == new_key);
+            // nothing to do
+            return 1;
+        }
+
+        // insert
+        assert(iter_new != tree_.end());
+        auto& bucket_new = *iter_new;
+
+        // TODO check when move() is actually called! -> test? -> move only called if target does
+        // not exist
+        //auto result = bucket_new.try_emplace(std::move(*bucket_iter_old));
+        //bool is_inserted = old_size < bucket_new.size();
+        bool is_inserted = bucket_new.emplace(std::move(*bucket_iter_old)).second;
+
+        if (!is_inserted) {
+            // Value exists already, FAILURE
+            // TODO undo removal from old bucket
+            return 0;
+        }
+
+        bucket_old.erase(bucket_iter_old);
+        if (bucket_old.empty()) {
+            tree_.erase(iter_old);
+        }
+        return 1;
+    }
+
+    /*
+     * Relocates all values from one coordinate to another.
+     * Returns an iterator pointing to the relocated data (or end(), if the relocation failed).
+     */
+    auto relocate_all(const Key& old_key, const Key& new_key) {
+        return tree_.relocate(old_key, new_key);
     }
 
     /*

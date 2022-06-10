@@ -598,6 +598,49 @@ TEST(PhTreeTest, TestUpdateWithTryEmplaceHint) {
     ASSERT_EQ(2, tree.size());
 }
 
+TEST(PhTreeTest, TestUpdateWithRelocate) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<scalar_64_t, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t i = 0;
+    size_t d_n = 0;
+    for (auto& p : points) {
+        auto pOld = p;
+        d_n = (d_n + 1) % deltas.size();
+        scalar_64_t delta = deltas[d_n];
+        TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+        if (delta > 0.0 && tree.find(pNew) != tree.end()) {
+            // Skip this, there is already another entry
+            ASSERT_EQ(tree.end(), tree.relocate(pOld, pNew));
+        } else {
+            ASSERT_EQ(i, tree.relocate(pOld, pNew)->_i);
+            if (delta > 0.0) {
+                // second time fails because value has already been moved
+                ASSERT_EQ(tree.end(), tree.relocate(pOld, pNew));
+            }
+            ASSERT_EQ(Id(i), *tree.find(pNew));
+            p = pNew;
+        }
+        ++i;
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    // Check that empty tree works
+    ASSERT_EQ(tree.end(), tree.relocate(points[0], points[1]));
+    // Check that small tree works
+    tree.emplace(points[0], 1);
+    ASSERT_EQ(1, tree.relocate(points[0], points[1])->_i);
+    ASSERT_EQ(tree.end(), tree.find(points[0]));
+    ASSERT_EQ(Id(1), *tree.find(points[1]));
+    ASSERT_EQ(1, tree.size());
+}
+
 TEST(PhTreeTest, TestEraseByIterator) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;

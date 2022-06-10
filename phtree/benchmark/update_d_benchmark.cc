@@ -29,7 +29,7 @@ std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
 
 const double GLOBAL_MAX = 10000;
 
-enum UpdateType { ERASE_BY_KEY, ERASE_BY_ITER, EMPLACE_HINT };
+enum UpdateType { RELOCATE, ERASE_BY_KEY, ERASE_BY_ITER, EMPLACE_HINT };
 
 template <dimension_t DIM>
 using PointType = PhPointD<DIM>;
@@ -52,9 +52,7 @@ class IndexBenchmark {
   public:
     IndexBenchmark(
         benchmark::State& state,
-        TestGenerator data_type,
-        int num_entities,
-        int updates_per_round = UPDATES_PER_ROUND,
+        size_t updates_per_round = UPDATES_PER_ROUND,
         std::vector<double> move_distance = MOVE_DISTANCE);
 
     void Benchmark(benchmark::State& state);
@@ -78,19 +76,15 @@ class IndexBenchmark {
 
 template <dimension_t DIM, UpdateType UPDATE_TYPE>
 IndexBenchmark<DIM, UPDATE_TYPE>::IndexBenchmark(
-    benchmark::State& state,
-    TestGenerator data_type,
-    int num_entities,
-    int updates_per_round,
-    std::vector<double> move_distance)
-: data_type_{data_type}
-, num_entities_(num_entities)
+    benchmark::State& state, size_t updates_per_round, std::vector<double> move_distance)
+: data_type_{static_cast<TestGenerator>(state.range(1))}
+, num_entities_(state.range(0))
 , updates_per_round_(updates_per_round)
 , move_distance_(std::move(move_distance))
-, points_(num_entities)
+, points_(num_entities_)
 , updates_(updates_per_round)
 , random_engine_{0}
-, entity_id_distribution_{0, num_entities - 1} {
+, entity_id_distribution_{0, static_cast<int>(num_entities_ - 1)} {
     logging::SetupDefaultLogging();
     SetupWorld(state);
 }
@@ -134,6 +128,17 @@ void IndexBenchmark<DIM, UPDATE_TYPE>::BuildUpdates() {
 
         move_id = (move_id + 1) % move_distance_.size();
     }
+}
+
+template <dimension_t DIM>
+size_t UpdateByRelocate(TreeType<DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
+    size_t n = 0;
+    auto end = tree.end();
+    for (auto& update : updates) {
+        auto result = tree.relocate(update.old_, update.new_);
+        n += result != end;
+    }
+    return n;
 }
 
 template <dimension_t DIM>
@@ -190,6 +195,9 @@ void IndexBenchmark<DIM, UPDATE_TYPE>::UpdateWorld(benchmark::State& state) {
     case UpdateType::EMPLACE_HINT:
         n = UpdateByIterHint(tree_, updates_);
         break;
+    case UpdateType::RELOCATE:
+        n = UpdateByRelocate(tree_, updates_);
+        break;
     }
 
     if (n != updates_.size()) {
@@ -207,6 +215,12 @@ void IndexBenchmark<DIM, UPDATE_TYPE>::UpdateWorld(benchmark::State& state) {
 }
 
 }  // namespace
+
+template <typename... Arguments>
+void PhTreeRelocate3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, UpdateType::RELOCATE> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
 
 template <typename... Arguments>
 void PhTreeEraseKey3D(benchmark::State& state, Arguments&&... arguments) {
@@ -227,83 +241,28 @@ void PhTreeEmplaceHint3D(benchmark::State& state, Arguments&&... arguments) {
 }
 
 // index type, scenario name, data_type, num_entities, updates_per_round, move_distance
-// PhTree3D CUBE
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CU_100_of_1K, TestGenerator::CUBE, 1000)
+// PhTree with relocate()
+BENCHMARK_CAPTURE(PhTreeRelocate3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CU_100_of_10K, TestGenerator::CUBE, 10000)
+// PhTree with erase()/emplace
+BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CU_100_of_100K, TestGenerator::CUBE, 100000)
+// PhTree with erase(iter)
+BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CU_100_of_1M, TestGenerator::CUBE, 1000000)
+// PhTree with emplace_hint()
+BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-// PhTree3D CLUSTER
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CL_100_of_1K, TestGenerator::CLUSTER, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseKey3D, UPDATE_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, updates_per_round, move_distance
-// PhTree3D CUBE
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CU_100_of_1K, TestGenerator::CUBE, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CU_100_of_10K, TestGenerator::CUBE, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CU_100_of_100K, TestGenerator::CUBE, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// PhTree3D CLUSTER
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CL_100_of_1K, TestGenerator::CLUSTER, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEraseIter3D, UPDATE_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_type, num_entities, updates_per_round, move_distance
-// PhTree3D CUBE
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CU_100_of_1K, TestGenerator::CUBE, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CU_100_of_10K, TestGenerator::CUBE, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CU_100_of_100K, TestGenerator::CUBE, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CU_100_of_1M, TestGenerator::CUBE, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-// PhTree3D CLUSTER
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CL_100_of_1K, TestGenerator::CLUSTER, 1000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CL_100_of_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CL_100_of_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTreeEmplaceHint3D, UPDATE_CL_100_of_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
 BENCHMARK_MAIN();

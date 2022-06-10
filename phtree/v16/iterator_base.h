@@ -62,8 +62,8 @@ class IteratorBase {
         return current_result_ == nullptr;
     }
 
-    inline const EntryT* GetCurrentResult() const noexcept {
-        return current_result_;
+    inline EntryT* GetCurrentResult() const noexcept {
+        return const_cast<EntryT*>(current_result_);
     }
 
   protected:

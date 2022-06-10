@@ -59,8 +59,8 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
         return const_cast<EntryT*>(current_node_);
     }
 
-    const EntryT* GetParentNodeEntry() const {
-        return parent_node_;
+    EntryT* GetParentNodeEntry() const {
+        return const_cast<EntryT*>(parent_node_);
     }
 
     const EntryT* current_node_;

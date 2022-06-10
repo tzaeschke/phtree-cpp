@@ -145,6 +145,10 @@ class Node {
         return nullptr;
     }
 
+    EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
+        return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
+    }
+
     /*
      * Attempts to erase a key/value pair.
      * This function is not recursive, if the 'key' leads to a child node, the child node
