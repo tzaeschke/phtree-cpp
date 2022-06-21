@@ -602,27 +602,29 @@ TEST(PhTreeTest, TestUpdateWithRelocate) {
     std::vector<TestPoint<dim>> points;
     populate(tree, points, N);
 
-    size_t i = 0;
     size_t d_n = 0;
-    for (auto& p : points) {
-        auto pOld = p;
-        d_n = (d_n + 1) % deltas.size();
-        scalar_64_t delta = deltas[d_n];
-        TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
-        if (delta > 0.0 && tree.find(pNew) != tree.end()) {
-            // Skip this, there is already another entry
-            ASSERT_EQ(tree.end(), tree.relocate(pOld, pNew));
-        } else {
-            ASSERT_EQ(i, tree.relocate(pOld, pNew)->_i);
-            if (delta > 0.0) {
-                // second time fails because value has already been moved
+    for (int x = 0; x < 10; ++x) {
+        size_t i = 0;
+        for (auto& p : points) {
+            auto pOld = p;
+            d_n = (d_n + 1) % deltas.size();
+            scalar_64_t delta = deltas[d_n];
+            TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+            if (delta > 0.0 && tree.find(pNew) != tree.end()) {
+                // Skip this, there is already another entry
                 ASSERT_EQ(tree.end(), tree.relocate(pOld, pNew));
+            } else {
+                ASSERT_EQ(i, tree.relocate(pOld, pNew)->_i);
+                if (delta > 0.0) {
+                    // second time fails because value has already been moved
+                    ASSERT_EQ(tree.end(), tree.relocate(pOld, pNew));
+                }
+                ASSERT_EQ(Id(i), *tree.find(pNew));
+                p = pNew;
             }
-            ASSERT_EQ(Id(i), *tree.find(pNew));
-            p = pNew;
+            ++i;
         }
         PhTreeDebugHelper::CheckConsistency(tree);
-        ++i;
     }
 
     ASSERT_EQ(N, tree.size());
