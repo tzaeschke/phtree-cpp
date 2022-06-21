@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added custom bucket implementation (similar to std::unordered_set). This improves update performance by 5%-20%.
   [#44](https://github.com/tzaeschke/phtree-cpp/issues/44)
 - Added `PhTree.relocate(old_key, new_key)` function. This is **a lot faster** than using other methods.
-  Added `PhTreeMultimap.relocate_all(old_key, new_key)` to move multiple values at once.
   [#43](https://github.com/tzaeschke/phtree-cpp/issues/43)
 - Added try_emplace(key, value) and try_emplace(iter_hint, key, value)
   [#40](https://github.com/tzaeschke/phtree-cpp/issues/40)

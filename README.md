@@ -125,7 +125,6 @@ tree.empty();
 tree.clear();
 
 // Multi-map only
-tree.relocate_all(p1, p2);
 tree.estimate_count(query);
 ```
 
