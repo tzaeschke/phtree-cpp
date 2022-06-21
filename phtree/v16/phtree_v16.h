@@ -265,30 +265,40 @@ class PhTreeV16 {
     }
 
     /*
-     * Relocate (move) an entry from one position to another.
+     * Relocate (move) an entry from one position to another, subject to a predicate.
+     *
+     * @param old_key
+     * @param new_key
+     * @param predicate
      *
      * @return  A pair, whose first element points to the possibly relocated value, and
      *          whose second element is a bool that is true if the value was actually relocated.
      */
-    auto relocate(const KeyT& old_key, const KeyT& new_key) {
-        auto pair = find_two(old_key, new_key);
+    template <typename PRED>
+    auto relocate_if(
+        const KeyT& old_key, const KeyT& new_key, PRED&& pred = [](const T& /* value */) {
+            return true;
+        }) {
+        auto pair = find_two(old_key, new_key, false);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
-        if (iter_old.IsEnd()) {
-            return iter_old;
+        if (iter_old.IsEnd() || !pred(*iter_old)) {
+            return 0;
         }
         // Are we inserting in same node and same quadrant? Or are the keys equal?
         if (iter_old == iter_new) {
             iter_old.GetCurrentResult()->SetKey(new_key);
-            return iter_old;
+            return 1;
         }
 
         bool is_inserted = false;
         auto* new_parent = iter_new.GetCurrentNodeEntry();
-        auto* new_entry = &new_parent->GetNode().Emplace(
+        new_parent->GetNode().Emplace(
             is_inserted, new_key, new_parent->GetNodePostfixLen(), std::move(*iter_old));
-        assert(new_entry != nullptr);
+        if (!is_inserted) {
+            return 0;
+        }
 
         // Erase old value. See comments in erase() for details.
         EntryT* old_node_entry = iter_old.GetCurrentNodeEntry();
@@ -302,8 +312,7 @@ class PhTreeV16 {
                 old_key, old_node_entry, old_node_entry != &root_, found);
         }
         assert(found);
-        return IteratorWithParent<T, CONVERT>(
-            new_entry, iter_new.GetCurrentNodeEntry(), iter_new.GetParentNodeEntry(), converter_);
+        return 1;
     }
 
     /*
@@ -311,11 +320,7 @@ class PhTreeV16 {
      *
      * Special behavior:
      * - returns end() if old_key does not exist;
-     * - creates an entry for new_key if it does not exist yet and if create_new_entry=true.
-     */
-
-    /*
-     * Tries to locate two entries that are 'close' to each other.
+     * - creates an entry for new_key if it does not exist yet and if ensure_new_entry_exists=true.
      */
     auto find_two(
         const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) const {
@@ -352,147 +357,35 @@ class PhTreeV16 {
         }
 
         // Find node for insertion
-        auto current = new_node_entry; // TODO rename to new_entry
-        while (current && current->IsNode()) {
-            new_node_entry = current;
-            current = current->GetNode().Find(new_key, current->GetNodePostfixLen());
+        auto new_entry = new_node_entry;
+        while (new_entry && new_entry->IsNode()) {
+            new_node_entry = new_entry;
+            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
         }
 
-        if (current == nullptr && ensure_new_entry_exists) {
+        if (new_entry == nullptr && ensure_new_entry_exists) {
             // We need to insert a new entry
             bool is_inserted = false;
-            current = &new_node_entry->GetNode().Emplace(
+            new_entry = &new_node_entry->GetNode().Emplace(
                 is_inserted, new_key, new_node_entry->GetNodePostfixLen());
-            assert(current != nullptr);
+            assert(new_entry != nullptr);
             // conflict?
             if (old_node_entry_parent == new_node_entry) {
                 // In this case the old_node_entry may have been invalidated by the previous
                 // insertion.
                 old_node_entry = old_node_entry_parent;
-             }
-             old_entry = old_node_entry;
-             while (old_entry && old_entry->IsNode()) {
-                 old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
-             }
-             assert(old_entry != nullptr);
+            }
+            old_entry = old_node_entry;
+            while (old_entry && old_entry->IsNode()) {
+                old_node_entry_parent = old_node_entry;
+                old_node_entry = old_entry;
+                old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
+            }
+            assert(old_entry != nullptr);
         }
 
         auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-        auto iter2 = Iter(current, new_node_entry, nullptr, converter_);
-        return std::make_pair(iter1, iter2);
-    }
-
-    auto find_two_xy(
-        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) {
-        using Iter = IteratorWithParent<T, CONVERT>;
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        EntryT* current_entry = &root_;           // An entry.
-        EntryT* new_node_entry = nullptr;         // Node that contains entry to be removed
-        EntryT* new_node_entry_parent = nullptr;  // Parent of the remove_node_entry
-        EntryT* old_node_entry = nullptr;         // Node that will contain  new entry
-        // Find node for removal
-        while (current_entry && current_entry->IsNode()) {
-            new_node_entry_parent = new_node_entry;
-            new_node_entry = current_entry;
-            auto postfix_len = new_node_entry->GetNodePostfixLen();
-            if (postfix_len + 1 >= n_diverging_bits) {
-                old_node_entry = new_node_entry;
-            }
-            current_entry = new_node_entry->GetNode().Find(new_key, postfix_len);
-        }
-        EntryT* new_entry = current_entry;  // Entry to be removed
-
-        // Are the keys equal?
-        if (n_diverging_bits == 0) {
-            auto iter = Iter(new_entry, new_node_entry, new_node_entry_parent, converter_);
-            return std::make_pair(iter, iter);
-        }
-        if (new_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
-            // same quadrant, but different keys
-            if (!ensure_new_entry_exists) {
-                // TODO duplicate...
-                auto postfix_len = new_node_entry->GetNodePostfixLen();
-                auto old_entry = new_node_entry->GetNode().Find(old_key, postfix_len);
-                auto iter = Iter(old_entry, new_node_entry, new_node_entry_parent, converter_);
-                return std::make_pair(iter, iter);
-            }
-
-            bool is_inserted = false;
-            //            auto* new_parent = iter_new.GetCurrentNodeEntry();
-            //            auto* new_entry = &new_parent->GetNode().Emplace(
-            //                is_inserted, new_key, new_parent->GetNodePostfixLen(),
-            //                std::move(*iter_old));
-            //            assert(new_entry != nullptr);
-
-            new_node_entry->GetNode().Emplace(
-                is_inserted, new_key, new_node_entry->GetNodePostfixLen());
-            while (new_entry->IsNode()) {
-                new_node_entry_parent = new_node_entry;
-                new_node_entry = new_entry;
-                auto postfix_len = new_node_entry->GetNodePostfixLen();
-                if (postfix_len + 1 >= n_diverging_bits) {
-                    old_node_entry = new_node_entry;
-                }
-                new_entry = new_entry->GetNode().Find(new_key, postfix_len);
-            }
-        }
-
-        // Find node for old_key
-        auto current = old_node_entry;
-        while (current && current->IsNode()) {
-            old_node_entry = current;
-            current = current->GetNode().Find(old_key, current->GetNodePostfixLen());
-        }
-
-        auto iter1 = Iter(new_entry, new_node_entry, new_node_entry_parent, converter_);
-        auto iter2 = Iter(current, old_node_entry, nullptr, converter_);
-        return std::make_pair(iter1, iter2);
-    }
-
-    /*
-     * Tries to locate two entries that are 'close' to each other.
-     */
-    auto find_two_old(const KeyT& old_key, const KeyT& new_key) const {
-        using Iter = IteratorWithParent<T, CONVERT>;
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        const EntryT* current_entry = &root_;           // An entry.
-        const EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
-        const EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        const EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
-        // Find node for removal
-        while (current_entry && current_entry->IsNode()) {
-            old_node_entry_parent = old_node_entry;
-            old_node_entry = current_entry;
-            auto postfix_len = old_node_entry->GetNodePostfixLen();
-            if (postfix_len + 1 >= n_diverging_bits) {
-                new_node_entry = old_node_entry;
-            }
-            current_entry = old_node_entry->GetNode().Find(old_key, postfix_len);
-        }
-        const EntryT* old_entry = current_entry;  // Entry to be removed
-
-        // Can we stop already?
-        if (old_entry == nullptr) {
-            auto iter = Iter(nullptr, nullptr, nullptr, converter_);
-            return std::make_pair(iter, iter);  // old_key not found!
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (old_node_entry->GetNodePostfixLen() >= n_diverging_bits || n_diverging_bits == 0) {
-            auto iter = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-            return std::make_pair(iter, iter);
-        }
-
-        // Find node for insertion
-        auto current = new_node_entry;
-        while (current && current->IsNode()) {
-            new_node_entry = current;
-            current = current->GetNode().Find(new_key, current->GetNodePostfixLen());
-        }
-        auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-        auto iter2 = Iter(current, new_node_entry, nullptr, converter_);
+        auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
         return std::make_pair(iter1, iter2);
     }
 

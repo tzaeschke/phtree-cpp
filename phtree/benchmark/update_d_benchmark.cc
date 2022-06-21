@@ -133,10 +133,8 @@ void IndexBenchmark<DIM, UPDATE_TYPE>::BuildUpdates() {
 template <dimension_t DIM>
 size_t UpdateByRelocate(TreeType<DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
-    auto end = tree.end();
     for (auto& update : updates) {
-        auto result = tree.relocate(update.old_, update.new_);
-        n += result != end;
+        n += tree.relocate(update.old_, update.new_);
     }
     return n;
 }

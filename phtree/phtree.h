@@ -187,10 +187,26 @@ class PhTree {
      *
      * @param old_key The old position
      * @param new_key The new position
-     * @return An iterator that points to the relocated value, or to end() if the relocation failed.
+     * @return '1' if the 'value' was moved, otherwise '0'.
      */
     auto relocate(const Key& old_key, const Key& new_key) {
-        return tree_.relocate(converter_.pre(old_key), converter_.pre(new_key));
+        return tree_.relocate_if(
+            converter_.pre(old_key), converter_.pre(new_key), [](const T&) { return true; });
+    }
+
+    /*
+     * Relocate (move) an entry from one position to another, subject to a predicate.
+     *
+     * @param old_key The old position
+     * @param new_key The new position
+     * @param predicate The predicate is called for every value before it is relocated.
+     *                  If the predicate returns 'false', the relocation is aborted.
+     * @return '1' if the 'value' was moved, otherwise '0'.
+     */
+    template <typename PRED>
+    auto relocate_if(const Key& old_key, const Key& new_key, PRED&& predicate) {
+        return tree_.relocate_if(
+            converter_.pre(old_key), converter_.pre(new_key), std::forward<PRED>(predicate));
     }
 
     /*
