@@ -45,11 +45,9 @@ struct Id {
 
     explicit Id(const int i) : _i(i){};
 
-    bool operator==(Id& rhs) {
+    bool operator==(const Id& rhs) const {
         return _i == rhs._i;
     }
-
-    Id& operator=(Id const& rhs) = default;
 
     int _i;
 };

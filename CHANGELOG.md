@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added FilterBoxAABB and FilterSphereAABB as examples for filtering a PH-Tree with box keys
   [#33](https://github.com/tzaeschke/phtree-cpp/issues/33)
 ### Changed
-- Simplified internals of erase(). [#47](https://github.com/tzaeschke/phtree-cpp/pull/47)
+- Cleaned up unit tests. [#54](https://github.com/tzaeschke/phtree-cpp/pull/54)
+- Simplified internals of `erase()`. [#47](https://github.com/tzaeschke/phtree-cpp/pull/47)
 - Removed internal use of `std::optional()` to slightly reduce memory overhead
   [#38](https://github.com/tzaeschke/phtree-cpp/issues/38)
 - Removed restrictions on bazel version [#35](https://github.com/tzaeschke/phtree-cpp/issues/35)

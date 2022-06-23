@@ -601,31 +601,31 @@ void QueryAll(QUERY query) {
     ASSERT_EQ(1000, n);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQuery) {
+TEST(PhTreeBoxDFilterTest, TestSphereQuery) {
     Query0<3>(&testSphereQuery<3>);
     QueryMany<3>(&testSphereQuery<3>);
     QueryAll<3>(&testSphereQuery<3>);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryWithQueryBox) {
+TEST(PhTreeBoxDFilterTest, TestSphereQueryWithQueryBox) {
     Query0<3>(&testSphereQueryWithBox<3>);
     QueryMany<3>(&testSphereQueryWithBox<3>);
     QueryAll<3>(&testSphereQueryWithBox<3>);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryForEach) {
+TEST(PhTreeBoxDFilterTest, TestSphereQueryForEach) {
     Query0<3>(&testSphereQueryForEach<3>);
     QueryMany<3>(&testSphereQueryForEach<3>);
     QueryAll<3>(&testSphereQueryForEach<3>);
 }
 
-TEST(PhTreeMMDFilterTest, TestSphereQueryForEachWithQueryBox) {
+TEST(PhTreeBoxDFilterTest, TestSphereQueryForEachWithQueryBox) {
     Query0<3>(&testSphereQueryForEachQueryBox<3>);
     QueryMany<3>(&testSphereQueryForEachQueryBox<3>);
     QueryAll<3>(&testSphereQueryForEachQueryBox<3>);
 }
 
-TEST(PhTreeMMDFilterTest, TestAABBQuery) {
+TEST(PhTreeBoxDFilterTest, TestAABBQuery) {
     Query0<3>(&testAABBQuery<3>);
     QueryManyAABB<3>(&testAABBQuery<3>);
     QueryAll<3>(&testAABBQuery<3>);

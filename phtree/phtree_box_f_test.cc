@@ -46,11 +46,9 @@ struct Id {
 
     explicit Id(const size_t i) : _i(i){};
 
-    bool operator==(Id& rhs) {
+    bool operator==(const Id& rhs) const {
         return _i == rhs._i;
     }
-
-    Id& operator=(Id const& rhs) = default;
 
     size_t _i;
 };
@@ -173,7 +171,7 @@ void SmokeTestBasicOps(size_t N) {
     PhTreeDebugHelper::CheckConsistency(tree);
 }
 
-TEST(PhTreeMMDFilterTest, SmokeTestBasicOps) {
+TEST(PhTreeBoxFTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<1>(100);
     SmokeTestBasicOps<3>(10000);
     SmokeTestBasicOps<6>(10000);
@@ -182,7 +180,7 @@ TEST(PhTreeMMDFilterTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<31>(100);
 }
 
-TEST(PhTreeMMDFilterTest, TestDebug) {
+TEST(PhTreeBoxFTest, TestDebug) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
