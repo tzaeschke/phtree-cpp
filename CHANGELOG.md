@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Added tested support for move-only and copy-only value objects.
+  [#56](https://github.com/tzaeschke/phtree-cpp/issues/56)
 - Added custom bucket implementation (similar to std::unordered_set). This improves update performance by 5%-20%.
   [#44](https://github.com/tzaeschke/phtree-cpp/issues/44)
 - Added `PhTree.relocate(old_key, new_key)` and `PhTree.relocate_if(old_key, new_key, predicate)`. 

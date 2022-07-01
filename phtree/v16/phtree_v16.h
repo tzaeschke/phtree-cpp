@@ -58,6 +58,7 @@ class PhTreeV16 {
     using ScalarInternal = typename CONVERT::ScalarInternal;
     using KeyT = typename CONVERT::KeyInternal;
     using EntryT = Entry<DIM, T, ScalarInternal>;
+    using NodeT = Node<DIM, T, ScalarInternal>;
 
   public:
     static_assert(!std::is_reference<T>::value, "Reference type value are not supported.");
@@ -69,7 +70,9 @@ class PhTreeV16 {
     static_assert(DIM >= 1 && DIM <= 63, "This PH-Tree supports between 1 and 63 dimensions");
 
     PhTreeV16(CONVERT* converter)
-    : num_entries_{0}, root_{MAX_BIT_WIDTH<ScalarInternal> - 1}, converter_{converter} {}
+    : num_entries_{0}
+    , root_{{}, std::make_unique<NodeT>(), MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , converter_{converter} {}
 
     PhTreeV16(const PhTreeV16& other) = delete;
     PhTreeV16& operator=(const PhTreeV16& other) = delete;
@@ -275,10 +278,7 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    auto relocate_if(
-        const KeyT& old_key, const KeyT& new_key, PRED&& pred = [](const T& /* value */) {
-            return true;
-        }) {
+    size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         auto pair = find_two(old_key, new_key, false);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -508,7 +508,7 @@ class PhTreeV16 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT(MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT({}, std::make_unique<NodeT>(), MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*

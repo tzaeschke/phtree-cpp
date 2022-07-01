@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
-#include "phtree/phtree.h"
+#include "phtree/phtree_multimap.h"
 #include <gtest/gtest.h>
 #include <random>
 
 using namespace improbable::phtree;
 
+// Number of entries that have the same coordinate
+static const size_t NUM_DUPL = 4;
+static const double WORLD_MIN = -1000;
+static const double WORLD_MAX = 1000;
+
 template <dimension_t DIM>
 using TestPoint = PhPointD<DIM>;
 
 template <dimension_t DIM, typename T>
-using TestTree = PhTreeD<DIM, T>;
+using TestTree = PhTreeMultiMap<DIM, T, ConverterIEEE<DIM>>;
 
 class DoubleRng {
   public:
@@ -45,11 +50,7 @@ struct IdCopyOnly {
     IdCopyOnly() = default;
     IdCopyOnly(const IdCopyOnly& other) = default;
     IdCopyOnly(IdCopyOnly&& other) = delete;
-    // IdCopyOnly& operator=(const IdCopyOnly& other) = default;
-    IdCopyOnly& operator=(const IdCopyOnly& other) {
-        _i = other._i;
-        return *this;
-    }
+    IdCopyOnly& operator=(const IdCopyOnly& other) = default;
     IdCopyOnly& operator=(IdCopyOnly&& other) = delete;
     ~IdCopyOnly() = default;
 
@@ -58,6 +59,7 @@ struct IdCopyOnly {
     }
 
     size_t _i{};
+    int _data{};
 };
 
 struct IdMoveOnly {
@@ -75,6 +77,7 @@ struct IdMoveOnly {
     }
 
     size_t _i{};
+    int _data{};
 };
 
 // Assert that copy-ctr is not called even when available
@@ -97,28 +100,62 @@ struct IdCopyOrMove {
     }
 
     size_t _i{};
+    int _data{};
+};
+
+namespace std {
+template <>
+struct hash<IdCopyOnly> {
+    size_t operator()(const IdCopyOnly& x) const {
+        return std::hash<int>{}(x._i);
+    }
+};
+template <>
+struct hash<IdMoveOnly> {
+    size_t operator()(const IdMoveOnly& x) const {
+        return std::hash<int>{}(x._i);
+    }
+};
+template <>
+struct hash<IdCopyOrMove> {
+    size_t operator()(const IdCopyOrMove& x) const {
+        return std::hash<int>{}(x._i);
+    }
+};
+};  // namespace std
+
+struct IdHash {
+    template <class T1, class T2>
+    std::size_t operator()(std::pair<T1, T2> const& v) const {
+        return std::hash<T1>()(v.size());
+    }
 };
 
 template <dimension_t DIM>
 void generateCube(std::vector<TestPoint<DIM>>& points, size_t N) {
-    DoubleRng rng(-1000, 1000);
-    auto refTree = std::map<TestPoint<DIM>, size_t>();
+    assert(N % NUM_DUPL == 0);
+    DoubleRng rng(WORLD_MIN, WORLD_MAX);
+    auto reference_set = std::unordered_map<TestPoint<DIM>, size_t>();
 
     points.reserve(N);
-    for (size_t i = 0; i < N; i++) {
-        TestPoint<DIM> point{};
+    for (size_t i = 0; i < N / NUM_DUPL; i++) {
+        // create duplicates, i.e. entries with the same coordinates. However, avoid unintentional
+        // duplicates.
+        TestPoint<DIM> key{};
         for (dimension_t d = 0; d < DIM; ++d) {
-            point[d] = rng.next();
+            key[d] = rng.next();
         }
-        if (refTree.count(point) != 0) {
+        if (reference_set.count(key) != 0) {
             i--;
             continue;
         }
-
-        refTree.emplace(point, i);
-        points.push_back(point);
+        reference_set.emplace(key, i);
+        for (size_t dupl = 0; dupl < NUM_DUPL; dupl++) {
+            auto point = TestPoint<DIM>(key);
+            points.push_back(point);
+        }
     }
-    ASSERT_EQ(refTree.size(), N);
+    ASSERT_EQ(reference_set.size(), N / NUM_DUPL);
     ASSERT_EQ(points.size(), N);
 }
 
@@ -130,59 +167,47 @@ void SmokeTestBasicOps_QueryAndErase(TestTree<DIM, Id>& tree, std::vector<TestPo
         TestPoint<DIM>& p = points.at(i);
         auto q = tree.begin_query({p, p});
         ASSERT_NE(q, tree.end());
-        ASSERT_EQ(i, (*q)._i);
-        q++;
+        for (size_t j = 0; j < NUM_DUPL; j++) {
+            ASSERT_EQ(i / NUM_DUPL, (*q)._i / NUM_DUPL);
+            q++;
+        }
         ASSERT_EQ(q, tree.end());
     }
-
-    for (size_t i = 0; i < N; i++) {
-        TestPoint<DIM>& p = points.at(i);
-        auto q = tree.begin_knn_query(1, p, DistanceEuclidean<DIM>());
-        ASSERT_NE(q, tree.end());
-        ASSERT_EQ(i, (*q)._i);
-        q++;
-        ASSERT_EQ(q, tree.end());
-    }
-
-    // TODO enable for new relocate functions
-    //    for (size_t i = 0; i < N; i++) {
-    //        TestPoint<DIM>& p = points.at(i);
-    //        TestPoint<DIM> pOld = p;
-    //        for (dimension_t d = 0; d < DIM; ++d) {
-    //            p[d] += 10000;
-    //        }
-    //        auto r = tree.relocate(pOld, p);
-    //        ASSERT_EQ(r, 1u);
-    //    }
 
     PhTreeDebugHelper::CheckConsistency(tree);
 
     for (size_t i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
+        Id id(i);
         ASSERT_NE(tree.find(p), tree.end());
-        ASSERT_EQ(tree.count(p), 1u);
-        ASSERT_EQ(i, tree.find(p)->_i);
+        size_t expected_remaining = (N - i - 1) % NUM_DUPL + 1;
+        ASSERT_EQ(tree.count(p), expected_remaining);
+        ASSERT_EQ(i, tree.find(p, id)->_i);
         if (i % 2 == 0) {
-            ASSERT_EQ(1u, tree.erase(p));
+            ASSERT_EQ(1, tree.erase(p, id));
         } else {
-            auto iter = tree.find(p);
-            ASSERT_EQ(1u, tree.erase(iter));
+            auto iter = tree.find(p, id);
+            ASSERT_EQ(1, tree.erase(iter));
         }
 
-        ASSERT_EQ(tree.count(p), 0u);
-        ASSERT_EQ(tree.end(), tree.find(p));
+        ASSERT_EQ(tree.count(p), expected_remaining - 1);
+        if (expected_remaining - 1 == 0) {
+            ASSERT_EQ(tree.end(), tree.find(p));
+        }
         ASSERT_EQ(N - i - 1, tree.size());
 
         // try remove again
-        ASSERT_EQ(0u, tree.erase(p));
-        ASSERT_EQ(tree.count(p), 0u);
-        ASSERT_EQ(tree.end(), tree.find(p));
+        ASSERT_EQ(0, tree.erase(p, id));
+        ASSERT_EQ(tree.count(p), expected_remaining - 1);
+        if (expected_remaining - 1 == 0) {
+            ASSERT_EQ(tree.end(), tree.find(p));
+        }
         ASSERT_EQ(N - i - 1, tree.size());
         if (i < N - 1) {
             ASSERT_FALSE(tree.empty());
         }
     }
-    ASSERT_EQ(0u, tree.size());
+    ASSERT_EQ(0, tree.size());
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 }
@@ -193,36 +218,36 @@ void SmokeTestBasicOps(size_t N) {
     std::vector<TestPoint<DIM>> points;
     generateCube(points, N);
 
-    ASSERT_EQ(0u, tree.size());
+    ASSERT_EQ(0, tree.size());
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 
     for (size_t i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
-        ASSERT_EQ(tree.count(p), 0u);
-        ASSERT_EQ(tree.end(), tree.find(p));
+        ASSERT_LE(tree.count(p), i % NUM_DUPL);
+        if (i % NUM_DUPL == 0) {
+            ASSERT_EQ(tree.end(), tree.find(p));
+        }
 
         Id id(i);
         if (i % 4 == 0) {
-            ASSERT_TRUE(tree.try_emplace(p, id).second);
-        } else if (i % 4 == 1) {
             ASSERT_TRUE(tree.emplace(p, id).second);
-        } else if (i % 4 == 2) {
-            tree[p] = id;
-        } else {
+        } else if (i % 4 == 1) {
             ASSERT_TRUE(tree.insert(p, id).second);
+        } else {
+            ASSERT_TRUE(tree.try_emplace(p, id).second);
         }
-        ASSERT_EQ(tree.count(p), 1u);
+        ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
         ASSERT_NE(tree.end(), tree.find(p));
-        ASSERT_EQ(id._i, tree.find(p)->_i);
+        ASSERT_EQ(id._i, tree.find(p, id)->_i);
         ASSERT_EQ(i + 1, tree.size());
 
         // try adding it again
         ASSERT_FALSE(tree.insert(p, id).second);
         ASSERT_FALSE(tree.emplace(p, id).second);
-        ASSERT_EQ(tree.count(p), 1u);
+        ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
         ASSERT_NE(tree.end(), tree.find(p));
-        ASSERT_EQ(id._i, tree.find(p)->_i);
+        ASSERT_EQ(id._i, tree.find(p, id)->_i);
         ASSERT_EQ(i + 1, tree.size());
         ASSERT_FALSE(tree.empty());
     }
@@ -230,7 +255,7 @@ void SmokeTestBasicOps(size_t N) {
     SmokeTestBasicOps_QueryAndErase(tree, points);
 }
 
-TEST(PhTreeDTestCopyMove, SmokeTestBasicOpsCopyOnly) {
+TEST(PhTreeMMDTestCopyMove, SmokeTestBasicOps) {
     SmokeTestBasicOps<1, IdCopyOnly>(100);
     SmokeTestBasicOps<3, IdCopyOnly>(100);
     SmokeTestBasicOps<6, IdCopyOnly>(100);
@@ -245,33 +270,33 @@ void SmokeTestBasicOpsMoveOnly(size_t N) {
     std::vector<TestPoint<DIM>> points;
     generateCube(points, N);
 
-    ASSERT_EQ(0u, tree.size());
+    ASSERT_EQ(0, tree.size());
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 
     for (size_t i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
-        ASSERT_EQ(tree.count(p), 0u);
-        ASSERT_EQ(tree.end(), tree.find(p));
+        ASSERT_LE(tree.count(p), i % NUM_DUPL);
+        if (i % NUM_DUPL == 0) {
+            ASSERT_EQ(tree.end(), tree.find(p));
+        }
 
         if (i % 2 == 0) {
-            ASSERT_TRUE(tree.try_emplace(p, Id(i)).second);
-        } else if (i % 4 == 1) {
-            tree[p] = Id(i);
-        } else {
             ASSERT_TRUE(tree.emplace(p, Id(i)).second);
+        } else {
+            ASSERT_TRUE(tree.try_emplace(p, Id(i)).second);
         }
-        ASSERT_EQ(tree.count(p), 1u);
+        ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
         ASSERT_NE(tree.end(), tree.find(p));
-        ASSERT_EQ(i, tree.find(p)->_i);
+        ASSERT_EQ(i, tree.find(p, Id(i))->_i);
         ASSERT_EQ(i + 1, tree.size());
 
         // try adding it again
         ASSERT_FALSE(tree.try_emplace(p, Id(i)).second);
         ASSERT_FALSE(tree.emplace(p, Id(i)).second);
-        ASSERT_EQ(tree.count(p), 1u);
+        ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
         ASSERT_NE(tree.end(), tree.find(p));
-        ASSERT_EQ(i, tree.find(p)->_i);
+        ASSERT_EQ(i, tree.find(p, Id(i))->_i);
         ASSERT_EQ(i + 1, tree.size());
         ASSERT_FALSE(tree.empty());
     }
@@ -279,7 +304,7 @@ void SmokeTestBasicOpsMoveOnly(size_t N) {
     SmokeTestBasicOps_QueryAndErase(tree, points);
 }
 
-TEST(PhTreeDTestCopyMove, SmokeTestBasicOpsMoveOnly) {
+TEST(PhTreeMMDTestCopyMove, SmokeTestBasicOpsMoveOnly) {
     SmokeTestBasicOpsMoveOnly<1, IdMoveOnly>(100);
     SmokeTestBasicOpsMoveOnly<3, IdMoveOnly>(100);
     SmokeTestBasicOpsMoveOnly<6, IdMoveOnly>(100);
@@ -288,7 +313,7 @@ TEST(PhTreeDTestCopyMove, SmokeTestBasicOpsMoveOnly) {
     SmokeTestBasicOpsMoveOnly<63, IdMoveOnly>(100);
 }
 
-TEST(PhTreeDTestCopyMove, SmokeTestBasicOpsCopyFails) {
+TEST(PhTreeMMDTestCopyMove, SmokeTestBasicOpsCopyFails) {
     SmokeTestBasicOpsMoveOnly<1, IdCopyOrMove>(100);
     SmokeTestBasicOpsMoveOnly<3, IdCopyOrMove>(100);
     SmokeTestBasicOpsMoveOnly<6, IdCopyOrMove>(100);

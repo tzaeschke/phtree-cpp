@@ -58,16 +58,7 @@ class Entry {
     , postfix_len_{static_cast<std::uint16_t>(postfix_len)} {}
 
     /*
-     * Construct entry with a new node.
-     */
-    Entry(bit_width_t postfix_len) noexcept
-    : kd_key_()
-    , node_{std::make_unique<NodeT>()}
-    , union_type_{NODE}
-    , postfix_len_{static_cast<std::uint16_t>(postfix_len)} {}
-
-    /*
-     * Construct entry with existing T.
+     * Construct entry with existing T (T is not movable).
      */
     template <typename ValueT2 = ValueT>
     Entry(
@@ -76,12 +67,15 @@ class Entry {
         typename std::enable_if_t<!std::is_move_constructible_v<ValueT2>, int>::type = 0) noexcept
     : kd_key_{k}, value_(value), union_type_{VALUE}, postfix_len_{0} {}
 
+    /*
+     * Construct entry with existing T (T must be movable).
+     */
     template <typename ValueT2 = ValueT>
     Entry(
         const KeyT& k,
         ValueT2&& value,
         typename std::enable_if_t<std::is_move_constructible_v<ValueT2>, int>::type = 0) noexcept
-    : kd_key_{k}, value_(std::move(value)), union_type_{VALUE}, postfix_len_{0} {}
+    : kd_key_{k}, value_(std::forward<ValueT2>(value)), union_type_{VALUE}, postfix_len_{0} {}
 
     /*
      * Construct entry with new T or copied T (T is not movable).
@@ -91,6 +85,15 @@ class Entry {
         typename = std::enable_if_t<!std::is_move_constructible_v<ValueT2>>>
     explicit Entry(const KeyT& k, const ValueT& value) noexcept
     : kd_key_{k}, value_(value), union_type_{VALUE}, postfix_len_{0} {}
+
+    /*
+     * Construct entry with new T or copied T (T is not movable, using T's default constructor).
+     */
+    template <
+        typename ValueT2 = ValueT,
+        typename = std::enable_if_t<!std::is_move_constructible_v<ValueT2>>>
+    explicit Entry(const KeyT& k) noexcept
+    : kd_key_{k}, value_(), union_type_{VALUE}, postfix_len_{0} {}
 
     /*
      * Construct entry with new T or moved T (T must be movable).
