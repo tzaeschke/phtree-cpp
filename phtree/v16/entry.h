@@ -193,7 +193,8 @@ class Entry {
         auto node = std::move(node_);
         union_type_ = EMPTY;
         *this = std::move(other);
-        node.~unique_ptr();
+        //node.~unique_ptr();  // TODO
+        node.reset();
     }
 
   private:
