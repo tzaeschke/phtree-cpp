@@ -170,13 +170,13 @@ for (auto it : tree) {
     ...
 }
 
-// Iterate over all entries inside of an axis aligned box defined by the two points (1,1,1) and (3,3,3)    
+// Iterate over all entries inside an axis aligned box defined by the two points (1,1,1) and (3,3,3)    
 for (auto it = tree.begin_query({{1, 1, 1}, {3, 3, 3}}); it != tree.end(); ++it) {
     ...
 }
 
 // Find 5 nearest neighbors of (1,1,1)    
-for (auto it = tree.begin_knn_query(5, {1, 1, 1}); it != tree.end(); ++it) {
+for (auto it = tree.begin_knn_query(5, {1, 1, 1}, DistanceEuclidean<3>())); it != tree.end(); ++it) {
     ...
 }
 ```

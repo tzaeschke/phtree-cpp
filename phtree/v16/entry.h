@@ -176,12 +176,12 @@ class Entry {
 
     [[nodiscard]] ValueT&& ExtractValue() noexcept {
         assert(IsValue());
-        union_type_ = EMPTY;
         return std::move(value_);
     }
 
     [[nodiscard]] std::unique_ptr<NodeT>&& ExtractNode() noexcept {
         assert(IsNode());
+        // Moving the node somewhere else means we should remove it here:
         union_type_ = EMPTY;
         return std::move(node_);
     }
@@ -193,7 +193,6 @@ class Entry {
         auto node = std::move(node_);
         union_type_ = EMPTY;
         *this = std::move(other);
-        //node.~unique_ptr();  // TODO
         node.reset();
     }
 
