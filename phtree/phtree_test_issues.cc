@@ -48,6 +48,12 @@ void mem_usage(double &vm_usage, double &resident_set) {
     resident_set = rss * page_size_kb;
 }
 
+int get_resident_mem_kb() {
+    double vm, rss;
+    mem_usage(vm, rss);
+    return rss;
+}
+
 void print_mem() {
     double vm, rss;
     mem_usage(vm, rss);
@@ -55,6 +61,10 @@ void print_mem() {
 }
 
 #elif defined(_MSC_VER)
+int get_resident_mem_kb() {
+    return 0;
+}
+
 void print_mem() {
     double vm, rss;
     //mem_usage(vm, rss);
@@ -62,59 +72,81 @@ void print_mem() {
 }
 #endif
 
+auto start_timer() {
+    return std::chrono::steady_clock::now();
+}
+
+template<typename T>
+void end_timer(T start, const char *prefix) {
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds1 = end - start;
+    std::cout << "elapsed time " << prefix << " = " << elapsed_seconds1.count() << " s" << std::endl;
+}
 
 TEST(PhTreeTestIssues, TestIssue60) {
-    auto tree = PhTreeMultiMapD<2, int>();
-    //auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::set<int>>();
+    //auto tree = PhTreeMultiMapD<2, int>();
+    auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::set<int>>();
     std::vector<PhPointD<2>> vecPos;
-    int dim = 10000;
-    int num = 1000000;
+    int dim = 1000;
+    int num = 1000;
 
-    auto start1 = std::chrono::steady_clock::now();
+
+    auto start1 = start_timer();
     for (int i = 0; i < num; ++i) {
         PhPointD<2> p = {(double) (rand() % dim), (double) (rand() % dim)};
         vecPos.push_back(p);
         tree.emplace(p, i);
     }
-
-    auto end1 = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed_seconds1 = end1 - start1;
-    std::cout << "elapsed time 1: " << elapsed_seconds1.count() << "s\n";
+    end_timer(start1, "1");
 
     print_mem();
-    auto start2 = std::chrono::steady_clock::now();
-    for (int i = 0; i < num; ++i) {
-        PhPointD<2> p = vecPos[i];
-        PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
-        tree.relocate(p, newp, i);
+    auto start2 = start_timer();
+    auto mem_start_2 = get_resident_mem_kb();
+    for (int j = 0; j < 100; ++j) {
+        for (int i = 0; i < num; ++i) {
+            PhPointD<2> &p = vecPos[i];
+            PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+            tree.relocate(p, newp, i);
+            p = newp;
+        }
     }
+    end_timer(start2, "2");
 
-    auto end2 = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed_seconds2 = end2 - start2;
-    std::cout << "elapsed time 2: " << elapsed_seconds2.count() << "s\n";
+    auto mem_end_2 = get_resident_mem_kb();
+    ASSERT_LT(abs(mem_end_2 - mem_start_2), 1);
     print_mem();
 }
 
+TEST(PhTreeTestIssues, TestIssue60_minimal) {
+    //auto tree = PhTreeMultiMapD<2, int>();
+    auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::set<int>>();
+    std::vector<PhPointD<2>> vecPos;
+    int dim = 1000;
+    int num = 1000;
 
-TEST(PhTreeTestIssues, TestIssue60_3) {
-    //auto tree = PhTreeMultiMapD<3, int>();
-    auto tree = PhTreeMultiMapD<3, int, ConverterIEEE<3>, std::set<int>>();
-    std::vector<PhPointD<3>> vecPos;
-    int dim = 10000;
-
-    int num = 100000;
+    auto start1 = start_timer();
     for (int i = 0; i < num; ++i) {
-        PhPointD<3> p = {(double) (rand() % dim), (double) (rand() % dim), (double) (rand() % dim)};
+        PhPointD<2> p = {(double) (rand() % dim), (double) (rand() % dim)};
         vecPos.push_back(p);
         tree.emplace(p, i);
     }
+    end_timer(start1, "1");
 
     print_mem();
-    for (int i = 0; i < num; ++i) {
-        PhPointD<3> p = vecPos[i];
-        PhPointD<3> newp = {(double) (rand() % dim), (double) (rand() % dim), (double) (rand() % dim)};
-        tree.relocate(p, newp, i);
+    auto mem_start_2 = get_resident_mem_kb();
+    auto start2 = start_timer();
+    for (int j = 0; j < 100; ++j) {
+        for (int i = 0; i < num; ++i) {
+            PhPointD<2> &p = vecPos[i];
+            PhPointD<2> newp = {p[0] + 1, p[1] + 1};
+            tree.relocate(p, newp, i);
+            p = newp;
+        }
     }
+    end_timer(start2, "2");
+
+    auto mem_end_2 = get_resident_mem_kb();
+    ASSERT_LT(abs(mem_end_2 - mem_start_2), 1);
     print_mem();
 }
 
