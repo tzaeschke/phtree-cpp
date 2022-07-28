@@ -4,6 +4,7 @@
 !.clang-format
 !.gitignore
 !.github
+!*.yml
 bazel-*
 !bazel-*.sh
 compile_commands.json

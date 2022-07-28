@@ -1,0 +1,33 @@
+name: Bazel Windows build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Run bazel
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup bazel
+        uses: bazelbuild/setup-bazelisk@v2
+
+      - name: Mount bazel cache  # Optional
+        uses: actions/cache@v3
+        with:
+          path: "~/.cache/bazel"
+          key: bazel
+
+      - name: Build
+        shell: bash
+        run: bazel build ...
+
+      - name: Test
+        shell: bash
+        run: bazel test ...
