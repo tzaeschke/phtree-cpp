@@ -92,8 +92,6 @@ TEST(PhTreeTestIssues, TestIssue60) {
     auto end2 = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds2 = end2 - start2;
     std::cout << "elapsed time 2: " << elapsed_seconds2.count() << "s\n";
-
-
     print_mem();
 }
 
@@ -118,7 +116,6 @@ TEST(PhTreeTestIssues, TestIssue60_3) {
         tree.relocate(p, newp, i);
     }
     print_mem();
-    FAIL();
 }
 
 TEST(PhTreeTestIssues, TestIssue6_3_MAP) {
