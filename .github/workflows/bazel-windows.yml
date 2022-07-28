@@ -26,10 +26,14 @@ jobs:
 
       - uses: ilammy/msvc-dev-cmd@v1
 
+      - name: xxx
+        shell: bash
+        run: env
+
       - name: Build
-        shell: git-bash
+        shell: bash
         run: bazel build ...
 
       - name: Test
-        shell: git-bash
+        shell: bash
         run: bazel test ...
