@@ -24,6 +24,8 @@ jobs:
           path: "~/.cache/bazel"
           key: bazel
 
+      - uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build
         shell: bash
         run: bazel build ...
