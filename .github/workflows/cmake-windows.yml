@@ -15,25 +15,20 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1
 
     - name: Create Build Environment
-      #shell: bash
       run: cmake -E make_directory ${{github.workspace}}\out
-      #run: mkdir out
 
     - name: Configure CMake
       working-directory: ${{github.workspace}}\out
-      #shell: bash
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}\out
 
     - name: Build
       working-directory: ${{github.workspace}}\out
-      #shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config ${env:BUILD_TYPE}
 
     - name: Test
       working-directory: ${{github.workspace}}\out
-      #shell: bash
-      # Execute tests defined by the CMake configuration.  
+      # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       # TODO Currently tests are run via bazel only.
       run: ctest -C ${env:BUILD_TYPE}

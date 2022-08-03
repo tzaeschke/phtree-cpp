@@ -101,9 +101,9 @@ build:ubsan --linkopt="-lubsan"
 test:ubsan --run_under=//tools/runners/sanitizers/ubsan
 
 # MSAN is disabled for now, as there are false positives and we can't suppress them easily.
-#build:msan --config=base-sanitizer
-#build:msan --copt="-fsanitize=memory"
-#build:msan --linkopt="-fsanitize=memory"
-#test:msan --run_under=//tools/runners/sanitizers/msan
+build:msan --config=base-sanitizer
+build:msan --copt="-fsanitize=memory"
+build:msan --linkopt="-fsanitize=memory"
+test:msan --run_under=//tools/runners/sanitizers/msan
 
 build:lint --define linting_only=true
