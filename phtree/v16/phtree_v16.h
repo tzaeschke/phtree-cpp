@@ -203,10 +203,6 @@ class PhTreeV16 {
      * was found
      */
     auto find(const KeyT& key) const {
-        if (empty()) {  // TODO remove this if-clause?
-            return IteratorWithParent<T, CONVERT>(nullptr, nullptr, nullptr, converter_);
-        }
-
         const EntryT* current_entry = &root_;
         const EntryT* current_node = nullptr;
         const EntryT* parent_node = nullptr;
@@ -278,12 +274,8 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    size_t relocate_if(
-        const KeyT& old_key, const KeyT& new_key, PRED&& pred = [](const T& /* value */) {
-            // TODO does this default predicate work? Do we want to have it?
-            return true;
-        }) {
-        auto pair = __find_two(old_key, new_key, false);
+    size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+        auto pair = __find_two(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
@@ -324,11 +316,8 @@ class PhTreeV16 {
      *
      * Special behavior:
      * - returns end() if old_key does not exist;
-     * - creates an entry for new_key if it does not exist yet and if ensure_new_entry_exists=true.
      */
-    // TODO remove flag! (and function doc).
-    auto __find_two(
-        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) {
+    auto __find_two(const KeyT& old_key, const KeyT& new_key) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
@@ -355,8 +344,7 @@ class PhTreeV16 {
         }
 
         // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (n_diverging_bits == 0 ||
-            (!ensure_new_entry_exists && old_node_entry->GetNodePostfixLen() >= n_diverging_bits)) {
+        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
             auto iter = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
             return std::make_pair(iter, iter);
         }
@@ -368,34 +356,19 @@ class PhTreeV16 {
             new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
         }
 
-        if (new_entry == nullptr && ensure_new_entry_exists) {
-            // We need to insert a new entry
-            bool is_inserted = false;
-            new_entry = &new_node_entry->GetNode().Emplace(
-                is_inserted, new_key, new_node_entry->GetNodePostfixLen());
-            ++num_entries_;
-            assert(new_entry != nullptr);
-            // conflict?
-            if (old_node_entry_parent == new_node_entry) {
-                // In this case the old_node_entry was invalidated by the previous insertion.
-                old_node_entry = old_node_entry_parent;
-            }
-            old_entry = old_node_entry;
-            while (old_entry && old_entry->IsNode()) {
-                old_node_entry_parent = old_node_entry;
-                old_node_entry = old_entry;
-                old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
-            }
-            assert(old_entry != nullptr);
-        }
-
         auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
         auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
         return std::make_pair(iter1, iter2);
     }
 
-    auto __find_two_mm(
-        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) {
+    /*
+     * Tries to locate two entries that are 'close' to each other.
+     *
+     * Special behavior:
+     * - returns end() if old_key does not exist;
+     * - CREATES the destination entry if it does not exist!
+     */
+    auto __find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
@@ -433,10 +406,8 @@ class PhTreeV16 {
             return std::make_pair(iter, iter);  // old_key not found!
         }
 
-        // TODO remove flag?
         // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (n_diverging_bits == 0 ||
-            (!ensure_new_entry_exists && old_node_entry->GetNodePostfixLen() >= n_diverging_bits)) {
+        if (n_diverging_bits == 0) {
             auto iter = Iter(old_entry, old_node_entry, nullptr, converter_);
             return std::make_pair(iter, iter);
         }
@@ -449,7 +420,7 @@ class PhTreeV16 {
 
     template <typename ValueT>
     auto __relocate_multimap(const KeyT& old_key, const KeyT& new_key, ValueT&& value) {
-        auto pair = __find_two_mm(old_key, new_key, true);
+        auto pair = __find_or_create_two_mm(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
@@ -492,7 +463,7 @@ class PhTreeV16 {
     // TODO README
     template <typename PREDICATE>
     size_t __relocate_multimap_if(const KeyT& old_key, const KeyT& new_key, PREDICATE&& predicate) {
-        auto pair = __find_two_mm(old_key, new_key, true);
+        auto pair = __find_or_create_two_mm(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
