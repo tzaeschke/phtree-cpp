@@ -29,7 +29,7 @@ template <dimension_t DIM>
 using TestPoint = PhPointD<DIM>;
 
 template <dimension_t DIM, typename T>
-using TestTree = PhTreeMultiMap<DIM, T, ConverterIEEE<DIM>>;
+using TestTree = PhTreeMultiMapD<DIM, T>;
 
 class DoubleRng {
   public:
@@ -53,8 +53,6 @@ struct Id {
         return _i == rhs._i;
     }
 
-    Id& operator=(Id const& rhs) = default;
-
     int _i;
     int data_;
 };
@@ -67,13 +65,6 @@ struct hash<Id> {
     }
 };
 };  // namespace std
-
-struct IdHash {
-    template <class T1, class T2>
-    std::size_t operator()(std::pair<T1, T2> const& v) const {
-        return std::hash<T1>()(v.size());
-    }
-};
 
 struct PointDistance {
     PointDistance(double distance, size_t id) : _distance(distance), _id(id) {}
@@ -113,7 +104,7 @@ void generateCube(std::vector<TestPoint<DIM>>& points, size_t N) {
 
     points.reserve(N);
     for (size_t i = 0; i < N / NUM_DUPL; i++) {
-        // create duplicates, ie. entries with the same coordinates. However, avoid unintentional
+        // create duplicates, i.e. entries with the same coordinates. However, avoid unintentional
         // duplicates.
         TestPoint<DIM> key{};
         for (dimension_t d = 0; d < DIM; ++d) {
@@ -136,7 +127,6 @@ void generateCube(std::vector<TestPoint<DIM>>& points, size_t N) {
 template <dimension_t DIM>
 void SmokeTestBasicOps(size_t N) {
     TestTree<DIM, Id> tree;
-
     std::vector<TestPoint<DIM>> points;
     generateCube(points, N);
 
@@ -154,7 +144,7 @@ void SmokeTestBasicOps(size_t N) {
         Id id(i);
         if (i % 4 == 0) {
             ASSERT_TRUE(tree.emplace(p, id).second);
-        } else if (i % 4 == 0) {
+        } else if (i % 4 == 1) {
             ASSERT_TRUE(tree.insert(p, id).second);
         } else {
             ASSERT_TRUE(tree.try_emplace(p, id).second);
@@ -164,7 +154,7 @@ void SmokeTestBasicOps(size_t N) {
         ASSERT_EQ(id._i, tree.find(p, id)->_i);
         ASSERT_EQ(i + 1, tree.size());
 
-        // try add again
+        // try adding it again
         ASSERT_FALSE(tree.insert(p, id).second);
         ASSERT_FALSE(tree.emplace(p, id).second);
         ASSERT_EQ(tree.count(p), i % NUM_DUPL + 1);
@@ -423,6 +413,13 @@ TEST(PhTreeMMDTest, TestFind) {
         ASSERT_NE(tree.find(p, id), tree.end());
         ASSERT_NE(tree.end(), tree.find(p, id));
         ASSERT_EQ(tree.find(p, id)->_i, i);
+        auto iterN = tree.find(points[0]);
+        size_t n = 0;
+        while (iterN != tree.end()) {
+            ++iterN;
+            ++n;
+        }
+        ASSERT_EQ(n, NUM_DUPL);
         i++;
     }
 
@@ -498,7 +495,7 @@ TEST(PhTreeMMDTest, TestUpdateWithEmplaceHint) {
     ASSERT_EQ(2, tree.size());
 }
 
-void TestUpdateWithRelocate(bool use_existing) {
+void TestUpdateWithRelocate(bool relocate_to_existing_coordinate) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -506,26 +503,29 @@ void TestUpdateWithRelocate(bool use_existing) {
     std::vector<TestPoint<dim>> points;
     populate(tree, points, N);
 
-    size_t i = 0;
-    size_t d_n = 0;
-    for (auto& p : points) {
-        auto pOld = p;
-        d_n = (d_n + 1) % deltas.size();
-        double delta = deltas[d_n];
-        TestPoint<dim> pNew;
-        if (use_existing) {
-            pNew = delta > 0.0 ? points[(i + 17) % N] : pOld;
-        } else {
-            pNew = {pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+    for (auto delta : deltas) {
+        size_t i = 0;
+        for (auto& p : points) {
+            auto pOld = p;
+            TestPoint<dim> pNew;
+            if (relocate_to_existing_coordinate) {
+                pNew = delta > 0.0 ? points[(i + 17) % N] : pOld;
+            } else {
+                pNew = {pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+            }
+            ASSERT_EQ(1u, tree.relocate(pOld, pNew, Id(i)));
+            if (pOld != pNew) {
+                // second time fails because value has already been moved
+                ASSERT_EQ(0u, tree.relocate(pOld, pNew, Id(i)));
+                ASSERT_EQ(tree.end(), tree.find(pOld, Id(i)));
+            } else {
+                ASSERT_EQ(1u, tree.relocate(pOld, pNew, Id(i)));
+            }
+            ASSERT_EQ(Id(i), *tree.find(pNew, Id(i)));
+            p = pNew;
+            ++i;
         }
-        ASSERT_EQ(1, tree.relocate(pOld, pNew, Id(i)));
-        if (delta > 0.0) {
-            // second time fails because value has already been moved
-            ASSERT_EQ(0, tree.relocate(pOld, pNew, Id(i)));
-        }
-        ASSERT_EQ(Id(i), *tree.find(pNew, Id(i)));
-        p = pNew;
-        ++i;
+        PhTreeDebugHelper::CheckConsistency(tree);
     }
 
     ASSERT_EQ(N, tree.size());
@@ -538,6 +538,50 @@ TEST(PhTreeMMDTest, TestUpdateWithRelocateDelta) {
 
 TEST(PhTreeMMDTest, TestUpdateWithRelocateToExisting) {
     TestUpdateWithRelocate(true);
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateCornerCases) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    TestPoint<dim> point0{1, 2, 3};
+    TestPoint<dim> point1{4, 5, 6};
+
+    // Check that empty tree works
+    ASSERT_EQ(0u, tree.relocate(point0, point1, Id(42)));
+
+    // Check that small tree works
+    tree.emplace(point0, Id(1));
+    ASSERT_EQ(1u, tree.relocate(point0, point1, Id(1)));
+    ASSERT_EQ(tree.end(), tree.find(point0, Id(1)));
+    ASSERT_EQ(1, tree.find(point1, Id(1))->_i);
+    ASSERT_EQ(1u, tree.size());
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(point0, Id(1));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1, Id(1)));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source bucket fails
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1, Id(0)));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source value fails (target bucket exists)
+    tree.emplace(point0, Id(0));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1, Id(2)));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source value fails (target bucket missing)
+    tree.emplace(point0, Id(0));
+    ASSERT_EQ(0u, tree.relocate(point0, point1, Id(2)));
+    PhTreeDebugHelper::CheckConsistency(tree);
 }
 
 TEST(PhTreeMMDTest, TestEraseByIterator) {

@@ -35,7 +35,7 @@ std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
 const double GLOBAL_MAX = 10000;
 const double BOX_LEN = 100;
 
-enum Scenario { TREE_WITH_MAP, MULTI_MAP };
+enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE };
 
 using payload_t = scalar_64_t;
 
@@ -46,9 +46,16 @@ using CONVERTER = ConverterBoxIEEE<DIM>;
 
 template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
-    SCENARIO == TREE_WITH_MAP,
+    SCENARIO == ERASE_EMPLACE,
     PhTreeBoxD<DIM, BucketType, CONVERTER<SCENARIO, DIM>>,
-    PhTreeMultiMapBoxD<DIM, payload_t, CONVERTER<SCENARIO, DIM>>>;
+    typename std::conditional_t<
+        SCENARIO == MM_BPT_RELOCATE,
+        PhTreeMultiMapBoxD<
+            DIM,
+            payload_t,
+            CONVERTER<SCENARIO, DIM>,
+            b_plus_tree_hash_set<payload_t>>,
+        PhTreeMultiMapBoxD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
@@ -112,19 +119,25 @@ void IndexBenchmark<DIM, SCENARIO>::Benchmark(benchmark::State& state) {
 
 template <dimension_t DIM>
 void InsertEntry(
-    TestMap<Scenario::TREE_WITH_MAP, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
+    TestMap<Scenario::ERASE_EMPLACE, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
     BucketType& bucket = tree.emplace(point).first;
     bucket.emplace(data);
 }
 
 template <dimension_t DIM>
 void InsertEntry(
-    TestMap<Scenario::MULTI_MAP, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
+    TestMap<Scenario::MM_BPT_RELOCATE, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
+    tree.emplace(point, data);
+}
+
+template <dimension_t DIM>
+void InsertEntry(
+    TestMap<Scenario::MM_SET_RELOCATE, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
     tree.emplace(point, data);
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type UpdateEntry(
+typename std::enable_if<SCENARIO == Scenario::ERASE_EMPLACE, size_t>::type UpdateEntry(
     TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
@@ -151,7 +164,7 @@ typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type Updat
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::MULTI_MAP, size_t>::type UpdateEntry(
+typename std::enable_if<SCENARIO != Scenario::ERASE_EMPLACE, size_t>::type UpdateEntry(
     TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
@@ -202,7 +215,7 @@ void IndexBenchmark<DIM, SCENARIO>::UpdateWorld(benchmark::State& state) {
         logging::error("Invalid update count: {}/{}", updates_.size(), n);
     }
 
-    if constexpr (SCENARIO == MULTI_MAP) {
+    if constexpr (SCENARIO == MM_BPT_RELOCATE) {
         (void)initial_tree_size;
         if (tree_.size() != num_entities_) {
             logging::error("Invalid index size after update: {}/{}", tree_.size(), num_entities_);
@@ -222,26 +235,38 @@ void IndexBenchmark<DIM, SCENARIO>::UpdateWorld(benchmark::State& state) {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::TREE_WITH_MAP> benchmark{state, arguments...};
+void PhTreeBox3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::ERASE_EMPLACE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTreeMultiMap3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::MULTI_MAP> benchmark{state, arguments...};
+void PhTreeMultiMapBox3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MM_BPT_RELOCATE> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTreeMultiMapStdBox3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MM_SET_RELOCATE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_type, num_entities, updates_per_round, move_distance
 // PhTree
-BENCHMARK_CAPTURE(PhTree3D, UPDATE_1000, UPDATES_PER_ROUND)
+BENCHMARK_CAPTURE(PhTreeBox3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMap3D, UPDATE_1000, UPDATES_PER_ROUND)
+BENCHMARK_CAPTURE(PhTreeMultiMapBox3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTreeMultiMap with std::map
+BENCHMARK_CAPTURE(PhTreeMultiMapStdBox3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

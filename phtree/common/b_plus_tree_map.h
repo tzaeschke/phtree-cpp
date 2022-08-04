@@ -381,7 +381,7 @@ class b_plus_tree_map {
         }
 
       private:
-        ThisT* split_node(key_t key, TreeT& tree) {
+        ThisT* split_node(key_t key_to_add, TreeT& tree) {
             auto max_key = data_.back().first;
             if (this->parent_ == nullptr) {
                 auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
@@ -413,17 +413,12 @@ class b_plus_tree_map {
             }
 
             // Add node to parent
-            auto split_key = data_[split_pos - 1].first;
-            if (key > split_key && key < node2->data_[0].first) {
-                // This is a bit hacky:
-                // Add new entry at END of first node when possible -> avoids some shifting
-                split_key = key;
-            }
+            auto split_key = data_.back().first;
             this->parent_->update_key_and_add_node(
-                max_key, split_key, std::max(max_key, key), node2, tree);
+                max_key, split_key, std::max(max_key, key_to_add), node2, tree);
 
             // Return node for insertion of new value
-            return key > split_key ? node2 : static_cast<ThisT*>(this);
+            return key_to_add > split_key ? node2 : static_cast<ThisT*>(this);
         }
 
         void remove_from_siblings() {
@@ -473,7 +468,6 @@ class b_plus_tree_map {
             ++entry_count;
 
             auto dest = this->check_split(key, tree, it);
-
             auto x = dest->data_.emplace(
                 it,
                 std::piecewise_construct,

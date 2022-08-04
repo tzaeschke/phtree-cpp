@@ -398,61 +398,60 @@ class PhTreeMultiMap {
     /*
      * This function attempts to remove the 'value' from 'old_key' and reinsert it for 'new_key'.
      *
-     * The relocate will report _success_ in the following cases:
+     * The relocate function will report _success_ in the following cases:
      * - the value was removed from the old position and reinserted at the new position
-     * - the position and new position refer to the same bucket.
+     * - the old position and new position are identical.
      *
-     * The relocate will report_failure_ in the following cases:
+     * The relocate function will report _failure_ in the following cases:
      * - The value was already present in the new position
      * - The value was not present in the old position
      *
-     * This method will _always_ attempt to insert the value at the new position even if the value
-     * was not found at the old position.
-     * This method will _not_ remove the value from the old position if it is already present at the
-     * new position.
+     * In case of _failure_, this function guarantees that the tree remains unchanged
+     * or is returned to its original state (i.e. before the function was called).
      *
      * @param old_key The old position
      * @param new_key The new position
-     * @param always_erase Setting this flag to 'true' ensures that the value is removed from
-     * the old position even if it is already present at the new position. This may double the
-     * execution cost of this method. The default is 'false'.
+     * @param value The value that needs to be relocated. The relocate() method used the value's
+     *              '==' operator to identify the entry that should be moved.
      * @return '1' if a value was found and reinserted, otherwise '0'.
      */
-    size_t relocate(
-        const Key& old_key, const Key& new_key, const T& value, bool always_erase = false) {
-        // Be smart: insert first, if the target-map already contains the entry we can avoid erase()
-        auto new_key_pre = converter_.pre(new_key);
-        auto& new_bucket = tree_.try_emplace(new_key_pre).first;
-        auto new_result = new_bucket.emplace(value);
-        if (!new_result.second) {
-            // Entry is already in correct place -> abort
-            // Return '1' if old/new refer to the same bucket, otherwise '0'
-            if (converter_.pre(old_key) == new_key_pre) {
-                return 1;
-            }
-            if (!always_erase) {
-                // Abort, unless we insist on erase()
-                return 0;
-            }
-        }
+    template <typename T2>
+    size_t relocate(const Key& old_key, const Key& new_key, T2&& value) {
+        return tree_.__relocate_multimap(
+            converter_.pre(old_key), converter_.pre(new_key), std::forward<T2>(value));
+    }
 
-        auto old_outer_iter = tree_.find(converter_.pre(old_key));
-        if (old_outer_iter == tree_.end()) {
-            // No entry for old_key -> fail
-            return 0;
-        }
+    /*
+     * This function attempts to remove the 'value' from 'old_key' and reinsert it for 'new_key'.
+     *
+     * The relocate function will report _success_ in the following cases:
+     * - the value was removed from the old position and reinserted at the new position
+     * - the old position and new position are identical.
+     *
+     * The relocate function will report _failure_ in the following cases:
+     * - The value was already present in the new position
+     * - The value was not present in the old position
+     *
+     * In case of _failure_, this function guarantees that the tree remains unchanged
+     * or is returned to its original state (i.e. before the function was called).
+     *
+     * @param old_key The old position
+     * @param new_key The new position
+     * @param pred The predicate that is used for every value at position old_key to evaluate
+     *             whether it should be relocated to new_key.
+     * @return the number of values that were relocated.
+     */
+    template <typename PRED>
+    size_t relocate_if(const Key& old_key, const Key& new_key, PRED&& pred) {
+        return tree_.__relocate_multimap_if(converter_.pre(old_key), converter_.pre(new_key), pred);
+    }
 
-        auto old_bucket_iter = old_outer_iter->find(value);
-        if (old_bucket_iter == old_outer_iter->end()) {
-            return 0;
-        }
-        old_outer_iter->erase(old_bucket_iter);
-
-        // clean up
-        if (old_outer_iter->empty()) {
-            tree_.erase(old_outer_iter);
-        }
-        return 1;
+    /*
+     * Relocates all values from one coordinate to another.
+     * Returns an iterator pointing to the relocated data (or end(), if the relocation failed).
+     */
+    auto relocate_all(const Key& old_key, const Key& new_key) {
+        return tree_.relocate(old_key, new_key);
     }
 
     /*

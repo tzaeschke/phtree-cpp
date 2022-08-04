@@ -203,7 +203,7 @@ class PhTreeV16 {
      * was found
      */
     auto find(const KeyT& key) const {
-        if (empty()) {
+        if (empty()) {  // TODO remove this if-clause?
             return IteratorWithParent<T, CONVERT>(nullptr, nullptr, nullptr, converter_);
         }
 
@@ -278,8 +278,12 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        auto pair = find_two(old_key, new_key, false);
+    size_t relocate_if(
+        const KeyT& old_key, const KeyT& new_key, PRED&& pred = [](const T& /* value */) {
+            // TODO does this default predicate work? Do we want to have it?
+            return true;
+        }) {
+        auto pair = __find_two(old_key, new_key, false);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
@@ -300,7 +304,7 @@ class PhTreeV16 {
             return 0;
         }
 
-        // Erase old value. See comments in erase() for details.
+        // Erase old value. See comments in try_emplace(iterator) for details.
         EntryT* old_node_entry = iter_old.GetNodeEntry();
         if (iter_old.GetParentNodeEntry() == iter_new.GetNodeEntry()) {
             // In this case the old_node_entry may have been invalidated by the previous insertion.
@@ -322,8 +326,9 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      * - creates an entry for new_key if it does not exist yet and if ensure_new_entry_exists=true.
      */
-    auto find_two(
-        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) const {
+    // TODO remove flag! (and function doc).
+    auto __find_two(
+        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
@@ -339,7 +344,7 @@ class PhTreeV16 {
             if (postfix_len + 1 >= n_diverging_bits) {
                 new_node_entry = old_node_entry;
             }
-            current_entry = old_node_entry->GetNode().Find(old_key, postfix_len);
+            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
         }
         const EntryT* old_entry = current_entry;  // Entry to be removed
 
@@ -368,11 +373,11 @@ class PhTreeV16 {
             bool is_inserted = false;
             new_entry = &new_node_entry->GetNode().Emplace(
                 is_inserted, new_key, new_node_entry->GetNodePostfixLen());
+            ++num_entries_;
             assert(new_entry != nullptr);
             // conflict?
             if (old_node_entry_parent == new_node_entry) {
-                // In this case the old_node_entry may have been invalidated by the previous
-                // insertion.
+                // In this case the old_node_entry was invalidated by the previous insertion.
                 old_node_entry = old_node_entry_parent;
             }
             old_entry = old_node_entry;
@@ -387,6 +392,149 @@ class PhTreeV16 {
         auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
         auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
         return std::make_pair(iter1, iter2);
+    }
+
+    auto __find_two_mm(
+        const KeyT& old_key, const KeyT& new_key, bool ensure_new_entry_exists = false) {
+        using Iter = IteratorWithParent<T, CONVERT>;
+        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+
+        const EntryT* new_entry = &root_;        // An entry.
+        const EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
+        const EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
+        // Find the deepest common parent node for removal and insertion
+        bool is_inserted = false;
+        while (new_entry && new_entry->IsNode() &&
+               new_entry->GetNodePostfixLen() + 1 >= n_diverging_bits) {
+            new_node_entry = new_entry;
+            auto postfix_len = new_entry->GetNodePostfixLen();
+            new_entry = &new_entry->GetNode().Emplace(is_inserted, new_key, postfix_len);
+        }
+        old_node_entry = new_node_entry;
+
+        // Find node for insertion
+        while (new_entry->IsNode()) {
+            new_node_entry = new_entry;
+            new_entry =
+                &new_entry->GetNode().Emplace(is_inserted, new_key, new_entry->GetNodePostfixLen());
+        }
+        num_entries_ += is_inserted;
+        assert(new_entry != nullptr);
+
+        auto* old_entry = old_node_entry;
+        while (old_entry && old_entry->IsNode()) {
+            old_node_entry = old_entry;
+            old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
+        }
+
+        // Does old_entry exist?
+        if (old_entry == nullptr) {
+            auto iter = Iter(nullptr, nullptr, nullptr, converter_);
+            return std::make_pair(iter, iter);  // old_key not found!
+        }
+
+        // TODO remove flag?
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        if (n_diverging_bits == 0 ||
+            (!ensure_new_entry_exists && old_node_entry->GetNodePostfixLen() >= n_diverging_bits)) {
+            auto iter = Iter(old_entry, old_node_entry, nullptr, converter_);
+            return std::make_pair(iter, iter);
+        }
+
+        auto iter1 = Iter(old_entry, old_node_entry, nullptr, converter_);
+        // Note: Emplace() may return a sub-child so new_node_entry be a grandparent!
+        auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
+        return std::make_pair(iter1, iter2);
+    }
+
+    template <typename ValueT>
+    auto __relocate_multimap(const KeyT& old_key, const KeyT& new_key, ValueT&& value) {
+        auto pair = __find_two_mm(old_key, new_key, true);
+        auto& iter_old = pair.first;
+        auto& iter_new = pair.second;
+
+        if (iter_old.IsEnd()) {
+            return 0;
+        }
+        auto iter_old_value = iter_old->find(value);
+        if (iter_old_value == iter_old->end()) {
+            if (iter_new->empty()) {
+                erase(iter_new);
+            }
+            return 0;
+        }
+
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        if (iter_old == iter_new) {
+            assert(old_key == new_key);
+            return 1;
+        }
+
+        assert(iter_old_value != iter_old->end());
+        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
+            return 0;
+        }
+
+        iter_old->erase(iter_old_value);
+        if (iter_old->empty()) {
+            bool found = false;
+            EntryT* entry = iter_old.GetNodeEntry();
+            entry->GetNode().Erase(old_key, entry, entry != &root_, found);
+            --num_entries_;
+            assert(found);
+        }
+        return 1;
+    }
+
+    // TODO move these methods to API?!?!
+    // TODO tests for bplustree erase()
+    // TODO CLeanup Node::Find()
+    // TODO README
+    template <typename PREDICATE>
+    size_t __relocate_multimap_if(const KeyT& old_key, const KeyT& new_key, PREDICATE&& predicate) {
+        auto pair = __find_two_mm(old_key, new_key, true);
+        auto& iter_old = pair.first;
+        auto& iter_new = pair.second;
+
+        if (iter_old.IsEnd()) {
+            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
+            return 0;
+        }
+
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        if (iter_old == iter_new) {
+            assert(old_key == new_key);
+            return 1;
+        }
+
+        size_t n = 0;
+        auto it = iter_old->begin();
+        while (it != iter_old->end()) {
+            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
+                it = iter_old->erase(it);
+                ++n;
+            } else {
+                ++it;
+            }
+        }
+
+        if (iter_old->empty()) {
+            bool found = false;
+            EntryT* entry = iter_old.GetNodeEntry();
+            entry->GetNode().Erase(old_key, entry, entry != &root_, found);
+            --num_entries_;
+            assert(found);
+        } else if (iter_new->empty()) {
+            bool found = false;
+            EntryT* entry = iter_new.GetNodeEntry();
+            // The parent may not be correct, see find_two()
+            while (entry != nullptr) {
+                entry = entry->GetNode().Erase(new_key, entry, entry != &root_, found);
+            }
+            --num_entries_;
+            assert(found);
+        }
+        return n;
     }
 
     /*

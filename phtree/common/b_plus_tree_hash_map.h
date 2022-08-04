@@ -21,7 +21,6 @@
 #include <cassert>
 #include <tuple>
 #include <vector>
-#include <unordered_map>
 
 /*
  * PLEASE do not include this file directly, it is included via common.h.
@@ -218,10 +217,14 @@ class b_plus_tree_hash_set {
         return n;
     }
 
-    void erase(const IterT& iterator) {
+    auto erase(const IterT& iterator) {
         assert(iterator != end());
         --size_;
-        iterator.node_->erase_it(iterator.iter_, *this);
+        auto result = iterator.node_->erase_it(iterator.iter_, *this);
+        if (result.node_) {
+            return IterT(static_cast<NLeafT*>(result.node_), result.iter_);
+        }
+        return IterT();
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -313,11 +316,18 @@ class b_plus_tree_hash_set {
             return data_.size();
         }
 
-        void erase_entry(DataIteratorT it_to_erase, TreeT& tree) {
+        struct EraseResult {
+            bpt_node_data* node_ = nullptr;
+            DataIteratorT iter_;
+        };
+
+        auto erase_entry(DataIteratorT it_to_erase, TreeT& tree) {
+            using ER = EraseResult;
             auto& parent_ = this->parent_;
             hash_t max_key_old = data_.back().first;
 
-            data_.erase(it_to_erase);
+            auto result = data_.erase(it_to_erase);
+            bool tail_entry_erased = result == data_.end();
             if (parent_ == nullptr) {
                 if constexpr (std::is_same_v<ThisT, NInnerT>) {
                     if (data_.size() < 2) {
@@ -328,7 +338,7 @@ class b_plus_tree_hash_set {
                         delete this;
                     }
                 }
-                return;
+                return tail_entry_erased ? ER{} : ER{this, result};
             }
 
             if (data_.empty()) {
@@ -336,7 +346,7 @@ class b_plus_tree_hash_set {
                 // a rare 1-entry node has its last entry removed.
                 remove_from_siblings();
                 parent_->remove_node(max_key_old, this, tree);
-                return;
+                return next_node_ == nullptr ? ER{} : ER{next_node_, next_node_->data_.begin()};
             }
 
             if (data_.size() < this->M_min()) {
@@ -352,15 +362,20 @@ class b_plus_tree_hash_set {
                         data_[0].second = nullptr;
                     }
                     auto prev_node = prev_node_;  // create copy because (this) will be deleted
+                    auto next_node = next_node_;  // create copy because (this) will be deleted
                     parent_->remove_node(max_key_old, this, tree);
                     if (prev_node->parent_ != nullptr) {
                         hash_t old1 = (prev_data.end() - 2)->first;
                         hash_t new1 = (prev_data.end() - 1)->first;
                         prev_node->parent_->update_key(old1, new1, prev_node);
                     }
-                    return;
+                    if (!tail_entry_erased) {
+                        return ER{prev_node, --prev_data.end()};
+                    }
+                    return next_node == nullptr ? ER{} : ER{next_node, next_node->data_.begin()};
                 } else if (next_node_ != nullptr && next_node_->data_.size() < this->M_max()) {
                     remove_from_siblings();
+                    auto* next_node = next_node_;
                     auto& next_data = next_node_->data_;
                     if constexpr (std::is_same_v<ThisT, NLeafT>) {
                         next_data.emplace(next_data.begin(), std::move(data_[0]));
@@ -370,35 +385,32 @@ class b_plus_tree_hash_set {
                         data_[0].second = nullptr;
                     }
                     parent_->remove_node(max_key_old, this, tree);
-                    return;
+                    if (tail_entry_erased) {
+                        return ER{next_node, next_data.begin() + 1};
+                    }
+                    return next_node == nullptr ? ER() : ER{next_node, next_data.begin()};
                 }
                 // This node is too small but there is nothing we can do.
             }
-            if (it_to_erase == data_.end()) {
+            if (tail_entry_erased) {
                 parent_->update_key(max_key_old, data_.back().first, this);
+                return next_node_ == nullptr ? ER() : ER{next_node_, next_node_->data_.begin()};
             }
+            return ER{this, result};
         }
 
-        struct SplitResult {
-            ThisT* node_;
-            DataIteratorT iter_;
-        };
-
-        SplitResult check_split(hash_t key, TreeT& tree, const DataIteratorT& it) {
+        /*
+         * Check whether a split is required and, if so, perform it.
+         * It returns the node to which the new entry should be added.
+         */
+        ThisT* check_split(hash_t key_to_add, TreeT& tree) {
             if (data_.size() < this->M_max()) {
-                if (this->parent_ != nullptr && key > data_.back().first) {
-                    this->parent_->update_key(data_.back().first, key, this);
+                if (this->parent_ != nullptr && key_to_add > data_.back().first) {
+                    this->parent_->update_key(data_.back().first, key_to_add, this);
                 }
-                return {static_cast<ThisT*>(this), it};
+                return static_cast<ThisT*>(this);
             }
-
-            ThisT* dest = this->split_node(key, tree);
-            if (dest != this) {
-                // The insertion pos in node2 can be calculated:
-                auto old_pos = it - data_.begin();
-                return {dest, dest->data_.begin() + old_pos - data_.size()};
-            }
-            return {dest, it};
+            return this->split_node(key_to_add, tree);
         }
 
         void _check_data(NInnerT* parent, hash_t known_max) {
@@ -414,7 +426,7 @@ class b_plus_tree_hash_set {
         }
 
       private:
-        ThisT* split_node(hash_t key, TreeT& tree) {
+        ThisT* split_node(hash_t key_to_add, TreeT& tree) {
             auto max_key = data_.back().first;
             if (this->parent_ == nullptr) {
                 auto* new_parent = new NInnerT(nullptr, nullptr, nullptr);
@@ -446,17 +458,12 @@ class b_plus_tree_hash_set {
             }
 
             // Add node to parent
-            auto split_key = data_[split_pos - 1].first;
-            if (key > split_key && key < node2->data_[0].first) {
-                // This is a bit hacky:
-                // Add new entry at END of first node when possible -> avoids some shifting
-                split_key = key;
-            }
+            auto split_key = data_.back().first;
             this->parent_->update_key_and_add_node(
-                max_key, split_key, std::max(max_key, key), this, node2, tree);
+                max_key, split_key, std::max(max_key, key_to_add), this, node2, tree);
 
             // Return node for insertion of new value
-            return key > split_key ? node2 : static_cast<ThisT*>(this);
+            return key_to_add > split_key ? node2 : static_cast<ThisT*>(this);
         }
 
         void remove_from_siblings() {
@@ -509,7 +516,7 @@ class b_plus_tree_hash_set {
             auto it = this->lower_bound(hash);
             if (it != this->data_.end() && it->first == hash) {
                 // Hash collision !
-                PredT equals{};  // static?
+                PredT equals{};
                 IterT full_iter(this, it);
                 while (!full_iter.is_end() && full_iter.hash() == hash) {
                     if (equals(*full_iter, t)) {
@@ -518,14 +525,15 @@ class b_plus_tree_hash_set {
                     ++full_iter;
                 }
             }
-            //            auto it = this->lower_bound_value(hash, t);
-            //            if (!it.is_end() && PredT{}(*it, t)) {
-            //                return std::make_pair(it, false);
-            //            }
             ++entry_count;
-            auto split_result = this->check_split(hash, tree, it);
-            auto it2 = split_result.node_->data_.emplace(split_result.iter_, hash, std::move(t));
-            return std::make_pair(IterT(split_result.node_, it2), true);
+            auto dest = this->check_split(hash, tree);
+            if (dest != this) {
+                // The insertion pos in `dest` can be calculated:
+                auto old_pos = it - this->data_.begin();
+                it = dest->data_.begin() + old_pos - this->data_.size();
+            }
+            auto it2 = dest->data_.emplace(it, hash, std::move(t));
+            return std::make_pair(IterT(dest, it2), true);
         }
 
         bool erase_key(hash_t hash, const T& value, TreeT& tree) {
@@ -537,8 +545,8 @@ class b_plus_tree_hash_set {
             return false;
         }
 
-        void erase_it(LeafIteratorT iter, TreeT& tree) {
-            this->erase_entry(iter, tree);
+        auto erase_it(LeafIteratorT iter, TreeT& tree) {
+            return this->erase_entry(iter, tree);
         }
 
         void _check(
@@ -637,7 +645,7 @@ class b_plus_tree_hash_set {
          * - It changes the key of the node (node 1) at 'key1_old' to 'key1_new'.
          * - It inserts a new node (node 2) after 'new_key1' with value 'key2'
          * Invariants:
-         * - Node1: key1_old > key1_new; Node 1 vs 2: key2 > new_key1
+         * - Node1: key1_old >= key1_new; Node 1 vs 2: key2 >= new_key1
          */
         void update_key_and_add_node(
             hash_t key1_old,
@@ -646,16 +654,33 @@ class b_plus_tree_hash_set {
             NodeT* child1,
             NodeT* child2,
             TreeT& tree) {
-            // assert(key2 > key1_new);
-            assert(key1_old >= key1_new);
-            auto it2 = this->lower_bound_node(key1_old, child1) + 1;
+            auto it = this->lower_bound_node(key1_old, child1);
+            assert(key2 >= key1_new && key1_old >= key1_new && it != this->data_.end());
 
-            auto split_result = this->check_split(key2, tree, it2);
-            // check_split() guarantees that child2 is in the same node as child1
-            assert(split_result.iter_ != split_result.node_->data_.begin());
-            (it2 - 1)->first = key1_new;
-            child2->parent_ = split_result.node_;
-            child2->parent_->data_.emplace(it2, key2, child2);
+            auto dest = this->check_split(key2, tree);
+            child2->parent_ = dest;
+            if (this != dest && this->data_.back().second == child1) {
+                it->first = key1_new;
+                dest->data_.emplace(dest->data_.begin(), key2, child2);
+            } else {
+                // child1 & 2 in same node
+                if (this != dest) {
+                    it = it - this->data_.begin() - this->data_.size() + dest->data_.begin();
+                }
+                it->first = key1_new;
+                ++it;
+                dest->data_.emplace(it, key2, child2);
+            }
+
+            // The following alternative code works, but I don't understand why!
+            //            auto dest = this->check_split(key2, tree);
+            //            auto it = dest->lower_bound_node(key1_old, child1);
+            //            assert(key2 >= key1_new && key1_old >= key1_new && it !=
+            //            dest->data_.end());
+            //            it->first = key1_new;
+            //            ++it;
+            //            child2->parent_ = dest;
+            //            dest->data_.emplace(it, key2, child2);
         }
 
         void remove_node(hash_t key_remove, NodeT* node, TreeT& tree) {
@@ -685,7 +710,8 @@ class b_plus_tree_hash_set {
 
         // Arbitrary position iterator
         explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept
-        : node_{it == node->data_.end() ? nullptr : node}, iter_{it} {
+        : node_{it == node->data_.end() ? nullptr : node}
+        , iter_{node_ == nullptr ? LeafIteratorT{} : it} {
             assert(node->is_leaf_ && "just for consistency, insist that we iterate leaves only ");
         }
 
@@ -821,7 +847,7 @@ class b_plus_tree_hash_map {
     template <typename... Args>
     auto try_emplace(const IterT& hint, const KeyT& key, Args&&... args) {
         auto result = map_.emplace_hint(hint.map_iter_, key, std::forward<Args>(args)...);
-        return iterator(result);
+        return IterT(result);
     }
 
     auto erase(const KeyT& key) {
@@ -829,7 +855,7 @@ class b_plus_tree_hash_map {
     }
 
     auto erase(const IterT& iterator) {
-        map_.erase(iterator.map_iter_);
+        return IterT(map_.erase(iterator.map_iter_));
     }
 
     auto size() const {

@@ -44,7 +44,7 @@ struct IdObj {
 
     explicit IdObj(const size_t i) : _i(static_cast<int>(i)){};
 
-    bool operator==(IdObj& rhs) {
+    bool operator==(const IdObj& rhs) const {
         return _i == rhs._i;
     }
 
@@ -106,18 +106,18 @@ void generateCube(std::vector<TestPoint<DIM>>& points, size_t N) {
 }
 
 template <dimension_t DIM>
-void SmokeTestBasicOps(size_t N) {
+void SmokeTestBasicOps(int N) {
     TestTree<DIM, Id> tree;
     std::vector<TestPoint<DIM>> points;
     generateCube(points, N);
 
-    ASSERT_EQ(0, tree.size());
+    ASSERT_EQ(0u, tree.size());
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 
-    for (size_t i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
-        ASSERT_EQ(tree.count(p), 0);
+        ASSERT_EQ(tree.count(p), 0u);
         ASSERT_EQ(tree.end(), tree.find(p));
 
         if (i % 2 == 0) {
@@ -126,21 +126,21 @@ void SmokeTestBasicOps(size_t N) {
             Id id = std::make_unique<IdObj>(i);
             ASSERT_TRUE(tree.emplace(p, std::move(id)).second);
         }
-        ASSERT_EQ(tree.count(p), 1);
+        ASSERT_EQ(tree.count(p), 1u);
         ASSERT_NE(tree.end(), tree.find(p));
         ASSERT_EQ(i, (*tree.find(p))->_i);
-        ASSERT_EQ(i + 1, tree.size());
+        ASSERT_EQ(i + 1u, tree.size());
 
-        // try add again
+        // try adding it again
         ASSERT_FALSE(tree.emplace(p, std::make_unique<IdObj>(i)).second);
-        ASSERT_EQ(tree.count(p), 1);
+        ASSERT_EQ(tree.count(p), 1u);
         ASSERT_NE(tree.end(), tree.find(p));
         ASSERT_EQ(i, (*tree.find(p))->_i);
-        ASSERT_EQ(i + 1, tree.size());
+        ASSERT_EQ(i + 1u, tree.size());
         ASSERT_FALSE(tree.empty());
     }
 
-    for (size_t i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
         auto q = tree.begin_query({p, p});
         ASSERT_NE(q, tree.end());
@@ -151,27 +151,27 @@ void SmokeTestBasicOps(size_t N) {
 
     PhTreeDebugHelper::CheckConsistency(tree);
 
-    for (size_t i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
         TestPoint<DIM>& p = points.at(i);
         ASSERT_NE(tree.find(p), tree.end());
-        ASSERT_EQ(tree.count(p), 1);
+        ASSERT_EQ(tree.count(p), 1u);
         ASSERT_EQ(i, (*tree.find(p))->_i);
-        ASSERT_EQ(1, tree.erase(p));
+        ASSERT_EQ(1u, tree.erase(p));
 
-        ASSERT_EQ(tree.count(p), 0);
+        ASSERT_EQ(tree.count(p), 0u);
         ASSERT_EQ(tree.end(), tree.find(p));
-        ASSERT_EQ(N - i - 1, tree.size());
+        ASSERT_EQ(N - i - 1u, tree.size());
 
         // try remove again
-        ASSERT_EQ(0, tree.erase(p));
-        ASSERT_EQ(tree.count(p), 0);
+        ASSERT_EQ(0u, tree.erase(p));
+        ASSERT_EQ(tree.count(p), 0u);
         ASSERT_EQ(tree.end(), tree.find(p));
-        ASSERT_EQ(N - i - 1, tree.size());
+        ASSERT_EQ(N - i - 1u, tree.size());
         if (i < N - 1) {
             ASSERT_FALSE(tree.empty());
         }
     }
-    ASSERT_EQ(0, tree.size());
+    ASSERT_EQ(0u, tree.size());
     ASSERT_TRUE(tree.empty());
     PhTreeDebugHelper::CheckConsistency(tree);
 }
@@ -181,4 +181,117 @@ TEST(PhTreeTestUniquePtr, SmokeTestBasicOps) {
     SmokeTestBasicOps<6>(10000);
     SmokeTestBasicOps<10>(1000);
     SmokeTestBasicOps<20>(100);
+}
+
+template <dimension_t DIM>
+void populate(TestTree<DIM, Id>& tree, std::vector<TestPoint<DIM>>& points, size_t N) {
+    generateCube(points, N);
+    for (size_t i = 0; i < N; i++) {
+        ASSERT_TRUE(tree.emplace(points[i], std::make_unique<IdObj>(i)).second);
+    }
+    ASSERT_EQ(N, tree.size());
+}
+
+TEST(PhTreeTestUniquePtr, TestUpdateWithRelocate) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<scalar_64_t, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t d_n = 0;
+    for (int x = 0; x < 10; ++x) {
+        int i = 0;
+        for (auto& p : points) {
+            auto pOld = p;
+            d_n = (d_n + 1) % deltas.size();
+            scalar_64_t delta = deltas[d_n];
+            TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+            if (delta > 0 && tree.find(pNew) != tree.end()) {
+                // Skip this, there is already another entry
+                ASSERT_EQ(0, tree.relocate(pOld, pNew));
+            } else {
+                ASSERT_EQ(1, tree.relocate(pOld, pNew));
+                if (delta > 0) {
+                    // second time fails because value has already been moved
+                    ASSERT_EQ(0, tree.relocate(pOld, pNew));
+                }
+                ASSERT_EQ(i, (*tree.find(pNew))->_i);
+                p = pNew;
+            }
+            ++i;
+        }
+        PhTreeDebugHelper::CheckConsistency(tree);
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    // Check that empty tree works
+    ASSERT_EQ(0, tree.relocate(points[0], points[1]));
+    // Check that small tree works
+    tree.emplace(points[0], std::make_unique<IdObj>(1));
+    ASSERT_EQ(1, tree.relocate(points[0], points[1]));
+    ASSERT_EQ(tree.end(), tree.find(points[0]));
+    ASSERT_EQ(1, (*tree.find(points[1]))->_i);
+    ASSERT_EQ(1u, tree.size());
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(points[0], std::make_unique<IdObj>(1));
+    tree.emplace(points[1], std::make_unique<IdObj>(2));
+    ASSERT_EQ(0, tree.relocate(points[0], points[1]));
+}
+
+TEST(PhTreeTestUniquePtr, TestUpdateWithRelocateIf) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<scalar_64_t, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t d_n = 0;
+    for (int x = 0; x < 10; ++x) {
+        int i = 0;
+        size_t done = 0;
+        auto pred = [](const Id& id) { return id->_i % 2 == 0; };
+        for (auto& p : points) {
+            auto pOld = p;
+            d_n = (d_n + 1) % deltas.size();
+            scalar_64_t delta = deltas[d_n];
+            TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+            if ((delta > 0 && tree.find(pNew) != tree.end()) || (i % 2 != 0)) {
+                // Skip this, there is already another entry
+                ASSERT_EQ(0, tree.relocate_if(pOld, pNew, pred));
+            } else {
+                ASSERT_EQ(1, tree.relocate_if(pOld, pNew, pred));
+                if (delta > 0) {
+                    // second time fails because value has already been moved
+                    ASSERT_EQ(0, tree.relocate_if(pOld, pNew, pred));
+                }
+                ASSERT_EQ(i, (*tree.find(pNew))->_i);
+                p = pNew;
+                ++done;
+            }
+            ++i;
+        }
+        ASSERT_GT(done, i * 0.4);
+        ASSERT_LT(done, i * 0.6);
+        PhTreeDebugHelper::CheckConsistency(tree);
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    // Check that empty tree works
+    auto pred = [](const Id&) { return true; };
+    ASSERT_EQ(0, tree.relocate_if(points[0], points[1], pred));
+    // Check that small tree works
+    tree.emplace(points[0], std::make_unique<IdObj>(1));
+    ASSERT_EQ(1, tree.relocate_if(points[0], points[1], pred));
+    ASSERT_EQ(tree.end(), tree.find(points[0]));
+    ASSERT_EQ(1, (*tree.find(points[1]))->_i);
+    ASSERT_EQ(1u, tree.size());
 }

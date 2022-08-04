@@ -134,9 +134,9 @@ void SmokeTestMap() {
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
-    int val = 0;
+    size_t val = 0;
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<Id>> test_map;
+        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<>> test_map;
         std::unordered_map<Id, size_t> reference_map;
         for (int j = 0; j < N; j++) {
             size_t key = cube_distribution(random_engine);
@@ -178,14 +178,14 @@ void SmokeTestMap() {
             }
 
             ASSERT_EQ(test_map.size(), reference_map.size());
-            for (auto it : reference_map) {
-                const Id& kRef = it.first;
+            for (auto& entry : reference_map) {
+                const Id& kRef = entry.first;
                 size_t vMap = test_map.find(kRef)->second;
-                ASSERT_EQ(vMap, it.second);
+                ASSERT_EQ(vMap, entry.second);
                 ASSERT_TRUE(test_map.count(kRef));
             }
-            for (auto it : test_map) {
-                Id& k = it.first;
+            for (auto& entry : test_map) {
+                Id& k = entry.first;
                 size_t vRef = reference_map.find(k)->second;
                 size_t vMap = test_map.find(k)->second;
                 ASSERT_EQ(vMap, vRef);
@@ -246,11 +246,11 @@ void SmokeTestSet() {
             }
 
             ASSERT_EQ(test_map.size(), reference_map.size());
-            for (auto id : reference_map) {
+            for (auto& id : reference_map) {
                 Id& idMap = *test_map.find(id);
                 ASSERT_EQ(idMap, id);
             }
-            for (auto id : test_map) {
+            for (auto& id : test_map) {
                 const Id& vRef = *reference_map.find(id);
                 Id& vMap = *test_map.find(id);
                 ASSERT_EQ(vMap, vRef);
@@ -278,7 +278,7 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
     std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<size_t>> test_map;
+        b_plus_tree_hash_map<size_t, size_t, std::hash<size_t>, std::equal_to<>> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < N; j++) {
             size_t val = cube_distribution(random_engine);
@@ -290,13 +290,13 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
                 test_map.try_emplace(val, val);
             }
             ASSERT_EQ(test_map.size(), reference_map.size());
-            for (auto it : reference_map) {
-                size_t vRef = it.first;
+            for (auto entry : reference_map) {
+                size_t vRef = entry.first;
                 size_t vMap = test_map.find(vRef)->second;
                 ASSERT_EQ(vMap, vRef);
             }
-            for (auto it : test_map) {
-                size_t v = it.first;
+            for (auto entry : test_map) {
+                size_t v = entry.first;
                 size_t vRef = reference_map.find(v)->second;
                 size_t vMap = test_map.find(v)->second;
                 ASSERT_EQ(vMap, vRef);
@@ -306,13 +306,13 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithTryEmplace) {
 }
 
 template <typename HashT>
-void SmokeTestWithErase() {
+void SmokeTestWithErase(bool by_iterator) {
     const int N = 200;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N / 2);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<Id>> test_map{};
+        b_plus_tree_hash_map<Id, size_t, HashT, std::equal_to<>> test_map{};
         std::unordered_map<Id, size_t> reference_map{};
         std::vector<size_t> key_list{};
         for (int j = 0; j < N; j++) {
@@ -331,23 +331,35 @@ void SmokeTestWithErase() {
         for (auto key : key_list) {
             Id id(key);
             // This may try to erase an entry that does not exist!
-            if (key % 2 == 0) {
-                test_map.erase(id);
-            } else {
-                auto it = test_map.find(id);
-                if (it != test_map.end()) {
-                    test_map.erase(it);
+            auto it = test_map.find(id);
+            if (it == test_map.end()) {
+                ASSERT_EQ(0u, reference_map.erase(id));
+                continue;
+            }
+           if (by_iterator) {
+                auto next = it;
+                ++next;
+                auto is_last = next == test_map.end();
+                auto next_val = is_last ? Id(-1) : next->first;
+                auto result = test_map.erase(it);
+                if (is_last) {
+                    ASSERT_EQ(test_map.end(), result);
+                } else {
+                    ASSERT_NE(test_map.end(), result);
+                    ASSERT_EQ(next_val, result->first);
                 }
+            } else {
+                test_map.erase(id);
             }
             test_map._check();
-            reference_map.erase(id);
-            for (auto it : reference_map) {
-                const Id& vRef = it.first;
+            ASSERT_EQ(1u, reference_map.erase(id));
+            for (auto& entry : reference_map) {
+                const Id& vRef = entry.first;
                 Id& vMap = test_map.find(vRef)->first;
                 ASSERT_EQ(vMap, vRef);
             }
-            for (auto it : test_map) {
-                Id& v = it.first;
+            for (auto& entry : test_map) {
+                Id& v = entry.first;
                 const Id& vRef = reference_map.find(v)->first;
                 Id& vMap = test_map.find(v)->first;
                 ASSERT_EQ(vMap, vRef);
@@ -359,7 +371,8 @@ void SmokeTestWithErase() {
 }
 
 TEST(PhTreeBptHashMapTest, SmokeTestWithErase) {
-    SmokeTestWithErase<std::hash<Id>>();
+    SmokeTestWithErase<std::hash<Id>>(true);
+    SmokeTestWithErase<std::hash<Id>>(false);
 }
 
 TEST(PhTreeBptHashMapTest, SmokeTestWithEraseSameHash) {
@@ -368,5 +381,6 @@ TEST(PhTreeBptHashMapTest, SmokeTestWithEraseSameHash) {
             return 42;
         }
     };
-    SmokeTestWithErase<DumbHash>();
+    SmokeTestWithErase<DumbHash>(true);
+    SmokeTestWithErase<DumbHash>(false);
 }

@@ -70,10 +70,10 @@ cc_test(
 )
 
 cc_test(
-    name = "phtree_multimap_test_move_only_values",
+    name = "phtree_multimap_d_test_unique_ptr_values",
     timeout = "long",
     srcs = [
-        "phtree_test_unique_ptr_values.cc",
+        "phtree_multimap_d_test_unique_ptr_values.cc",
     ],
     linkstatic = True,
     deps = [
