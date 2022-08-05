@@ -69,7 +69,7 @@ class PhTreeV16 {
         std::is_arithmetic<ScalarExternal>::value, "ScalarExternal must be an arithmetic type");
     static_assert(DIM >= 1 && DIM <= 63, "This PH-Tree supports between 1 and 63 dimensions");
 
-    PhTreeV16(CONVERT* converter)
+    explicit PhTreeV16(CONVERT* converter)
     : num_entries_{0}
     , root_{{}, std::make_unique<NodeT>(), MAX_BIT_WIDTH<ScalarInternal> - 1}
     , converter_{converter} {}
@@ -255,7 +255,10 @@ class PhTreeV16 {
             }
             bool found = false;
             EntryT* entry = iter_rich.GetNodeEntry();
-            entry->GetNode().Erase(iter_rich.GetEntry()->GetKey(), entry, true, found);
+            // The loop is a safeguard for find_two_mm which may return slightly wrong iterators.
+            while (entry != nullptr) {
+                entry = entry->GetNode().Erase(iter_rich.GetEntry()->GetKey(), entry, true, found);
+            }
             num_entries_ -= found;
             return found;
         }
@@ -275,7 +278,7 @@ class PhTreeV16 {
      */
     template <typename PRED>
     size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        auto pair = __find_two(old_key, new_key);
+        auto pair = _find_two(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
@@ -317,7 +320,7 @@ class PhTreeV16 {
      * Special behavior:
      * - returns end() if old_key does not exist;
      */
-    auto __find_two(const KeyT& old_key, const KeyT& new_key) {
+    auto _find_two(const KeyT& old_key, const KeyT& new_key) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
@@ -368,7 +371,7 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      * - CREATES the destination entry if it does not exist!
      */
-    auto __find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key) {
+    auto _find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
@@ -413,99 +416,9 @@ class PhTreeV16 {
         }
 
         auto iter1 = Iter(old_entry, old_node_entry, nullptr, converter_);
-        // Note: Emplace() may return a sub-child so new_node_entry be a grandparent!
+        // TODO Note: Emplace() may return a sub-child so new_node_entry be a grandparent!
         auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
         return std::make_pair(iter1, iter2);
-    }
-
-    template <typename ValueT>
-    auto __relocate_multimap(const KeyT& old_key, const KeyT& new_key, ValueT&& value) {
-        auto pair = __find_or_create_two_mm(old_key, new_key);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd()) {
-            return 0;
-        }
-        auto iter_old_value = iter_old->find(value);
-        if (iter_old_value == iter_old->end()) {
-            if (iter_new->empty()) {
-                erase(iter_new);
-            }
-            return 0;
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            assert(old_key == new_key);
-            return 1;
-        }
-
-        assert(iter_old_value != iter_old->end());
-        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
-            return 0;
-        }
-
-        iter_old->erase(iter_old_value);
-        if (iter_old->empty()) {
-            bool found = false;
-            EntryT* entry = iter_old.GetNodeEntry();
-            entry->GetNode().Erase(old_key, entry, entry != &root_, found);
-            --num_entries_;
-            assert(found);
-        }
-        return 1;
-    }
-
-    // TODO move these methods to API?!?!
-    // TODO tests for bplustree erase()
-    // TODO CLeanup Node::Find()
-    // TODO README
-    template <typename PREDICATE>
-    size_t __relocate_multimap_if(const KeyT& old_key, const KeyT& new_key, PREDICATE&& predicate) {
-        auto pair = __find_or_create_two_mm(old_key, new_key);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd()) {
-            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
-            return 0;
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            assert(old_key == new_key);
-            return 1;
-        }
-
-        size_t n = 0;
-        auto it = iter_old->begin();
-        while (it != iter_old->end()) {
-            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
-                it = iter_old->erase(it);
-                ++n;
-            } else {
-                ++it;
-            }
-        }
-
-        if (iter_old->empty()) {
-            bool found = false;
-            EntryT* entry = iter_old.GetNodeEntry();
-            entry->GetNode().Erase(old_key, entry, entry != &root_, found);
-            --num_entries_;
-            assert(found);
-        } else if (iter_new->empty()) {
-            bool found = false;
-            EntryT* entry = iter_new.GetNodeEntry();
-            // The parent may not be correct, see find_two()
-            while (entry != nullptr) {
-                entry = entry->GetNode().Erase(new_key, entry, entry != &root_, found);
-            }
-            --num_entries_;
-            assert(found);
-        }
-        return n;
     }
 
     /*

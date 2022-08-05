@@ -480,7 +480,7 @@ There are numerous ways to improve performance. The following list gives an over
    navigation in the tree if the new coordinate is close to the old coordinate.
    ```c++
    relocate(old_position, new_position);
-   relocate_if(old_position, new_position, [](const T& value) { return ...; });
+   relocate_if(old_position, new_position, [](const T& value) { return [true/false]; });
    ```
    The multi-map version relocates all values unless a 'value' is specified to identify the value to be relocated: 
    ```c++

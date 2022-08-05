@@ -357,9 +357,8 @@ class PhTree {
     }
 
     void CheckConsistencyExternal() const {
-        size_t n = 0;
-        for (const auto& entry : tree_) {
-            (void) entry;
+        [[maybe_unused]] size_t n = 0;
+        for ([[maybe_unused]] const auto& entry : tree_) {
             ++n;
         }
         assert(n == size());

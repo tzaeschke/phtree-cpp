@@ -144,31 +144,6 @@ class Node {
         }
         return nullptr;
     }
-    const EntryT* Find2(const KeyT& key, bit_width_t postfix_len) const {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-        const auto& entry2 = entries_.find(hc_pos);
-        if (entry2 == entries_.end()) {
-            return nullptr;
-        }
-        const auto& entry = entry2->second;
-
-        if (entry.IsNode()) {
-            if (entry.HasNodeInfix(postfix_len)) {
-                bit_width_t max_conflicting_bits = NumberOfDivergingBits(key, entry.GetKey());
-                if (max_conflicting_bits > entry.GetNodePostfixLen() + 1) {
-                    return nullptr;
-                }
-            }
-            // No infix conflict, just traverse subnode
-        } else {
-            bit_width_t max_conflicting_bits = NumberOfDivergingBits(key, entry.GetKey());
-            if (max_conflicting_bits > 0) {
-                return nullptr;
-            }
-            // perfect match -> return existing
-        }
-        return &entry;
-    }
 
     EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
         return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
@@ -358,9 +333,6 @@ class Node {
         const EntryT& entry, const KeyT& key, const bit_width_t parent_postfix_len) const {
         if (entry.IsNode()) {
             if (entry.HasNodeInfix(parent_postfix_len)) {
-                // TODO
-                //                return NumberOfDivergingBits(key, entry.GetKey()) <=
-                //                entry.GetNodePostfixLen() + 1;
                 const bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
                 return KeyEquals(entry.GetKey(), key, mask);
             }

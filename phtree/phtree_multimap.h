@@ -417,8 +417,38 @@ class PhTreeMultiMap {
      */
     template <typename T2>
     size_t relocate(const Key& old_key, const Key& new_key, T2&& value) {
-        return tree_.__relocate_multimap(
-            converter_.pre(old_key), converter_.pre(new_key), std::forward<T2>(value));
+        auto pair = tree_._find_or_create_two_mm(converter_.pre(old_key), converter_.pre(new_key));
+        auto& iter_old = pair.first;
+        auto& iter_new = pair.second;
+
+        if (iter_old.IsEnd()) {
+            return 0;
+        }
+        auto iter_old_value = iter_old->find(value);
+        if (iter_old_value == iter_old->end()) {
+            if (iter_new->empty()) {
+                tree_.erase(iter_new);
+            }
+            return 0;
+        }
+
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        if (iter_old == iter_new) {
+            assert(old_key == new_key);
+            return 1;
+        }
+
+        assert(iter_old_value != iter_old->end());
+        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
+            return 0;
+        }
+
+        iter_old->erase(iter_old_value);
+        if (iter_old->empty()) {
+            [[maybe_unused]] auto found = tree_.erase(iter_old);
+            assert(found);
+        }
+        return 1;
     }
 
     /*
@@ -437,13 +467,46 @@ class PhTreeMultiMap {
      *
      * @param old_key The old position
      * @param new_key The new position
-     * @param pred The predicate that is used for every value at position old_key to evaluate
+     * @param predicate The predicate that is used for every value at position old_key to evaluate
      *             whether it should be relocated to new_key.
      * @return the number of values that were relocated.
      */
-    template <typename PRED>
-    size_t relocate_if(const Key& old_key, const Key& new_key, PRED&& pred) {
-        return tree_.__relocate_multimap_if(converter_.pre(old_key), converter_.pre(new_key), pred);
+    template <typename PREDICATE>
+    size_t relocate_if(const Key& old_key, const Key& new_key, PREDICATE&& predicate) {
+        auto pair = tree_._find_or_create_two_mm(converter_.pre(old_key), converter_.pre(new_key));
+        auto& iter_old = pair.first;
+        auto& iter_new = pair.second;
+
+        if (iter_old.IsEnd()) {
+            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
+            return 0;
+        }
+
+        // Are we inserting in same node and same quadrant? Or are the keys equal?
+        if (iter_old == iter_new) {
+            assert(old_key == new_key);
+            return 1;
+        }
+
+        size_t n = 0;
+        auto it = iter_old->begin();
+        while (it != iter_old->end()) {
+            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
+                it = iter_old->erase(it);
+                ++n;
+            } else {
+                ++it;
+            }
+        }
+
+        if (iter_old->empty()) {
+            [[maybe_unused]] auto found = tree_.erase(iter_old);
+            assert(found);
+        } else if (iter_new->empty()) {
+            [[maybe_unused]] auto found = tree_.erase(iter_new);
+            assert(found);
+        }
+        return n;
     }
 
     /*
