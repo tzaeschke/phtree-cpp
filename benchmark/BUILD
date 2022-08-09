@@ -9,6 +9,7 @@ cc_library(
     hdrs = [
         "benchmark_util.h",
         "logging.h",
+        "robin_hood.h",
     ],
     visibility = [
         "//visibility:public",
@@ -286,6 +287,8 @@ cc_binary(
         "//phtree",
         ":benchmark",
         "@gbenchmark//:benchmark",
+        "@robin_hood",
+#        "@com_google_absl//absl/container:flat_hash_set",
         "@spdlog",
     ],
 )
