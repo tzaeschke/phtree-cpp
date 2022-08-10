@@ -30,9 +30,9 @@ using namespace improbable::phtree::phbenchmark;
 namespace {
 
 constexpr size_t UPDATES_PER_ROUND = 1000;
-std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
+std::vector<double> MOVE_DISTANCE = {1.0};
 
-const double GLOBAL_MAX = 10000;
+const double GLOBAL_MAX = 1000;
 
 enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE, MM_SET_RELOCATE_IF };
 
@@ -43,8 +43,38 @@ using BucketType = std::set<payload_t>;
 template <dimension_t DIM>
 using PointType = PhPointD<DIM>;
 
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
+    static_assert(LEVELS >= 1 && "There must be at least one level");
+    static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
+    static constexpr double multiplier_ = 1. / divider_;
+
+    explicit ConverterWithLevels() {}
+
+    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
+        PhPoint<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = point[i] * multiplier_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
+        PhPointD<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = ((double)in[i]) * divider_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
+        return PhBox{pre(query_box.min()), pre(query_box.max())};
+    }
+};
+
 template <Scenario SCENARIO, dimension_t DIM>
-using CONVERTER = ConverterIEEE<DIM>;
+// using CONVERTER = ConverterIEEE<DIM>;
+using CONVERTER = ConverterWithLevels<DIM>;
 
 template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
@@ -177,7 +207,11 @@ typename std::enable_if<SCENARIO == Scenario::MM_SET_RELOCATE_IF, size_t>::type 
     size_t n = 0;
     for (auto& update : updates) {
         n += tree.relocate_if(
-            update.old_, update.new_, [&update](const payload_t& v) { return v == update.id_; });
+            update.old_,
+            update.new_,
+            [&update](const payload_t& v) { return v == update.id_; },
+            true);
+        ++n;
     }
     return n;
 }
@@ -236,25 +270,25 @@ void IndexBenchmark<DIM, SCENARIO>::UpdateWorld(benchmark::State& state) {
 
 template <typename... Arguments>
 void PhTreeMMRelocateIfStdSet3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::MM_SET_RELOCATE_IF> benchmark{state, arguments...};
+    IndexBenchmark<2, Scenario::MM_SET_RELOCATE_IF> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
 void PhTreeMMRelocateBpt3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::MM_BPT_RELOCATE> benchmark{state, arguments...};
+    IndexBenchmark<2, Scenario::MM_BPT_RELOCATE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
 void PhTreeMMRelocateStdSet3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::MM_SET_RELOCATE> benchmark{state, arguments...};
+    IndexBenchmark<2, Scenario::MM_SET_RELOCATE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
 void PhTreeMMEraseEmplace3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::ERASE_EMPLACE> benchmark{state, arguments...};
+    IndexBenchmark<2, Scenario::ERASE_EMPLACE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
