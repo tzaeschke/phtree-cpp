@@ -413,11 +413,19 @@ class PhTreeMultiMap {
      * @param new_key The new position
      * @param value The value that needs to be relocated. The relocate() method used the value's
      *              '==' operator to identify the entry that should be moved.
+     * @param ignore_equal_keys Setting this to 'true' means that the function returns '0' if
+     * old_key==new_key, regardless of whether old_key or new_key exist. This can be useful if the
+     * result is not checked anyway or if there are a lot of "updates" with identical keys. If set
+     * to 'false' (=default) it returns '0' only if old_key does not exist or if new_key has a
+     * conflicting entry, otherwise it returns '1'.
+
      * @return '1' if a value was found and reinserted, otherwise '0'.
      */
     template <typename T2>
-    size_t relocate(const Key& old_key, const Key& new_key, T2&& value) {
-        auto pair = tree_._find_or_create_two_mm(converter_.pre(old_key), converter_.pre(new_key));
+    size_t relocate(
+        const Key& old_key, const Key& new_key, T2&& value, bool ignore_equal_keys = false) {
+        auto pair = tree_._find_or_create_two_mm(
+            converter_.pre(old_key), converter_.pre(new_key), ignore_equal_keys);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
 
@@ -469,7 +477,7 @@ class PhTreeMultiMap {
      * @param new_key The new position
      * @param predicate The predicate that is used for every value at position old_key to evaluate
      *             whether it should be relocated to new_key.
-     * @param ignore_equal_keys Settings this to 'true' means that the function returns '0' if
+     * @param ignore_equal_keys Setting this to 'true' means that the function returns '0' if
      * old_key==new_key, regardless of whether old_key or new_key exist. This can be useful if the
      * result is not checked anyway or if there are a lot of "updates" with identical keys. If set
      * to 'false' (=default) it returns '0' only if old_key does not exist or if new_key has a
