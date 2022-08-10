@@ -30,9 +30,38 @@ using namespace improbable::phtree::phbenchmark;
  */
 namespace {
 
-const double GLOBAL_MAX = 10000;
+const double GLOBAL_MAX = 1000;
 
 enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD };
+
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
+    static_assert(LEVELS >= 1 && "There must be at least one level");
+    static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
+    static constexpr double multiplier_ = 1. / divider_;
+
+    explicit ConverterWithLevels() {}
+
+    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
+        PhPoint<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = point[i] * multiplier_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
+        PhPointD<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = ((double)in[i]) * divider_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
+        return PhBox{pre(query_box.min()), pre(query_box.max())};
+    }
+};
 
 using TestPoint = PhPointD<3>;
 using QueryBox = PhBoxD<3>;
@@ -46,7 +75,8 @@ struct Query {
 };
 
 template <Scenario SCENARIO, dimension_t DIM>
-using CONVERTER = ConverterIEEE<DIM>;
+//using CONVERTER = ConverterIEEE<DIM>;
+using CONVERTER = ConverterWithLevels<DIM>;
 
 template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
