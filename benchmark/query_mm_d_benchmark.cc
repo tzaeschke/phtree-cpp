@@ -34,7 +34,7 @@ const double GLOBAL_MAX = 1000;
 
 enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD };
 
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
 struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
     static_assert(LEVELS >= 1 && "There must be at least one level");
     static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
@@ -61,6 +61,37 @@ struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t>
     [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
         return PhBox{pre(query_box.min()), pre(query_box.max())};
     }
+};
+template <dimension_t DIM = 2>
+struct ConverterWithLevels2 : public ConverterPointBase<DIM, double, scalar_64_t> {
+
+    explicit ConverterWithLevels2(size_t AREA_LEN = 1000, size_t LEVELS = 6) {
+        assert(LEVELS >= 1 && "There must be at least one level");
+        divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
+        multiplier_ = 1. / divider_;
+    }
+
+    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
+        PhPoint<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = point[i] * multiplier_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
+        PhPointD<DIM> out;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            out[i] = ((double)in[i]) * divider_;
+        }
+        return out;
+    }
+
+    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
+        return PhBox{pre(query_box.min()), pre(query_box.max())};
+    }
+    double divider_ ;
+    double multiplier_;
 };
 
 using TestPoint = PhPointD<3>;

@@ -43,7 +43,7 @@ using BucketType = std::set<payload_t>;
 template <dimension_t DIM>
 using PointType = PhPointD<DIM>;
 
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
 struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
     static_assert(LEVELS >= 1 && "There must be at least one level");
     static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
@@ -196,7 +196,8 @@ typename std::enable_if<
 UpdateEntry(TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
-        n += tree.relocate(update.old_, update.new_, update.id_);
+        tree.relocate(update.old_, update.new_, update.id_);
+        ++n;
     }
     return n;
 }
@@ -206,7 +207,7 @@ typename std::enable_if<SCENARIO == Scenario::MM_SET_RELOCATE_IF, size_t>::type 
     TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
-        n += tree.relocate_if(
+        tree.relocate_if(
             update.old_,
             update.new_,
             [&update](const payload_t& v) { return v == update.id_; },

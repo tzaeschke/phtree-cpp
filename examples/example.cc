@@ -27,7 +27,7 @@
 
 using namespace improbable::phtree;
 
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
 struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
     static_assert(LEVELS >= 1 && "There must be at least one level");
     static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
@@ -72,13 +72,13 @@ struct MyConverterMultiply : public ConverterPointBase<DIM, double, scalar_64_t>
     [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
         PhPointD<DIM> out;
         for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = ((double)in[i]) * divider;
+            out[i] = ((double)in[i]) * divider_;
         }
         return out;
     }
 
     [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
-        return PhBox{pre(query_box.min()), pre(querybox.max())};
+        return PhBox{pre(query_box.min()), pre(query_box.max())};
     }
 
     const double multiplier;

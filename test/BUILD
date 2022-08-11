@@ -183,6 +183,19 @@ cc_test(
 )
 
 cc_test(
+    name = "phtree_multimap_cond_d_test",
+    timeout = "long",
+    srcs = [
+        "phtree_multimap_cond_d_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//phtree:phtree",
+        "//test/testing/gtest_main",
+    ],
+)
+
+cc_test(
     name = "phtree_box_d_test_query_types",
     timeout = "long",
     srcs = [
