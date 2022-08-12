@@ -157,7 +157,7 @@ class IteratorCondNormal : public IteratorCondBase<PHTREE> {
 
   public:
     template <typename FILT>
-    explicit IteratorCondNormal(FILT&& filter) noexcept
+    explicit IteratorCondNormal(std::in_place_t, FILT&& filter) noexcept
     : IteratorCondBase<PHTREE>(), iter_ph_{}, filter_{std::forward<FILT>(filter)} {}
 
     template <typename ITER_PH, typename FILT>
@@ -175,7 +175,7 @@ class IteratorCondNormal : public IteratorCondBase<PHTREE> {
     }
 
     IteratorCondNormal operator++(int) noexcept {
-        IteratorNormal iterator(*this);
+        IteratorCondNormal iterator(*this);
         ++(*this);
         return iterator;
     }
@@ -194,8 +194,8 @@ class IteratorCondNormal : public IteratorCondBase<PHTREE> {
 
   private:
     void FindNextElement() {
-        while (!iter_ph_.IsEnd()) {
-            if (FILTER(iter_ph_->second)) {
+        while (!iter_ph_._is_finished()) {
+            if (filter_(iter_ph_->second)) {
                 this->SetCurrentValue(&(*iter_ph_));
                 return;
             }
@@ -241,7 +241,14 @@ class PhTreeMultiMapFast {
     using V_INT = std::pair<V, Key>;
     using PHTREE = PhTreeMultiMapFast<DIM, V, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>;
     using ValueType = V;
-    using EndType = decltype(std::declval<v16::PhTreeV16<DimInternal, BUCKET, CONVERTER>>().end());
+    using EndType = decltype(std::declval<PhTreeMultiMap<
+                                 DIM,
+                                 V_INT,
+                                 CondensingConverter<DIM>,
+                                 BUCKET,
+                                 POINT_KEYS,
+                                 DEFAULT_QUERY_TYPE>>()
+                                 .end());
 
     friend PhTreeDebugHelper;
     friend IteratorCondBase<PHTREE>;
@@ -287,8 +294,8 @@ class PhTreeMultiMapFast {
      */
     template <typename... Args>
     std::pair<V&, bool> emplace(const Key& key, Args&&... args) {
-        auto x = tree_.try_emplace(key, wrap(std::forward<Args>(args)...));
-        return {const_cast<V&>(unwrap(x)), x.second};
+        auto x = tree_.try_emplace(key, wrap(key, std::forward<Args>(args)...));
+        return {const_cast<V&>(unwrap(x.first)), x.second};
     }
 
     /*
@@ -308,8 +315,9 @@ class PhTreeMultiMapFast {
      */
     template <typename ITERATOR, typename... Args>
     std::pair<V&, bool> emplace_hint(const ITERATOR& iterator, const Key& key, Args&&... args) {
-        auto x = tree_.emplace_hint(iterator, key, wrap(std::forward<Args>(args)...));
-        return {const_cast<V&>(unwrap(x)), x.second};
+        auto x = tree_.emplace_hint(
+            iterator.GetIteratorOfPhTree(), key, wrap(key, std::forward<Args>(args)...));
+        return {const_cast<V&>(unwrap(x.first)), x.second};
     }
 
     /*
@@ -343,12 +351,13 @@ class PhTreeMultiMapFast {
      * @return '1', if a value is associated with the provided key, otherwise '0'.
      */
     size_t count(const Key& key) const {
-        // TODO
+        size_t n = 0;
         auto iter = tree_.find(key);
-        if (iter != tree_.end()) {
-            return iter->size();
+        while (iter != tree_.end()) {
+            ++n;
+            ++iter;
         }
-        return 0;
+        return n;
     }
 
     /*
@@ -385,7 +394,7 @@ class PhTreeMultiMapFast {
      */
     auto find(const Key& key, const V& value) const {
         return CreateIterator(
-            tree_.find(key, wrap(value, key)), [&key](const Key& k) { return k == key; });
+            tree_.find(key, wrap(key, value)), [&key](const Key& k) { return k == key; });
     }
 
     /*
@@ -394,7 +403,7 @@ class PhTreeMultiMapFast {
      * @return '1' if the key/value pair was found, otherwise '0'.
      */
     size_t erase(const Key& key, const V& value) {
-        return tree_.erase(key, wrap(value, key));
+        return tree_.erase(key, wrap(key, value));
     }
 
     /*
@@ -407,7 +416,7 @@ class PhTreeMultiMapFast {
      */
     template <typename ITERATOR>
     size_t erase(const ITERATOR& iterator) {
-        return tree_.erase(iterator);
+        return tree_.erase(iterator.GetIteratorOfPhTree());
     }
 
     /*
@@ -439,7 +448,8 @@ class PhTreeMultiMapFast {
     template <typename T2>
     size_t relocate(
         const Key& old_key, const Key& new_key, T2&& value, bool ignore_equal_keys = false) {
-        auto pair = tree_._find_or_create_two_mm(
+        auto& internal_tree = tree_._GetInternalTree();
+        auto pair = internal_tree._find_or_create_two_mm(
             tree_.converter().pre(old_key), tree_.converter().pre(new_key), ignore_equal_keys);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -447,10 +457,10 @@ class PhTreeMultiMapFast {
         if (iter_old.IsEnd()) {
             return 0;
         }
-        auto iter_old_value = iter_old->find(value);
+        auto iter_old_value = iter_old->find(wrap(old_key, value));
         if (iter_old_value == iter_old->end()) {
             if (iter_new->empty()) {
-                tree_.erase(iter_new);
+                internal_tree.erase(iter_new);
             }
             return 0;
         }
@@ -468,7 +478,7 @@ class PhTreeMultiMapFast {
 
         iter_old->erase(iter_old_value);
         if (iter_old->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_old);
+            [[maybe_unused]] auto found = internal_tree.erase(iter_old);
             assert(found);
         }
         return 1;
@@ -506,7 +516,7 @@ class PhTreeMultiMapFast {
         const Key& new_key,
         PREDICATE&& predicate,
         bool ignore_equal_keys = false) {
-        auto pair = tree_._find_or_create_two_mm(
+        auto pair = tree_._GetInternalTree()._find_or_create_two_mm(
             tree_.converter().pre(old_key), tree_.converter().pre(new_key), ignore_equal_keys);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -566,9 +576,8 @@ class PhTreeMultiMapFast {
     template <typename CALLBACK, typename FILTER = FilterNoOp>
     void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
         tree_.for_each(
-            NoOpCallback{},
-            WrapCallbackFilter<CALLBACK, FILTER>{
-                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), tree_.converter()});
+            WrapCallback<CALLBACK>{std::forward<CALLBACK>(callback)},
+            WrapFilter<FILTER>{std::forward<FILTER>(filter)});
     }
 
     /*
@@ -593,10 +602,12 @@ class PhTreeMultiMapFast {
         CALLBACK&& callback,
         FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
-            query_type(tree_.converter().pre_query(query_box)),
-            {},
-            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), tree_.converter()});
+        tree_.for_each(
+            query_box,
+            WrapCallback<CALLBACK>{std::forward<CALLBACK>(callback)},
+            WrapQueryFilter<QUERY_TYPE, FILTER>{
+                std::forward<QUERY_TYPE>(query_type), std::forward<FILTER>(filter)},
+            query_type);
     }
 
     /*
@@ -609,7 +620,8 @@ class PhTreeMultiMapFast {
     template <typename FILTER = FilterNoOp>
     auto begin(FILTER&& filter = FILTER()) const {
         return CreateIterator(
-            tree_.begin(std::forward<FILTER>(filter)), [](const Key&) { return true; });
+            tree_.begin(WrapFilter<FILTER>(std::forward<FILTER>(filter))),
+            [](const Key&) { return true; });
     }
 
     /*
@@ -627,10 +639,13 @@ class PhTreeMultiMapFast {
         const QueryBox& query_box,
         FILTER&& filter = FILTER(),
         QUERY_TYPE&& query_type = QUERY_TYPE()) const {
+        // TODO QUERY-FILTER!!!!
         return CreateIterator(
             tree_.begin_query(
-                query_box, std::forward<FILTER>(filter), std::forward<QUERY_TYPE>(query_type)),
-            [&query_box](const Key& key) {
+                query_box,
+                WrapFilter<FILTER>(std::forward<FILTER>(filter)),
+                std::forward<QUERY_TYPE>(query_type)),
+            [query_box](const Key& key) {
                 return IsInRange(key, query_box.min(), query_box.max());
             });
     }
@@ -661,11 +676,12 @@ class PhTreeMultiMapFast {
         FILTER&& filter = FILTER()) const {
         // We use pre() instead of pre_query() here because, strictly speaking, we want to
         // find the nearest neighbors of a (fictional) key, which may as well be a box.
+        // TODO query filter / dist filter
         return CreateIteratorKnn(tree_.begin_knn_query(
             min_results,
             center,
             std::forward<DISTANCE>(distance_function),
-            std::forward<FILTER>(filter)));
+            WrapFilter<FILTER>(std::forward<FILTER>(filter))));
     }
 
     /*
@@ -673,7 +689,7 @@ class PhTreeMultiMapFast {
      */
     auto end() const {
         auto filter = [](const Key&) { return true; };
-        return IteratorCondNormal<EndType, PHTREE, decltype(filter)>{filter};
+        return IteratorCondNormal<EndType, PHTREE, decltype(filter)>{std::in_place_t{}, filter};
     }
 
     /*
@@ -746,16 +762,15 @@ class PhTreeMultiMapFast {
     //        return tree_.begin_query(query_box, std::forward<FILTER>(filter));
     //    }
 
+    const auto& _GetInternalTree() const {
+        return tree_._GetInternalTree();
+    }
+
+    void _CheckConsistencyExternal() const {
+        tree_._CheckConsistencyExternal();
+    }
+
   private:
-    // This is used by PhTreeDebugHelper
-    const auto& GetInternalTree() const {
-        return tree_.GetInternalTree();
-    }
-
-    void CheckConsistencyExternal() const {
-        tree_.CheckConsistencyExternal();
-    }
-
     template <typename OUTER_ITER, typename FILTER>
     auto CreateIterator(OUTER_ITER&& outer_iter, FILTER&& filter) const {
         return IteratorCondNormal<OUTER_ITER, PHTREE, FILTER>(
@@ -785,52 +800,97 @@ class PhTreeMultiMapFast {
             std::forward<OUTER_ITER>(outer_iter), std::move(filter));
     }
 
-    V_INT wrap(V& v, Key& k) const {
-        return std::make_pair(v, k);
+    template <typename... Args>
+    auto wrap(const Key& key, Args&&... args) const {
+        return std::make_pair(std::forward<Args>(args)..., key);
     }
 
-    const V_INT wrap(const V& v, const Key& k) const {
-        return std::make_pair(v, k);
-    }
+    //    template <typename... Args>
+    //    const V_INT wrap(const Key& key, Args&&... args) const {
+    //        return std::make_pair(std::forward<Args>(args)..., key);
+    //    }
 
-    V unwrap(V_INT& v) const {
+    V& unwrap(V_INT& v) const {
         return v.first;
     }
 
-    const V unwrap(const V_INT& v) const {
+    static const V& unwrap(const V_INT& v) {
         return v.first;
     }
 
     template <typename QUERY, typename FILTER>
-    class WrapCallbackFilter {
+    class WrapQueryFilter {
       public:
         template <typename Q, typename F>
-        WrapCallbackFilter(Q&& query, F&& filter, const CONVERTER& converter)
-        : query_{std::forward<Q>(query)}, filter_{std::forward<F>(filter)}, converter_{converter} {}
+        WrapQueryFilter(Q&& query, F&& filter)
+        : query_{std::forward<Q>(query)}, filter_{std::forward<F>(filter)} {}
 
         [[nodiscard]] inline bool IsEntryValid(
             const KeyInternal& internal_key, const BUCKET& bucket) {
             return filter_.IsEntryValid(internal_key, bucket);
         }
 
-        [[nodiscard]] inline bool IsBucketEntryValid(const Key& internal_key, const V_INT& value) {
+        [[nodiscard]] inline bool IsBucketEntryValid(
+            const KeyInternal& internal_key, const V_INT& value) {
             // TODO query
-            auto key = converter_.post(internal_key);
-            return filter_.IsBucketEntryValid(internal_key, value);
+            return filter_.IsBucketEntryValid(internal_key, unwrap(value));
         }
 
-        [[nodiscard]] inline bool IsNodeValid(const Key&, int) {
+        [[nodiscard]] inline bool IsNodeValid(const KeyInternal&, int) {
             return true;
         }
 
       private:
         QUERY query_;
         FILTER filter_;
-        const CONVERTER& converter_;
     };
 
     struct NoOpCallback {
-        constexpr void operator()(const Key&, const V&) const noexcept {}
+        constexpr void operator()(const Key&, const V_INT&) const noexcept {}
+    };
+
+    template <typename FILTER>
+    class WrapFilter {
+      public:
+        // TODO merge with other constr.
+        //        template <typename F>
+        //        WrapFilter(F&& filter)
+        //        : filter_{std::forward<F>(filter)},
+        //        callback_{std::forward<NoOpCallback>(NoOpCallback{})} {}
+
+        template <typename F>
+        WrapFilter(F&& filter) : filter_{std::forward<F>(filter)} {}
+
+        [[nodiscard]] inline bool IsEntryValid(
+            const KeyInternal& internal_key, const BUCKET& bucket) {
+            return filter_.IsEntryValid(internal_key, bucket);
+        }
+
+        [[nodiscard]] inline bool IsBucketEntryValid(
+            const KeyInternal& internal_key, const V_INT& value) {
+            return filter_.IsBucketEntryValid(internal_key, unwrap(value));
+        }
+
+        [[nodiscard]] inline bool IsNodeValid(const KeyInternal&, int) {
+            return true;
+        }
+
+      private:
+        FILTER filter_;
+    };
+
+    template <typename CALLBACK = NoOpCallback>
+    class WrapCallback {
+      public:
+        template <typename C>
+        WrapCallback(C&& callback) : callback_{std::forward<C>(callback)} {}
+
+        constexpr void operator()(const Key& key, const V_INT& value) const noexcept {
+            callback_(key, unwrap(value));
+        }
+
+      private:
+        CALLBACK callback_;
     };
 
     PhTreeMultiMap<DIM, V_INT, CondensingConverter<DIM>, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>
@@ -880,7 +940,7 @@ namespace std {
 template <typename V, typename Key>
 struct std::hash<improbable::phtree::EntryCond<V, Key>> {
     size_t operator()(const improbable::phtree::EntryCond<V, Key>& x) const {
-        return std::hash<int>{}(x.first);
+        return std::hash<V>{}(x.first);
     }
 };
 };  // namespace std

@@ -38,8 +38,8 @@ class PhTreeDebugHelper {
      */
     template <typename TREE>
     static void CheckConsistency(const TREE& tree) {
-        tree.GetInternalTree().GetDebugHelper().CheckConsistency();
-        tree.CheckConsistencyExternal();
+        tree._GetInternalTree().GetDebugHelper().CheckConsistency();
+        tree._CheckConsistencyExternal();
     }
 
     /*
@@ -49,7 +49,7 @@ class PhTreeDebugHelper {
      */
     template <typename TREE>
     static PhTreeStats GetStats(const TREE& tree) {
-        return tree.GetInternalTree().GetDebugHelper().GetStats();
+        return tree._GetInternalTree().GetDebugHelper().GetStats();
     }
 
     /*
@@ -63,7 +63,7 @@ class PhTreeDebugHelper {
      */
     template <typename TREE>
     static std::string ToString(const TREE& tree, const PrintDetail& detail) {
-        return tree.GetInternalTree().GetDebugHelper().ToString(detail);
+        return tree._GetInternalTree().GetDebugHelper().ToString(detail);
     }
 };
 

@@ -350,13 +350,11 @@ class PhTree {
         return converter_;
     }
 
-  private:
-    // This is used by PhTreeDebugHelper
-    const auto& GetInternalTree() const {
+    const auto& _GetInternalTree() const {
         return tree_;
     }
 
-    void CheckConsistencyExternal() const {
+    void _CheckConsistencyExternal() const {
         [[maybe_unused]] size_t n = 0;
         for ([[maybe_unused]] const auto& entry : tree_) {
             ++n;
@@ -364,6 +362,7 @@ class PhTree {
         assert(n == size());
     }
 
+  private:
     v16::PhTreeV16<DimInternal, T, CONVERTER> tree_;
     CONVERTER converter_;
 };
