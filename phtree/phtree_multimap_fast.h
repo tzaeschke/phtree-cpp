@@ -261,15 +261,6 @@ class PhTreeMultiMapFast {
         double estimated_area_len = 1000,
         size_t estimated_entity_count = 10000,
         size_t bucket_avg = 50)
-    //    : tree_{PhTreeMultiMap<
-    //          DIM,
-    //          V_INT,
-    //          CondensingConverter<DIM>,
-    //          BUCKET,
-    //          POINT_KEYS,
-    //          DEFAULT_QUERY_TYPE>(
-    //          CondensingConverter<DIM>(estimated_area_len, estimated_entity_count, bucket_avg))}
-    //          {}
     : tree_{CondensingConverter<DIM>(estimated_area_len, estimated_entity_count, bucket_avg)} {}
 
     PhTreeMultiMapFast(const PhTreeMultiMapFast& other) = delete;
@@ -370,7 +361,7 @@ class PhTreeMultiMapFast {
      */
     template <typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     size_t estimate_count(QueryBox query_box, QUERY_TYPE query_type = QUERY_TYPE()) const {
-        return estimate_count(query_box, query_type);
+        return tree_.estimate_count(query_box, query_type);
     }
 
     /*
@@ -476,7 +467,8 @@ class PhTreeMultiMapFast {
         if (!result.second) {
             return 0;
         }
-        result.first->second = new_key; // Update key in k/v pair
+        // TODO const_cast?
+        const_cast<Key&>(result.first->second) = new_key;  // Update key in k/v pair
 
         iter_old->erase(iter_old_value);
         if (iter_old->empty()) {
@@ -518,7 +510,8 @@ class PhTreeMultiMapFast {
         const Key& new_key,
         PREDICATE&& predicate,
         bool ignore_equal_keys = false) {
-        auto pair = tree_._GetInternalTree()._find_or_create_two_mm(
+        auto& internal_tree = tree_._GetInternalTree();
+        auto pair = internal_tree._find_or_create_two_mm(
             tree_.converter().pre(old_key), tree_.converter().pre(new_key), ignore_equal_keys);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -537,19 +530,24 @@ class PhTreeMultiMapFast {
         size_t n = 0;
         auto it = iter_old->begin();
         while (it != iter_old->end()) {
-            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
-                it = iter_old->erase(it);
-                ++n;
-            } else {
-                ++it;
+            if (predicate(unwrap(*it))) {
+                auto result = iter_new->emplace(std::move(*it));
+                if (result.second) {
+                    it = iter_old->erase(it);
+                    // TODO const_cast?
+                    const_cast<Key&>(result.first->second) = new_key;
+                    ++n;
+                    continue;
+                }
             }
+            ++it;
         }
 
         if (iter_old->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_old);
+            [[maybe_unused]] auto found = internal_tree.erase(iter_old);
             assert(found);
         } else if (iter_new->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_new);
+            [[maybe_unused]] auto found = internal_tree.erase(iter_new);
             assert(found);
         }
         return n;
@@ -622,8 +620,8 @@ class PhTreeMultiMapFast {
     template <typename FILTER = FilterNoOp>
     auto begin(FILTER&& filter = FILTER()) const {
         return CreateIterator(
-            tree_.begin(WrapFilter<FILTER>(std::forward<FILTER>(filter))),
-            [](const Key&) { return true; });
+            tree_.begin(WrapFilter<FILTER>{std::forward<FILTER>(filter)}), FilterTrue{});
+        // [](const Key&) mutable { return true; });
     }
 
     /*
@@ -690,8 +688,7 @@ class PhTreeMultiMapFast {
      * @return An iterator representing the tree's 'end'.
      */
     auto end() const {
-        auto filter = [](const Key&) { return true; };
-        return IteratorCondNormal<EndType, PHTREE, decltype(filter)>{std::in_place_t{}, filter};
+        return IteratorCondNormal<EndType, PHTREE, FilterTrue>{std::in_place_t{}, FilterTrue{}};
     }
 
     /*
@@ -779,6 +776,12 @@ class PhTreeMultiMapFast {
             std::forward<OUTER_ITER>(outer_iter), std::forward<FILTER>(filter));
     }
 
+    struct FilterTrue {
+        template <typename KeyT>
+        constexpr bool operator()(const KeyT&) const noexcept {
+            return true;
+        }
+    };
     //    template <typename OUTER_ITER>
     //    auto CreateIteratorFind(OUTER_ITER&& outer_iter, const V& value, const Key& key) const {
     //        auto filter = [&key](const Key& key2) { return key2 == key; };
@@ -861,7 +864,13 @@ class PhTreeMultiMapFast {
         //        callback_{std::forward<NoOpCallback>(NoOpCallback{})} {}
 
         template <typename F>
-        WrapFilter(F&& filter) : filter_{std::forward<F>(filter)} {}
+        explicit WrapFilter(F&& filter) : filter_{std::forward<F>(filter)} {}
+
+        WrapFilter(const WrapFilter& other) = default;
+        WrapFilter& operator=(const WrapFilter& other) = default;
+        WrapFilter(WrapFilter&& other) noexcept = default;
+        WrapFilter& operator=(WrapFilter&& other) noexcept = default;
+        ~WrapFilter() noexcept = default;
 
         [[nodiscard]] inline bool IsEntryValid(
             const KeyInternal& internal_key, const BUCKET& bucket) {
@@ -895,6 +904,21 @@ class PhTreeMultiMapFast {
         CALLBACK callback_;
     };
 
+    template <typename DISTANCE>
+    class WrapDistance {
+      public:
+        template <typename D>
+        WrapDistance(D&& distance) : distance_{std::forward<D>(distance)} {}
+
+        //        double operator()(const Key& p1, const Key& p2) const {
+        //            // TODO unwrap!
+        //            return distance_(a, b);
+        //        };
+
+      private:
+        DISTANCE distance_;
+    };
+
     PhTreeMultiMap<DIM, V_INT, CondensingConverter<DIM>, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>
         tree_;
 };
@@ -915,8 +939,8 @@ class PhTreeMultiMapFast {
 template <
     dimension_t DIM,
     typename V,
-    typename CONVERTER = CondensingConverter<DIM>,
-    typename BUCKET = b_plus_tree_hash_set<EntryCond<V, typename CONVERTER::KeyExternal>>>
+    typename BUCKET = b_plus_tree_hash_set<EntryCond<V, PhPointD<DIM>>>,
+    typename CONVERTER = CondensingConverter<DIM>>
 using PhTreeMultiMapD_C = PhTreeMultiMapFast<DIM, V, CONVERTER, BUCKET>;
 
 // template <

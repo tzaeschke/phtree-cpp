@@ -583,6 +583,101 @@ TEST(PhTreeMMDTest, TestUpdateWithRelocateCornerCases) {
     ASSERT_EQ(0u, tree.relocate(point0, point1, Id(2)));
     PhTreeDebugHelper::CheckConsistency(tree);
 }
+struct RelIfTrue {
+    bool operator()(const Id& id) {
+        return id == id_;
+    }
+    Id id_;
+};
+
+void TestUpdateWithRelocateIf(bool relocate_to_existing_coordinate) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<double, 4> deltas{0, 0.1, 1, 10};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    for (auto delta : deltas) {
+        size_t i = 0;
+        for (auto& p : points) {
+            auto pOld = p;
+            TestPoint<dim> pNew;
+            if (relocate_to_existing_coordinate) {
+                pNew = delta > 0.0 ? points[(i + 17) % N] : pOld;
+            } else {
+                pNew = {pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+            }
+            ASSERT_EQ(1u, tree.relocate_if(pOld, pNew, RelIfTrue{Id(i)}));
+            if (pOld != pNew) {
+                // second time fails because value has already been moved
+                ASSERT_EQ(0u, tree.relocate_if(pOld, pNew, RelIfTrue{Id(i)}));
+                ASSERT_EQ(tree.end(), tree.find(pOld, Id(i)));
+            } else {
+                ASSERT_EQ(1u, tree.relocate_if(pOld, pNew, RelIfTrue{Id(i)}));
+            }
+            ASSERT_EQ(Id(i), *tree.find(pNew, Id(i)));
+            p = pNew;
+            ++i;
+        }
+        PhTreeDebugHelper::CheckConsistency(tree);
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateIfDelta) {
+    TestUpdateWithRelocateIf(false);
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateIfToExisting) {
+    TestUpdateWithRelocateIf(true);
+}
+
+TEST(PhTreeMMDTest, TestUpdateWithRelocateIfCornerCases) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    TestPoint<dim> point0{1, 2, 3};
+    TestPoint<dim> point1{4, 5, 6};
+
+    // Check that empty tree works
+    ASSERT_EQ(0u, tree.relocate_if(point0, point1, RelIfTrue{Id(42)}));
+
+    // Check that small tree works
+    tree.emplace(point0, Id(1));
+    ASSERT_EQ(1u, tree.relocate_if(point0, point1, RelIfTrue{Id(1)}));
+    ASSERT_EQ(tree.end(), tree.find(point0, Id(1)));
+    ASSERT_EQ(1, tree.find(point1, Id(1))->_i);
+    ASSERT_EQ(1u, tree.size());
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(point0, Id(1));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate_if(point0, point1, RelIfTrue{Id(1)}));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source bucket fails
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate_if(point0, point1, RelIfTrue{Id(0)}));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source value fails (target bucket exists)
+    tree.emplace(point0, Id(0));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate_if(point0, point1, RelIfTrue{Id(2)}));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source value fails (target bucket missing)
+    tree.emplace(point0, Id(0));
+    ASSERT_EQ(0u, tree.relocate_if(point0, point1, RelIfTrue{Id(2)}));
+    PhTreeDebugHelper::CheckConsistency(tree);
+}
 
 TEST(PhTreeMMDTest, TestEraseByIterator) {
     const dimension_t dim = 3;

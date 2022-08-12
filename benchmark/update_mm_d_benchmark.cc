@@ -17,6 +17,7 @@
 #include "benchmark/logging.h"
 #include "phtree/phtree.h"
 #include "phtree/phtree_multimap.h"
+#include "phtree/phtree_multimap_fast.h"
 #include <benchmark/benchmark.h>
 #include <random>
 
@@ -73,8 +74,8 @@ struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t>
 };
 
 template <Scenario SCENARIO, dimension_t DIM>
-// using CONVERTER = ConverterIEEE<DIM>;
-using CONVERTER = ConverterWithLevels<DIM>;
+using CONVERTER = ConverterIEEE<DIM>;
+//using CONVERTER = ConverterWithLevels<DIM>;
 
 template <Scenario SCENARIO, dimension_t DIM>
 using TestMap = typename std::conditional_t<
@@ -83,7 +84,8 @@ using TestMap = typename std::conditional_t<
     typename std::conditional_t<
         SCENARIO == MM_BPT_RELOCATE,
         PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
-        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
+        //PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
+        PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
