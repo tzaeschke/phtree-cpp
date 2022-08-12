@@ -354,7 +354,7 @@ class PhTreeMultiMapFast {
         size_t n = 0;
         auto iter = tree_.find(key);
         while (iter != tree_.end()) {
-            ++n;
+            n += (iter->second == key);
             ++iter;
         }
         return n;
@@ -472,9 +472,11 @@ class PhTreeMultiMapFast {
         }
 
         assert(iter_old_value != iter_old->end());
-        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
+        auto result = iter_new->emplace(std::move(*iter_old_value));
+        if (!result.second) {
             return 0;
         }
+        result.first->second = new_key; // Update key in k/v pair
 
         iter_old->erase(iter_old_value);
         if (iter_old->empty()) {
@@ -885,8 +887,8 @@ class PhTreeMultiMapFast {
         template <typename C>
         WrapCallback(C&& callback) : callback_{std::forward<C>(callback)} {}
 
-        constexpr void operator()(const Key& key, const V_INT& value) const noexcept {
-            callback_(key, unwrap(value));
+        constexpr void operator()(const Key&, const V_INT& value) const noexcept {
+            callback_(value.second, unwrap(value));
         }
 
       private:
