@@ -73,13 +73,14 @@ namespace {
 template <dimension_t DIM>
 struct CondensingConverter : public ConverterPointBase<DIM, double, scalar_64_t> {
     explicit CondensingConverter(
-        double estimated_area_len, size_t estimated_entity_count, size_t bucket_avg = 50) {
+        double estimated_area_len, size_t estimated_entity_count, size_t bucket_avg = 20) {
         // Let's assume uniform distribution for this estimate
-        auto avg_bucket_count = estimated_entity_count / bucket_avg;  // = quadrant count
+        auto avg_bucket_count =
+            (double)estimated_entity_count / (double)bucket_avg;  // = quadrant count
         auto quadrants_per_edge = pow(avg_bucket_count, 1. / DIM);
-        divider_ = quadrants_per_edge / estimated_area_len;
-        multiplier_ = 1. / divider_;
-        std::cout << "Converter: div=" << divider_ << std::endl;
+        multiplier_ = quadrants_per_edge / estimated_area_len;
+        divider_ = 1. / multiplier_;
+        //std::cout << "d=" << divider_ << "/" << multiplier_ << std::endl;
     }
 
     [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
@@ -104,9 +105,6 @@ struct CondensingConverter : public ConverterPointBase<DIM, double, scalar_64_t>
     double divider_;
     double multiplier_;
 };
-
-template <typename V, typename Key>
-using EntryCond = std::pair<V, Key>;
 
 template <typename PHTREE>
 class IteratorCondBase {
@@ -224,7 +222,7 @@ class IteratorCondKnn : public IteratorCondNormal<ITERATOR_PH, PHTREE, FILTER> {
 }  // namespace
 
 template <typename V, typename Key>
-using EntryType = std::pair<V, Key>;
+using EntryCond = std::pair<V, Key>;
 
 template <
     dimension_t DIM,
@@ -257,11 +255,15 @@ class PhTreeMultiMapFast {
     using QueryBox = typename CONVERTER::QueryBoxExternal;
 
     // TODO remove defaults
-    PhTreeMultiMapFast(
+    explicit PhTreeMultiMapFast(
         double estimated_area_len = 1000,
         size_t estimated_entity_count = 10000,
-        size_t bucket_avg = 50)
-    : tree_{CondensingConverter<DIM>(estimated_area_len, estimated_entity_count, bucket_avg)} {}
+        size_t bucket_avg = 20)
+    : tree_{CondensingConverter<DIM>(
+          estimated_area_len, estimated_entity_count, bucket_avg)} {}
+
+    explicit PhTreeMultiMapFast(CONVERTER converter)
+    : tree_{converter} {}
 
     PhTreeMultiMapFast(const PhTreeMultiMapFast& other) = delete;
     PhTreeMultiMapFast& operator=(const PhTreeMultiMapFast& other) = delete;
@@ -919,7 +921,13 @@ class PhTreeMultiMapFast {
         DISTANCE distance_;
     };
 
-    PhTreeMultiMap<DIM, V_INT, CondensingConverter<DIM>, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>
+    PhTreeMultiMap<
+        DIM,
+        V_INT,
+        CondensingConverter<DIM>,
+        BUCKET,
+        POINT_KEYS,
+        DEFAULT_QUERY_TYPE>
         tree_;
 };
 

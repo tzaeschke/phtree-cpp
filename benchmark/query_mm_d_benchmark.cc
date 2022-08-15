@@ -17,6 +17,7 @@
 #include "benchmark/logging.h"
 #include "phtree/phtree.h"
 #include "phtree/phtree_multimap.h"
+#include "phtree/phtree_multimap_fast.h"
 #include <benchmark/benchmark.h>
 #include <random>
 
@@ -32,67 +33,7 @@ namespace {
 
 const double GLOBAL_MAX = 1000;
 
-enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD };
-
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
-struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
-    static_assert(LEVELS >= 1 && "There must be at least one level");
-    static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
-    static constexpr double multiplier_ = 1. / divider_;
-
-    explicit ConverterWithLevels() {}
-
-    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
-        PhPoint<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = point[i] * multiplier_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
-        PhPointD<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = ((double)in[i]) * divider_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
-        return PhBox{pre(query_box.min()), pre(query_box.max())};
-    }
-};
-template <dimension_t DIM = 2>
-struct ConverterWithLevels2 : public ConverterPointBase<DIM, double, scalar_64_t> {
-
-    explicit ConverterWithLevels2(size_t AREA_LEN = 1000, size_t LEVELS = 6) {
-        assert(LEVELS >= 1 && "There must be at least one level");
-        divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
-        multiplier_ = 1. / divider_;
-    }
-
-    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
-        PhPoint<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = point[i] * multiplier_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
-        PhPointD<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = ((double)in[i]) * divider_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
-        return PhBox{pre(query_box.min()), pre(query_box.max())};
-    }
-    double divider_ ;
-    double multiplier_;
-};
+enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD, MMC };
 
 using TestPoint = PhPointD<3>;
 using QueryBox = PhBoxD<3>;
@@ -105,18 +46,35 @@ struct Query {
     double radius{};
 };
 
-template <Scenario SCENARIO, dimension_t DIM>
-//using CONVERTER = ConverterIEEE<DIM>;
-using CONVERTER = ConverterWithLevels<DIM>;
+template <dimension_t DIM>
+using CONVERTER = ConverterIEEE<DIM>;
 
-template <Scenario SCENARIO, dimension_t DIM>
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CondensingConverter<DIM>>
+typename std::enable_if<SCENARIO == Scenario::MMC, CONV>::type converter(
+    double estimated_area_len, size_t estimated_entity_count, size_t bucket_avg = 20) {
+    return CONV{estimated_area_len, estimated_entity_count, bucket_avg};
+}
+
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CONVERTER<DIM>>
+typename std::enable_if<SCENARIO != Scenario::MMC, CONV>::type converter(
+    double a = 0, size_t b = 0, size_t c = 0) {
+    (void)a;
+    (void)b;
+    (void)c;
+    return CONV{};
+}
+
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CONVERTER<DIM>>
 using TestMap = typename std::conditional_t<
     SCENARIO == TREE_WITH_MAP,
-    PhTreeD<DIM, BucketType, CONVERTER<SCENARIO, DIM>>,
+    PhTreeD<DIM, BucketType, CONV>,
     typename std::conditional_t<
         SCENARIO == MULTI_MAP,
-        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
-        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::unordered_set<payload_t>>>>;
+        PhTreeMultiMapD<DIM, payload_t, CONV, b_plus_tree_hash_set<payload_t>>,
+        typename std::conditional_t<
+            SCENARIO == MMC,
+            PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>,
+            PhTreeMultiMapD<DIM, payload_t, CONV, std::set<payload_t>>>>>;
 
 template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
@@ -149,7 +107,7 @@ IndexBenchmark<DIM, SCENARIO>::IndexBenchmark(benchmark::State& state, double av
 : data_type_{static_cast<TestGenerator>(state.range(1))}
 , num_entities_(state.range(0))
 , avg_query_result_size_(avg_query_result_size)
-, tree_{}
+, tree_{converter<SCENARIO, DIM>(GLOBAL_MAX, num_entities_)}
 , random_engine_{1}
 , cube_distribution_{0, GLOBAL_MAX}
 , points_(num_entities_) {
@@ -181,6 +139,12 @@ void InsertEntry(
 template <dimension_t DIM>
 void InsertEntry(
     TestMap<Scenario::MULTI_MAP, DIM>& tree, const PhPointD<DIM>& point, const payload_t& data) {
+    tree.emplace(point, data);
+}
+
+template <dimension_t DIM>
+void InsertEntry(
+    TestMap<Scenario::MMC, DIM>& tree, const PhPointD<DIM>& point, const payload_t& data) {
     tree.emplace(point, data);
 }
 
@@ -231,6 +195,13 @@ typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, int>::type CountEnt
 
 template <dimension_t DIM, Scenario SCENARIO>
 int CountEntries(TestMap<Scenario::MULTI_MAP, DIM>& tree, const Query& query) {
+    CounterMultiMap counter{query.center, query.radius, 0};
+    tree.for_each(query.box, counter);
+    return counter.n_;
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
+int CountEntries(TestMap<Scenario::MMC, DIM>& tree, const Query& query) {
     CounterMultiMap counter{query.center, query.radius, 0};
     tree.for_each(query.box, counter);
     return counter.n_;
@@ -299,9 +270,21 @@ void PhTreeMultiMapStd3D(benchmark::State& state, Arguments&&... arguments) {
     benchmark.Benchmark(state);
 }
 
+template <typename... Arguments>
+void PhTreeMultiMapC3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MMC> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
 // index type, scenario name, data_type, num_entities, avg_query_result_size
 // PhTree
 BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTree MMC
+BENCHMARK_CAPTURE(PhTreeMultiMapC3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

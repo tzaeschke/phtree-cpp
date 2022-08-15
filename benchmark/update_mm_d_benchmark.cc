@@ -35,7 +35,13 @@ std::vector<double> MOVE_DISTANCE = {1.0};
 
 const double GLOBAL_MAX = 1000;
 
-enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE, MM_SET_RELOCATE_IF };
+enum Scenario {
+    ERASE_EMPLACE,
+    MM_BPT_RELOCATE,
+    MM_SET_RELOCATE,
+    MM_SET_RELOCATE_IF,
+    MMC_RELOCATE_IF
+};
 
 using payload_t = scalar_64_t;
 
@@ -44,48 +50,36 @@ using BucketType = std::set<payload_t>;
 template <dimension_t DIM>
 using PointType = PhPointD<DIM>;
 
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
-struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
-    static_assert(LEVELS >= 1 && "There must be at least one level");
-    static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
-    static constexpr double multiplier_ = 1. / divider_;
-
-    explicit ConverterWithLevels() {}
-
-    [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
-        PhPoint<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = point[i] * multiplier_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] PhPointD<DIM> post(const PhPoint<DIM>& in) const {
-        PhPointD<DIM> out;
-        for (dimension_t i = 0; i < DIM; ++i) {
-            out[i] = ((double)in[i]) * divider_;
-        }
-        return out;
-    }
-
-    [[nodiscard]] auto pre_query(const PhBoxD<DIM>& query_box) const {
-        return PhBox{pre(query_box.min()), pre(query_box.max())};
-    }
-};
-
-template <Scenario SCENARIO, dimension_t DIM>
+template <dimension_t DIM>
 using CONVERTER = ConverterIEEE<DIM>;
-//using CONVERTER = ConverterWithLevels<DIM>;
+// using CONVERTER = CondensingConverter<DIM, payload_t>;
 
-template <Scenario SCENARIO, dimension_t DIM>
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CondensingConverter<DIM>>
+typename std::enable_if<SCENARIO == Scenario::MMC_RELOCATE_IF, CONV>::type converter(
+    double estimated_area_len, size_t estimated_entity_count, size_t bucket_avg = 20) {
+    return CONV{estimated_area_len, estimated_entity_count, bucket_avg};
+}
+
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CONVERTER<DIM>>
+typename std::enable_if<SCENARIO != Scenario::MMC_RELOCATE_IF, CONV>::type converter(
+    double a = 0, size_t b = 0, size_t c = 0) {
+    (void) a;
+    (void) b;
+    (void) c;
+    return CONV{};
+}
+
+template <Scenario SCENARIO, dimension_t DIM, typename CONV = CONVERTER<DIM>>
 using TestMap = typename std::conditional_t<
     SCENARIO == ERASE_EMPLACE,
-    PhTreeD<DIM, BucketType, CONVERTER<SCENARIO, DIM>>,
+    PhTreeD<DIM, BucketType, CONV>,
     typename std::conditional_t<
         SCENARIO == MM_BPT_RELOCATE,
-        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
-        //PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
-        PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>>>;
+        PhTreeMultiMapD<DIM, payload_t, CONV, b_plus_tree_hash_set<payload_t>>,
+        typename std::conditional_t<
+            SCENARIO == MMC_RELOCATE_IF,
+            PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>,
+            PhTreeMultiMapD<DIM, payload_t, CONV, std::set<payload_t>>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
@@ -128,6 +122,7 @@ IndexBenchmark<DIM, SCENARIO>::IndexBenchmark(
 , num_entities_(state.range(0))
 , updates_per_round_(updates_per_round)
 , move_distance_(std::move(move_distance))
+, tree_{converter<SCENARIO, DIM>(GLOBAL_MAX, num_entities_)}
 , points_(num_entities_)
 , updates_(updates_per_round)
 , random_engine_{0}
@@ -147,24 +142,43 @@ void IndexBenchmark<DIM, SCENARIO>::Benchmark(benchmark::State& state) {
     }
 }
 
-template <dimension_t DIM>
-void InsertEntry(
-    TestMap<Scenario::ERASE_EMPLACE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+template <dimension_t DIM, Scenario SCENARIO>
+typename std::enable_if<SCENARIO == Scenario::ERASE_EMPLACE, void>::type InsertEntry(
+    TestMap<SCENARIO, DIM>& tree, const PointType<DIM>& point, payload_t data) {
     BucketType& bucket = tree.emplace(point).first;
     bucket.emplace(data);
 }
 
-template <dimension_t DIM>
-void InsertEntry(
-    TestMap<Scenario::MM_BPT_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+template <dimension_t DIM, Scenario SCENARIO>
+typename std::enable_if<SCENARIO != Scenario::ERASE_EMPLACE, void>::type InsertEntry(
+    TestMap<SCENARIO, DIM>& tree, const PointType<DIM>& point, payload_t data) {
     tree.emplace(point, data);
 }
 
-template <dimension_t DIM>
-void InsertEntry(
-    TestMap<Scenario::MM_SET_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
-    tree.emplace(point, data);
-}
+// template <dimension_t DIM>
+// void InsertEntry(
+//     TestMap<Scenario::ERASE_EMPLACE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+//     BucketType& bucket = tree.emplace(point).first;
+//     bucket.emplace(data);
+// }
+//
+// template <dimension_t DIM>
+// void InsertEntry(
+//     TestMap<Scenario::MM_BPT_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+//     tree.emplace(point, data);
+// }
+//
+// template <dimension_t DIM>
+// void InsertEntry(
+//     TestMap<Scenario::MM_SET_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+//     tree.emplace(point, data);
+// }
+//
+// template <dimension_t DIM>
+// void InsertEntry(
+//     TestMap<Scenario::MMC_RELOCATE_IF, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+//     tree.emplace(point, data);
+// }
 
 template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<SCENARIO == Scenario::ERASE_EMPLACE, size_t>::type UpdateEntry(
@@ -205,8 +219,10 @@ UpdateEntry(TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::MM_SET_RELOCATE_IF, size_t>::type UpdateEntry(
-    TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
+typename std::enable_if<
+    SCENARIO == Scenario::MM_SET_RELOCATE_IF || SCENARIO == Scenario::MMC_RELOCATE_IF,
+    size_t>::type
+UpdateEntry(TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
         tree.relocate_if(
@@ -225,7 +241,7 @@ void IndexBenchmark<DIM, SCENARIO>::SetupWorld(benchmark::State& state) {
     // create data with about 10% duplicate coordinates
     CreatePointData<DIM>(points_, data_type_, num_entities_, 0, GLOBAL_MAX, 0.1);
     for (size_t i = 0; i < num_entities_; ++i) {
-        InsertEntry(tree_, points_[i], i);
+        InsertEntry<DIM, SCENARIO>(tree_, points_[i], i);
     }
 
     state.counters["total_upd_count"] = benchmark::Counter(0);
@@ -295,7 +311,19 @@ void PhTreeMMEraseEmplace3D(benchmark::State& state, Arguments&&... arguments) {
     benchmark.Benchmark(state);
 }
 
+template <typename... Arguments>
+void PhTreeMMCRelocateIf3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<2, Scenario::MMC_RELOCATE_IF> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
 // index type, scenario name, data_type, num_entities, updates_per_round, move_distance
+// PhTreeMultiMap_C
+BENCHMARK_CAPTURE(PhTreeMMCRelocateIf3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
 // PhTreeMultiMap
 BENCHMARK_CAPTURE(PhTreeMMRelocateIfStdSet3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
