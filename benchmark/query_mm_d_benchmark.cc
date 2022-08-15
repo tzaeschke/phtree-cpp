@@ -73,7 +73,7 @@ using TestMap = typename std::conditional_t<
         PhTreeMultiMapD<DIM, payload_t, CONV, b_plus_tree_hash_set<payload_t>>,
         typename std::conditional_t<
             SCENARIO == MMC,
-            PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>,
+            PhTreeMultiMapD_C<DIM, payload_t, std::set<PhEntryC<PhPointD<DIM>, payload_t>>>,
             PhTreeMultiMapD<DIM, payload_t, CONV, std::set<payload_t>>>>>;
 
 template <dimension_t DIM, Scenario SCENARIO>

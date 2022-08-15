@@ -80,7 +80,7 @@ struct CondensingConverter : public ConverterPointBase<DIM, double, scalar_64_t>
         auto quadrants_per_edge = pow(avg_bucket_count, 1. / DIM);
         multiplier_ = quadrants_per_edge / estimated_area_len;
         divider_ = 1. / multiplier_;
-        //std::cout << "d=" << divider_ << "/" << multiplier_ << std::endl;
+        // std::cout << "d=" << divider_ << "/" << multiplier_ << std::endl;
     }
 
     [[nodiscard]] PhPoint<DIM> pre(const PhPointD<DIM>& point) const {
@@ -221,14 +221,14 @@ class IteratorCondKnn : public IteratorCondNormal<ITERATOR_PH, PHTREE, FILTER> {
 };
 }  // namespace
 
-template <typename V, typename Key>
-using EntryCond = std::pair<V, Key>;
+template <typename Key, typename V>
+using PhEntryC = std::pair<V, Key>;
 
 template <
     dimension_t DIM,
     typename V,
     typename CONVERTER = CondensingConverter<DIM>,
-    typename BUCKET = b_plus_tree_hash_set<EntryCond<V, typename CONVERTER::KeyExternal>>,
+    typename BUCKET = b_plus_tree_hash_set<PhEntryC<typename CONVERTER::KeyExternal, V>>,
     bool POINT_KEYS = true,
     typename DEFAULT_QUERY_TYPE = QueryPoint>
 class PhTreeMultiMapFast {
@@ -259,11 +259,9 @@ class PhTreeMultiMapFast {
         double estimated_area_len = 1000,
         size_t estimated_entity_count = 10000,
         size_t bucket_avg = 20)
-    : tree_{CondensingConverter<DIM>(
-          estimated_area_len, estimated_entity_count, bucket_avg)} {}
+    : tree_{CondensingConverter<DIM>(estimated_area_len, estimated_entity_count, bucket_avg)} {}
 
-    explicit PhTreeMultiMapFast(CONVERTER converter)
-    : tree_{converter} {}
+    explicit PhTreeMultiMapFast(CONVERTER converter) : tree_{converter} {}
 
     PhTreeMultiMapFast(const PhTreeMultiMapFast& other) = delete;
     PhTreeMultiMapFast& operator=(const PhTreeMultiMapFast& other) = delete;
@@ -921,13 +919,7 @@ class PhTreeMultiMapFast {
         DISTANCE distance_;
     };
 
-    PhTreeMultiMap<
-        DIM,
-        V_INT,
-        CondensingConverter<DIM>,
-        BUCKET,
-        POINT_KEYS,
-        DEFAULT_QUERY_TYPE>
+    PhTreeMultiMap<DIM, V_INT, CondensingConverter<DIM>, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>
         tree_;
 };
 
@@ -947,7 +939,7 @@ class PhTreeMultiMapFast {
 template <
     dimension_t DIM,
     typename V,
-    typename BUCKET = b_plus_tree_hash_set<EntryCond<V, PhPointD<DIM>>>,
+    typename BUCKET = b_plus_tree_hash_set<PhEntryC<PhPointD<DIM>, V>>,
     typename CONVERTER = CondensingConverter<DIM>>
 using PhTreeMultiMapD_C = PhTreeMultiMapFast<DIM, V, CONVERTER, BUCKET>;
 
@@ -972,8 +964,8 @@ using PhTreeMultiMapD_C = PhTreeMultiMapFast<DIM, V, CONVERTER, BUCKET>;
 
 namespace std {
 template <typename V, typename Key>
-struct std::hash<improbable::phtree::EntryCond<V, Key>> {
-    size_t operator()(const improbable::phtree::EntryCond<V, Key>& x) const {
+struct std::hash<improbable::phtree::PhEntryC<Key, V>> {
+    size_t operator()(const improbable::phtree::PhEntryC<Key, V>& x) const {
         return std::hash<V>{}(x.first);
     }
 };

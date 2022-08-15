@@ -63,9 +63,9 @@ typename std::enable_if<SCENARIO == Scenario::MMC_RELOCATE_IF, CONV>::type conve
 template <Scenario SCENARIO, dimension_t DIM, typename CONV = CONVERTER<DIM>>
 typename std::enable_if<SCENARIO != Scenario::MMC_RELOCATE_IF, CONV>::type converter(
     double a = 0, size_t b = 0, size_t c = 0) {
-    (void) a;
-    (void) b;
-    (void) c;
+    (void)a;
+    (void)b;
+    (void)c;
     return CONV{};
 }
 
@@ -78,7 +78,7 @@ using TestMap = typename std::conditional_t<
         PhTreeMultiMapD<DIM, payload_t, CONV, b_plus_tree_hash_set<payload_t>>,
         typename std::conditional_t<
             SCENARIO == MMC_RELOCATE_IF,
-            PhTreeMultiMapD_C<DIM, payload_t, std::set<EntryCond<payload_t, PhPointD<DIM>>>>,
+            PhTreeMultiMapD_C<DIM, payload_t, std::set<PhEntryC<PhPointD<DIM>, payload_t>>>,
             PhTreeMultiMapD<DIM, payload_t, CONV, std::set<payload_t>>>>>;
 
 template <dimension_t DIM>
