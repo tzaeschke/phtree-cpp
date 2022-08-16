@@ -156,12 +156,12 @@ void InsertEntry(
     tree.emplace(point, data);
 }
 
-bool CheckPosition(const payload_t& entity, const TestPoint& center, double radius) {
+int CheckPosition(const payload_t& entity, const TestPoint& center, double radius) {
     const auto& point = entity;
-    double dx = center[0] - point[0];
-    double dy = center[1] - point[1];
-    double dz = center[2] - point[2];
-    return dx * dx + dy * dy + dz * dz <= radius * radius;
+    bool dx = abs(center[0] - point[0]) <= radius;
+    bool dy = abs(center[1] - point[1]) <= radius;
+    bool dz = abs(center[2] - point[2]) <= radius;
+    return dx && dy && dz ? 1 : -100000000;
 }
 
 struct CounterTreeWithMap {

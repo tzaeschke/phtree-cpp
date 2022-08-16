@@ -969,6 +969,55 @@ struct std::hash<improbable::phtree::PhEntryC<Key, V>> {
         return std::hash<V>{}(x.first);
     }
 };
+
+// template <class Type = void>
+// struct equal_to : public binary_function<Type, Type, bool>
+//{
+//     bool operator()(const Type& Left, const Type& Right) const;
+// };
+
+// specialized transparent functor for operator==
+template <typename Key, typename V>
+struct equal_to<improbable::phtree::PhEntryC<Key, V>> {
+    using X = improbable::phtree::PhEntryC<Key, V>;
+//    template <class T, class U>
+//    auto operator()(T&& Left, U&& Right) const
+//        -> decltype(std::forward<V>(Left.first) == std::forward<V>(Right.first));
+
+    auto operator()(const X& Left, const X& Right) const {
+        return Left.first == Right.first;
+    }
+};
+
+//
+// template struct equal_to : binary_function
+//{
+//
+//    // Declaration of the equal operation
+//    bool operator() (const T& x,
+//                    const T& y)
+//        const
+//    {
+//        return x==y;
+//    }
+//
+//    // Type of first parameter
+//    typedef T first_argument_type;
+//
+//    // Type of second parameter
+//    typedef T second_argument_type;
+//
+//    // The result is returned
+//    // as bool type
+//    typedef bool result_type;
+//}
+//
+// template <typename V, typename Key>
+//    bool operator() (const T& x, const T& y) const {return x==y;}
+//    typedef T first_argument_type;
+//    typedef T second_argument_type;
+//    typedef bool result_type;
+//};
 };  // namespace std
 
 #endif  // PHTREE_PHTREE_MULTIMAP_FAST_H

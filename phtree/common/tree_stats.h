@@ -35,7 +35,8 @@ class PhTreeStats {
   public:
     std::string ToString() {
         std::ostringstream s;
-        s << "  nNodes = " << std::to_string(n_nodes_) << std::endl;
+        s << "  nNodes = " << std::to_string(n_nodes_)
+          << "  nEntries = " << (n_total_children_ - n_nodes_) << std::endl;
         s << "  avgNodeDepth = " << ((double)q_total_depth_ / (double)n_nodes_) << std::endl;
         s << "  AHC=" << n_AHC_ << "  NI=" << n_nt_ << "  nNtNodes_=" << n_nt_nodes_ << std::endl;
         double apl = GetAvgPostlen();

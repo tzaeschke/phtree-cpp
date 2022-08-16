@@ -52,6 +52,7 @@ using PointType = PhPointD<DIM>;
 
 template <dimension_t DIM>
 using CONVERTER = ConverterIEEE<DIM>;
+//using CONVERTER = ConverterMultiply<DIM, 1, 200>;
 // using CONVERTER = CondensingConverter<DIM, payload_t>;
 
 template <Scenario SCENARIO, dimension_t DIM, typename CONV = CondensingConverter<DIM>>
@@ -129,6 +130,7 @@ IndexBenchmark<DIM, SCENARIO>::IndexBenchmark(
 , entity_id_distribution_{0, static_cast<int>(num_entities_ - 1)} {
     logging::SetupDefaultLogging();
     SetupWorld(state);
+    //std::cout << "Data: " << PhTreeDebugHelper::GetStats(tree_).ToString() << std::endl;
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
