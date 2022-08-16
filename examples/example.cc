@@ -90,7 +90,8 @@ int main_issue_60_2() {
     //   auto tree = PhTreeMultiMapD<2, int, MyConverterMultiply<2>,
     //   std::unordered_set<int>>(converter);
     //auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::unordered_set<int>>();
-    auto tree = PhTreeMultiMapD<2, int, ConverterWithLevels<2>, std::unordered_set<int>>();
+    //auto tree = PhTreeMultiMapD<2, int, ConverterWithLevels<2>, std::unordered_set<int>>();
+    auto tree = PhTreeMultiMapD<2, int, ConverterMultiply<2, 1, 200>, std::unordered_set<int>>();
     std::vector<PhPointD<2>> vecPos;
     int dim = 1000;
 
