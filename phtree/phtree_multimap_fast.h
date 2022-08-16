@@ -909,7 +909,8 @@ class PhTreeMultiMapFast {
       public:
         template <typename D>
         WrapDistance(D&& distance) : distance_{std::forward<D>(distance)} {}
-
+        Result: this does not work. Technical problem: We want to _avoid_ updating coordinates during relocate().
+        At the same time we _need_ the precise coordinates for correct queries.
         //        double operator()(const Key& p1, const Key& p2) const {
         //            // TODO unwrap!
         //            return distance_(a, b);
