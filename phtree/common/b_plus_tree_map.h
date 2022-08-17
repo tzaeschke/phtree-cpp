@@ -467,7 +467,7 @@ class b_plus_tree_map {
             }
             ++entry_count;
 
-            size_t pos = it - data_.begin();  // Must be done before split because of MSVC
+            size_t pos = it - this->data_.begin();  // Must be done before split because of MSVC
             auto dest = this->check_split(key, tree, pos);
             auto x = dest->data_.emplace(
                 dest->data_.begin() + pos,
@@ -572,7 +572,7 @@ class b_plus_tree_map {
             assert(key1_old >= key1_new);
             auto it2 = this->lower_bound(key1_old) + 1;
 
-            size_t pos = it2 - data_.begin();  // Must be done before split because of MSVC
+            size_t pos = it2 - this->data_.begin();  // Must be done before split because of MSVC
             auto dest = this->check_split(key2, tree, pos);
             // check_split() guarantees that child2 is in the same node as child1
             //assert(it2 != dest->data_.begin());

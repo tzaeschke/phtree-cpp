@@ -371,9 +371,14 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      * - CREATES the destination entry if it does not exist!
      */
-    auto _find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key) {
+    auto _find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key, bool count_equals) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+
+        if (!count_equals && n_diverging_bits == 0) {
+            auto iter = Iter(nullptr, nullptr, nullptr, converter_);
+            return std::make_pair(iter, iter);
+        }
 
         const EntryT* new_entry = &root_;        // An entry.
         const EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed

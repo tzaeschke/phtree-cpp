@@ -597,6 +597,7 @@ cd build
 cmake ..
 cmake --build .
 ./example/Example
+ctest -C Debug
 ```
 
 ## Further Resources

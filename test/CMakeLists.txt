@@ -57,7 +57,8 @@ macro(package_add_test TESTNAME)
     # link the Google test infrastructure, mocking library, and a default main function to
     # the test executable.  Remove g_test_main if writing your own main function.
     target_link_libraries(${TESTNAME} gtest gmock gtest_main)
-    target_include_directories(${TESTNAME} PRIVATE ../phtree)
+    #target_include_directories(${TESTNAME}  PRIVATE ../phtree)
+    target_include_directories(${TESTNAME} PRIVATE ..)
     # gtest_discover_tests replaces gtest_add_tests,
     # see https://cmake.org/cmake/help/v3.10/module/GoogleTest.html for more options to pass to it
     gtest_discover_tests(${TESTNAME}
@@ -68,7 +69,30 @@ macro(package_add_test TESTNAME)
     set_target_properties(${TESTNAME} PROPERTIES FOLDER test)
 endmacro()
 
-package_add_test(phtree_all_test phtree_test.cc phtree_d_test.cc phtree_f_test.cc)
-package_add_test(phtree_test phtree_test.cc phtree_f_test.cc phtree_d_test.cc)
+# package_add_test(phtree_all_test phtree_test.cc phtree_d_test.cc phtree_f_test.cc)
+package_add_test(phtree_test phtree_test.cc)
+package_add_test(phtree_test_const_values phtree_test_const_values.cc)
+package_add_test(phtree_test_issues phtree_test_issues.cc)
+package_add_test(phtree_test_ptr_values phtree_test_ptr_values.cc)
+package_add_test(phtree_test_unique_ptr_values phtree_test_unique_ptr_values.cc)
+
 package_add_test(phtree_f_test phtree_f_test.cc)
+
 package_add_test(phtree_d_test phtree_d_test.cc)
+package_add_test(phtree_d_test_copy_move phtree_d_test_copy_move.cc)
+package_add_test(phtree_d_test_custom_key phtree_d_test_custom_key.cc)
+package_add_test(phtree_d_test_filter phtree_d_test_filter.cc)
+package_add_test(phtree_d_test_preprocessor phtree_d_test_preprocessor.cc)
+
+package_add_test(phtree_box_f_test phtree_box_f_test.cc)
+
+package_add_test(phtree_box_d_test phtree_box_d_test.cc)
+package_add_test(phtree_box_d_test_filter phtree_box_d_test_filter.cc)
+package_add_test(phtree_box_d_test_query_types phtree_box_d_test_query_types.cc)
+
+package_add_test(phtree_multimap_d_test phtree_multimap_d_test.cc)
+package_add_test(phtree_multimap_d_test_copy_move phtree_multimap_d_test_copy_move.cc)
+package_add_test(phtree_multimap_d_test_filter phtree_multimap_d_test_filter.cc)
+package_add_test(phtree_multimap_d_test_unique_ptr_values phtree_multimap_d_test_unique_ptr_values.cc)
+
+package_add_test(phtree_multimap_box_d_test phtree_multimap_box_d_test.cc)
