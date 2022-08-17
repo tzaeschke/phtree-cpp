@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "phtree/phtree.h"
+#include <phtree.h>
 #include <include/gtest/gtest.h>
 #include <random>
 

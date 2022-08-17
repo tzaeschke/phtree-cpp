@@ -289,6 +289,7 @@ class b_plus_tree_map {
             auto& parent_ = this->parent_;
             key_t max_key_old = data_.back().first;
 
+            size_t pos_to_erase = it_to_erase - data_.begin();
             data_.erase(it_to_erase);
             if (parent_ == nullptr) {
                 if constexpr (std::is_same_v<ThisT, NInnerT>) {
@@ -346,12 +347,12 @@ class b_plus_tree_map {
                 }
                 // This node is too small but there is nothing we can do.
             }
-            if (it_to_erase == data_.end()) {
+            if (pos_to_erase == data_.size()) {
                 parent_->update_key(max_key_old, data_.back().first);
             }
         }
 
-        auto check_split(key_t key, TreeT& tree, DataIteratorT& it_in_out) {
+        auto check_split(key_t key, TreeT& tree, size_t& pos_in_out) {
             if (data_.size() < this->M_max()) {
                 if (this->parent_ != nullptr && key > data_.back().first) {
                     this->parent_->update_key(data_.back().first, key);
@@ -362,8 +363,7 @@ class b_plus_tree_map {
             ThisT* dest = this->split_node(key, tree);
             if (dest != this) {
                 // The insertion pos in node2 can be calculated:
-                auto old_pos = it_in_out - data_.begin();
-                it_in_out = dest->data_.begin() + old_pos - data_.size();
+                pos_in_out = pos_in_out - data_.size();
             }
             return dest;
         }
@@ -467,9 +467,10 @@ class b_plus_tree_map {
             }
             ++entry_count;
 
-            auto dest = this->check_split(key, tree, it);
+            size_t pos = it - data_.begin();  // Must be done before split because of MSVC
+            auto dest = this->check_split(key, tree, pos);
             auto x = dest->data_.emplace(
-                it,
+                dest->data_.begin() + pos,
                 std::piecewise_construct,
                 std::forward_as_tuple(key),
                 std::forward_as_tuple(std::forward<Args>(args)...));
@@ -571,12 +572,14 @@ class b_plus_tree_map {
             assert(key1_old >= key1_new);
             auto it2 = this->lower_bound(key1_old) + 1;
 
-            auto dest = this->check_split(key2, tree, it2);
+            size_t pos = it2 - data_.begin();  // Must be done before split because of MSVC
+            auto dest = this->check_split(key2, tree, pos);
             // check_split() guarantees that child2 is in the same node as child1
-            assert(it2 != dest->data_.begin());
-            (it2 - 1)->first = key1_new;
+            //assert(it2 != dest->data_.begin());
+            assert(pos != 0);
+            dest->data_[pos - 1].first = key1_new;
             child2->parent_ = dest;
-            dest->data_.emplace(it2, key2, child2);
+            dest->data_.emplace(dest->data_.begin() + pos, key2, child2);
         }
 
         void remove_node(key_t key_remove, TreeT& tree) {
@@ -650,7 +653,11 @@ class b_plus_tree_map {
         }
 
         friend bool operator==(const IterT& left, const IterT& right) noexcept {
+#if defined(_MSC_VER)
+            return left.node_ == right.node_ && left.iter_ == right.iter_;
+#else
             return left.iter_ == right.iter_ && left.node_ == right.node_;
+            #endif
         }
 
         friend bool operator!=(const IterT& left, const IterT& right) noexcept {
