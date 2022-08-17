@@ -1,0 +1,3 @@
+#ignore typical cmake build folders
+build
+out
