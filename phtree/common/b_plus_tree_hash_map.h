@@ -526,11 +526,11 @@ class b_plus_tree_hash_set {
                 }
             }
             ++entry_count;
+            auto old_pos = it - this->data_.begin();
             auto dest = this->check_split(hash, tree);
             if (dest != this) {
                 // The insertion pos in `dest` can be calculated:
-                auto old_pos = it - this->data_.begin();
-                it = dest->data_.begin() + old_pos - this->data_.size();
+                it = dest->data_.begin() + (old_pos - this->data_.size());
             }
             auto it2 = dest->data_.emplace(it, hash, std::move(t));
             return std::make_pair(IterT(dest, it2), true);
@@ -657,6 +657,7 @@ class b_plus_tree_hash_set {
             auto it = this->lower_bound_node(key1_old, child1);
             assert(key2 >= key1_new && key1_old >= key1_new && it != this->data_.end());
 
+            auto old_pos = it - this->data_.begin();  // required for MSVC
             auto dest = this->check_split(key2, tree);
             child2->parent_ = dest;
             if (this != dest && this->data_.back().second == child1) {
@@ -665,7 +666,7 @@ class b_plus_tree_hash_set {
             } else {
                 // child1 & 2 in same node
                 if (this != dest) {
-                    it = it - this->data_.begin() - this->data_.size() + dest->data_.begin();
+                    it = old_pos - this->data_.size() + dest->data_.begin();
                 }
                 it->first = key1_new;
                 ++it;
