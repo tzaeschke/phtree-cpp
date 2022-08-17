@@ -16,13 +16,13 @@
 
 #include "../phtree/phtree.h"
 #include "../phtree/phtree_multimap.h"
-#include <iostream>
 #include <chrono>
+#include <iostream>
 #include <set>
 
 using namespace improbable::phtree;
 
-template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 21>
+template <dimension_t DIM = 2, size_t AREA_LEN = 1000, size_t LEVELS = 6>
 struct ConverterWithLevels : public ConverterPointBase<DIM, double, scalar_64_t> {
     static_assert(LEVELS >= 1 && "There must be at least one level");
     static constexpr double divider_ = 1 << (LEVELS - 1);  // = 2 ^ (LEVELS - 1);
@@ -85,8 +85,8 @@ int main_issue_60_2() {
     //   auto tree = PhTreeMultiMapD<2, int, MyConverterMultiply<2>,
     //   std::unordered_set<int>>(converter);
     //auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::unordered_set<int>>();
-    auto tree = PhTreeMultiMapD<2, int, ConverterWithLevels<2>, b_plus_tree_hash_set<int>>();
-    //, std::unordered_set<int> > ();
+    //auto tree = PhTreeMultiMapD<2, int, ConverterWithLevels<2>, std::unordered_set<int>>();
+    auto tree = PhTreeMultiMapD<2, int, ConverterMultiply<2, 1, 200>, std::unordered_set<int>>();
     std::vector<PhPointD<2>> vecPos;
     int dim = 1000;
 
@@ -103,8 +103,9 @@ int main_issue_60_2() {
         auto t1 = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < num; ++i) {
             PhPointD<2>& p = vecPos[i];
-            PhPointD<2> newp = {(double)(rand() % dim), (double)(rand() % dim)};
-            tree.relocate(p, newp, i);
+            PhPointD<2> newp = {p[0] + 1, p[1] + 1};
+            tree.relocate(p, newp, i, false);
+            //tree.relocate_if(p, newp, [i](const int& i2) -> bool{return i==i2;}, false);
             p = newp;
         }
         auto t2 = std::chrono::high_resolution_clock::now();
