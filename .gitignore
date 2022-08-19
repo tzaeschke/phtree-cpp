@@ -10,5 +10,6 @@ bazel-*
 compile_commands.json
 perf.data*
 build
+out
 
 /cmake-build-debug/
