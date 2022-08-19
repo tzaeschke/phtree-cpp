@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
-project(PH-tree-tests LANGUAGES CXX)
+project(phtree-tests LANGUAGES CXX)
+
+include(FetchContent)
+include(common/scripts.cmake)
 
 # Avoids LNK2038 Error with MSVC
 set(gtest_force_shared_crt on)
-
-include(FetchContent)
 
 FetchContent_Declare(
         googletest
@@ -26,7 +27,6 @@ mark_as_advanced(
 set_target_properties(gtest PROPERTIES FOLDER extern)
 set_target_properties(gtest_main PROPERTIES FOLDER extern)
 
-include(common/scripts.cmake)
 
 # package_add_test(phtree_all_test phtree_test.cc phtree_d_test.cc phtree_f_test.cc)
 package_add_test(phtree_test phtree_test.cc)

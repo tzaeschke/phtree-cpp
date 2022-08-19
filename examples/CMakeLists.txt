@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(Example)
+project(phtree-examples)
 
 if (WIN32 OR UNIX)
     set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/phtree)
