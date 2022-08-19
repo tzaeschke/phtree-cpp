@@ -29,6 +29,8 @@ macro(package_add_benchmark TESTNAME)
     target_include_directories(${TESTNAME} PRIVATE ${PROJECT_SOURCE_DIR}/..)
 endmacro()
 
+add_compile_definitions(RUN_HAVE_STD_REGEX=0 RUN_HAVE_POSIX_REGEX=0 COMPILE_HAVE_GNU_POSIX_REGEX=0)
+
 package_add_benchmark(count_mm_d_benchmark count_mm_d_benchmark.cc)
 package_add_benchmark(erase_benchmark erase_benchmark.cc)
 package_add_benchmark(erase_d_benchmark erase_d_benchmark.cc)
@@ -52,4 +54,4 @@ package_add_benchmark(query_mm_d_filter_benchmark query_mm_d_filter_benchmark.cc
 package_add_benchmark(update_box_d_benchmark update_box_d_benchmark.cc)
 package_add_benchmark(update_d_benchmark update_d_benchmark.cc)
 package_add_benchmark(update_mm_box_d_benchmark update_mm_box_d_benchmark.cc)
-package_add_benchmark(update_mm_d_benchmark update_d_benchmark.cc)
+package_add_benchmark(update_mm_d_benchmark update_mm_d_benchmark.cc)

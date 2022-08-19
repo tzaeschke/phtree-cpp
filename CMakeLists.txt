@@ -23,7 +23,8 @@ if (MSVC)
     ##    #set(CMAKE_CXX_FLAGS_DEBUG "/analyze ${CMAKE_CXX_FLAGS_DEBUG}")
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+    # phtread is only required for benchmarks
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx -pthread")
 endif ()
 
 add_subdirectory(phtree)
@@ -33,7 +34,6 @@ add_subdirectory(benchmark)
 option(PACKAGE_TESTS "Build the tests" ON)
 if (PACKAGE_TESTS)
     if (FALSE)
-
         add_compile_definitions(GTEST_HAS_ABSL=0)
         add_compile_definitions(GTEST_OS_WINDOWS_MOBILE=0)
         if (MSVC)
