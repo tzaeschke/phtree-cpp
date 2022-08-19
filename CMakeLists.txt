@@ -28,6 +28,7 @@ endif ()
 
 add_subdirectory(phtree)
 add_subdirectory(examples)
+add_subdirectory(benchmark)
 
 option(PACKAGE_TESTS "Build the tests" ON)
 if (PACKAGE_TESTS)
