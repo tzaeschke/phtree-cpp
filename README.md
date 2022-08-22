@@ -538,10 +538,9 @@ There are numerous ways to improve performance. The following list gives an over
 
 ## Compiling the PH-Tree
 
-The PH-Tree itself is a *header only* library. However the examples, tests and benchmarks use non-header files.  
-
-This section will guide you through the initial build system and IDE you need to go through in order to build and run
-custom versions of the PH-Tree on your machine.
+The PH-Tree index itself is a *header only* library, it can be used by simply copying all headers in the `phtree` 
+folder. 
+The examples, tests and benchmarks can be build with bazel or cmake.  
 
 <a id="build-system-and-dependencies"></a>
 
