@@ -248,7 +248,7 @@ static void print_id_counters() {
               << std::endl;
 }
 
-TEST(PhTreeTest, TestFilterAPI_FOR_EACH) {
+TEST(PhTreeDFilterTest, TestFilterAPI_FOR_EACH) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();
@@ -281,7 +281,7 @@ TEST(PhTreeTest, TestFilterAPI_FOR_EACH) {
     f_reset_id_counters();
 }
 
-TEST(PhTreeTest, TestFilterAPI_FOR_EACH_WQ) {
+TEST(PhTreeDFilterTest, TestFilterAPI_FOR_EACH_WQ) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();
@@ -314,7 +314,7 @@ TEST(PhTreeTest, TestFilterAPI_FOR_EACH_WQ) {
     f_reset_id_counters();
 }
 
-TEST(PhTreeTest, TestFilterAPI_BEGIN) {
+TEST(PhTreeDFilterTest, TestFilterAPI_BEGIN) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();
@@ -343,7 +343,7 @@ TEST(PhTreeTest, TestFilterAPI_BEGIN) {
     f_reset_id_counters();
 }
 
-TEST(PhTreeTest, TestFilterAPI_WQ) {
+TEST(PhTreeDFilterTest, TestFilterAPI_WQ) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();
@@ -373,7 +373,7 @@ TEST(PhTreeTest, TestFilterAPI_WQ) {
     f_reset_id_counters();
 }
 
-TEST(PhTreeTest, TestFilterAPI_KNN) {
+TEST(PhTreeDFilterTest, TestFilterAPI_KNN) {
     // Test edge case: only one entry in tree
     PhPointD<3> p{1, 2, 3};
     auto tree = TestTree<3, Id>();

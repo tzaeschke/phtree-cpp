@@ -575,8 +575,7 @@ class b_plus_tree_map {
             size_t pos = it2 - this->data_.begin();  // Must be done before split because of MSVC
             auto dest = this->check_split(key2, tree, pos);
             // check_split() guarantees that child2 is in the same node as child1
-            //assert(it2 != dest->data_.begin());
-            assert(pos != 0);
+            assert(pos > 0);
             dest->data_[pos - 1].first = key1_new;
             child2->parent_ = dest;
             dest->data_.emplace(dest->data_.begin() + pos, key2, child2);
@@ -653,11 +652,7 @@ class b_plus_tree_map {
         }
 
         friend bool operator==(const IterT& left, const IterT& right) noexcept {
-#if defined(_MSC_VER)
             return left.node_ == right.node_ && left.iter_ == right.iter_;
-#else
-            return left.iter_ == right.iter_ && left.node_ == right.node_;
-            #endif
         }
 
         friend bool operator!=(const IterT& left, const IterT& right) noexcept {
