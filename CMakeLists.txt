@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # set the project name
-project(PH_Tree_Main VERSION 1.2.0
+project(phtree VERSION 1.2.0
         DESCRIPTION "PH-Tree C++"
         LANGUAGES CXX)
 
@@ -15,6 +15,9 @@ endif ()
 # ---------------------------------------------------------------------------------------
 # Build options
 # ---------------------------------------------------------------------------------------
+# example options
+option(PHTREE_BUILD_ALL "Build examples, tests and benchmarks" OFF)
+
 # example options
 option(PHTREE_BUILD_EXAMPLES "Build examples" OFF)
 #option(PHTREE_BUILD_EXAMPLE_HO "Build header only example" OFF)

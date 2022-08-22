@@ -17,7 +17,7 @@
 #ifndef PHTREE_V16_ENTRY_H
 #define PHTREE_V16_ENTRY_H
 
-#include "../../phtree/common/common.h"
+#include "phtree/common/common.h"
 #include "node.h"
 #include <cassert>
 #include <memory>
