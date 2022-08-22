@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
 project(phtree-tests LANGUAGES CXX)
 
-include(FetchContent)
-include(common/scripts.cmake)
-
 # Avoids LNK2038 Error with MSVC
 set(gtest_force_shared_crt on)
+
+include(FetchContent)
+include(common/scripts.cmake)
 
 FetchContent_Declare(
         googletest

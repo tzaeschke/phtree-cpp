@@ -764,7 +764,7 @@ class b_plus_tree_hash_set {
         }
 
         friend bool operator==(const IterT& left, const IterT& right) noexcept {
-            return left.iter_ == right.iter_ && left.node_ == right.node_;
+            return left.node_ == right.node_ && left.iter_ == right.iter_;
         }
 
         friend bool operator!=(const IterT& left, const IterT& right) noexcept {
