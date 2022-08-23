@@ -32,6 +32,7 @@ set_target_properties(gtest_main PROPERTIES FOLDER extern)
 package_add_test(phtree_test phtree_test.cc)
 package_add_test(phtree_test_const_values phtree_test_const_values.cc)
 package_add_test(phtree_test_issues phtree_test_issues.cc)
+target_compile_definitions(phtree_test_issues PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
 package_add_test(phtree_test_ptr_values phtree_test_ptr_values.cc)
 package_add_test(phtree_test_unique_ptr_values phtree_test_unique_ptr_values.cc)
 

@@ -32,6 +32,15 @@ option(PHTREE_BUILD_BENCHMARKS "Build benchmarks (Requires https://github.com/go
 # ---------------------------------------------------------------------------------------
 # Compiler config
 # ---------------------------------------------------------------------------------------
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    message("CCACHE is found")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+else(CCACHE_FOUND)
+    message("CCACHE is NOT found")
+endif(CCACHE_FOUND)
+
 # specify the C++ standard
 if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 17)
