@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   and function signatures than normal `PhTree` filters. [#26](https://github.com/tzaeschke/phtree-cpp/issues/26)
 
 ### Fixed
+- Fixed cmake to work with Visual Studio 2019. Added tests and benchmarks to cmake.
+  (benchmarks still do not work with VS at the moment).
+  [#62](https://github.com/tzaeschke/phtree-cpp/issues/62)
 - Fixed two compilation problems and a memory leak when compiling with Visual Studio 2019.
   (also added `msan` support). [#64](https://github.com/tzaeschke/phtree-cpp/pull/64)
 

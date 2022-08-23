@@ -549,8 +549,12 @@ The examples, tests and benchmarks can be build with bazel or cmake.
 PH-Tree can be built with [Bazel](https://bazel.build) (primary build system) or with 
 [cmake](https://cmake.org/) *3.14*. 
 All code is written in C++ targeting the C++17 standard. 
-The code has been verified to compile on Linux with Clang 11 and GCC 9, and on Windows with Visual Studio 2019 
+The code has been verified to compile on Linux with Clang 11 and GCC 9, and on Windows with Visual Studio 2019
 (except benchmarks, which don't work wi VS).
+The PH-tree makes use of vectorization, so suggested compilation options for clang/gcc are:
+```
+-O3 -mavx
+```
 
 
 <a id="bazel"></a>
