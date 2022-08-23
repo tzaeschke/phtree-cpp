@@ -3,9 +3,6 @@ package(default_visibility = ["//visibility:private"])
 cc_library(
     name = "benchmark",
     testonly = True,
-    srcs = [
-        "logging.cc",
-    ],
     hdrs = [
         "benchmark_util.h",
         "logging.h",
