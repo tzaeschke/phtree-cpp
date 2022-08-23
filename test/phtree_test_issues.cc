@@ -100,7 +100,7 @@ TEST(PhTreeTestIssues, TestIssue60) {
 
     // "warm up": relocate() will inevitably allocate a little bit of memory (new nodes etc).
     // This warm up allocates this memory before we proceed to leak testing which ensures that the memory does not grow.
-    for (int j = 0; j < 10; ++j) {
+    for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
             PhPointD<2> &p = vecPos[i];
             PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
@@ -143,9 +143,21 @@ TEST(PhTreeTestIssues, TestIssue60_minimal) {
     }
     end_timer(start1, "1");
 
+    // "warm up": relocate() will inevitably allocate a little bit of memory (new nodes etc).
+    // This warm up allocates this memory before we proceed to leak testing which ensures that the memory does not grow.
+    for (int j = 0; j < 100; ++j) {
+        for (int i = 0; i < num; ++i) {
+            PhPointD<2> &p = vecPos[i];
+            PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+            tree.relocate(p, newp, i);
+            p = newp;
+        }
+    }
+
+    // Leak testing
     print_mem();
-    auto mem_start_2 = get_resident_mem_kb();
     auto start2 = start_timer();
+    auto mem_start_2 = get_resident_mem_kb();
     for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
             PhPointD<2> &p = vecPos[i];
