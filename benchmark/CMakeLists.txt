@@ -2,15 +2,16 @@ cmake_minimum_required(VERSION 3.14)
 project(phtree-benchmarks)
 
 set(BENCHMARK_ENABLE_TESTING OFF)
+#set(BENCHMARK_ENABLE_INSTALL ON)
 
 include(FetchContent)
 
 FetchContent_Declare(
-        benchmark
+        googlebenchmark
         GIT_REPOSITORY https://github.com/google/benchmark.git
         GIT_TAG v1.7.0
 )
-FetchContent_MakeAvailable(benchmark)
+FetchContent_MakeAvailable(googlebenchmark)
 
 FetchContent_Declare(
         spdlog
@@ -23,9 +24,9 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/phtree)
 set(INCLUDE_FILES ${INCLUDE_DIR}/phtree.h ${INCLUDE_DIR}/phtree_multimap.h benchmark_util.h logging.h)
 
 macro(package_add_benchmark TESTNAME)
-    add_executable(${TESTNAME} ${ARGN} logging.cc)
-    target_link_libraries(${TESTNAME} benchmark::benchmark)
-    target_link_libraries(${TESTNAME} spdlog::spdlog)
+    add_executable(${TESTNAME} ${ARGN} ${INCLUDE_FILES})
+    target_link_libraries(${TESTNAME} PRIVATE benchmark::benchmark)
+    target_link_libraries(${TESTNAME} PRIVATE spdlog::spdlog)
     target_include_directories(${TESTNAME} PRIVATE ${PROJECT_SOURCE_DIR}/..)
 endmacro()
 

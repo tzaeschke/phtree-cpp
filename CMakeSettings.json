@@ -21,7 +21,7 @@
     {
       "name": "x64-Release",
       "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
+      "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
@@ -31,6 +31,11 @@
       "variables": [
         {
           "name": "PHTREE_BUILD_EXAMPLES",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "PHTREE_BUILD_BENCHMARKS",
           "value": "True",
           "type": "BOOL"
         }

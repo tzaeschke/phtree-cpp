@@ -39,14 +39,16 @@ if (NOT CMAKE_CXX_STANDARD)
 endif ()
 
 if (MSVC)
+    #set(CMAKE_CXX_FLAGS_RELEASE "/MT")
+    #set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
 
-    ##    set(CMAKE_CXX_FLAGS "-DNOMINMAX ${CMAKE_CXX_FLAGS}") # exclude M$ min/max macros
-    ##    set(CMAKE_CXX_FLAGS "/wd4996 ${CMAKE_CXX_FLAGS}") # don't warn about use of plain C functions without (non-portable) "_s" suffix
-    ##    set(CMAKE_EXE_LINKER_FLAGS "/WX:NO ${CMAKE_EXE_LINKER_FLAGS}" ) # don't treat warnings as compile errors--gtest doesn't build
-    ##    #set(CMAKE_CXX_FLAGS_DEBUG "/analyze ${CMAKE_CXX_FLAGS_DEBUG}")
+    #    set(CMAKE_CXX_FLAGS "-DNOMINMAX ${CMAKE_CXX_FLAGS}") # exclude M$ min/max macros
+    #    set(CMAKE_CXX_FLAGS "/wd4996 ${CMAKE_CXX_FLAGS}") # don't warn about use of plain C functions without (non-portable) "_s" suffix
+    #    set(CMAKE_EXE_LINKER_FLAGS "/WX:NO ${CMAKE_EXE_LINKER_FLAGS}" ) # don't treat warnings as compile errors--gtest doesn't build
+    #    #set(CMAKE_CXX_FLAGS_DEBUG "/analyze ${CMAKE_CXX_FLAGS_DEBUG}")
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror")
     if (PHTREE_BUILD_BENCHMARKS)
