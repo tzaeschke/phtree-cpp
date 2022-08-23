@@ -580,7 +580,7 @@ bazel run //benchmark:update_mm_d_benchmark --config=benchmark  -- --benchmark_c
 <a id="cmake"></a>
 
 ### cmake
-
+`cmake` uses `ccache` when available.
 ```
 mkdir build
 cd build
@@ -599,7 +599,7 @@ Run tests:
 ```
 cmake .. -DPHTREE_BUILD_TESTS=ON
 cmake --build .
-ctest -C Debug
+ctest
 ```
 Next to example (`PHTREE_BUILD_EXAMPLES`) there are also tests (`PHTREE_BUILD_TESTS`) and 
 benchmarks (`PHTREE_BUILD_BENCHMARKS`). To build all, use `PHTREE_BUILD_ALL`.
