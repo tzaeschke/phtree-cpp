@@ -66,7 +66,7 @@ filegroup(
 #exports_files(["phtree"])
 
 filegroup(
-    name = "phtree2",
+    name = "phtree",
     srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
