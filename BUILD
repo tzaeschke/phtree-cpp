@@ -70,6 +70,9 @@ cc_library(
     srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
+    hdrs = glob([  "phtree/*.h",
+            "phtree/common/*.h",
+            ]),
 #    srcs = ["phtfoo.cc"],
 #    data = [
 #        "//my_package:exported_testdata",
