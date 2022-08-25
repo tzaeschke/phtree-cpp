@@ -65,17 +65,55 @@ filegroup(
 
 #exports_files(["phtree"])
 
-cc_library(
+filegroup(
     name = "phtree",
     srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
-    hdrs = glob([  "phtree/*.h",
-            "phtree/common/*.h",
-            ]),
+#    hdrs = glob([  "phtree/*.h",
+#            "phtree/common/*.h",
+#            ]),
 #    srcs = ["phtfoo.cc"],
 #    data = [
 #        "//my_package:exported_testdata",
 #        "//my_package:mygroup",
 #    ],
 )
+
+#cc_library(
+#    name = "gtest",
+#    srcs = glob(
+#        include = [
+#            "googletest/src/*.cc",
+#            "googletest/src/*.h",
+#            "googletest/include/gtest/**/*.h",
+#            "googlemock/src/*.cc",
+#            "googlemock/include/gmock/**/*.h",
+#        ],
+#        exclude = [
+#            "googletest/src/gtest-all.cc",
+#            "googletest/src/gtest_main.cc",
+#            "googlemock/src/gmock-all.cc",
+#            "googlemock/src/gmock_main.cc",
+#        ],
+#    ),
+#    hdrs = glob([
+#        "googletest/include/gtest/*.h",
+#        "googlemock/include/gmock/*.h",
+#    ]),
+#    copts = select({
+#        ":qnx": [],
+#        ":windows": [],
+#        "//conditions:default": ["-mavx"],
+#    }),
+#    features = select({
+#        ":windows": ["windows_export_all_symbols"],
+#        "//conditions:default": [],
+#    }),
+#    includes = [
+#        "googlemock",
+#        "googlemock/include",
+#        "googletest",
+#        "googletest/include",
+#    ],
+#)
