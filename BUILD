@@ -95,7 +95,6 @@ cc_library(
 #        "googlemock/include/gmock/*.h",
     ]),
     copts = select({
-        ":qnx": [],
         ":windows": [],
         "//conditions:default": ["-mavx"],
     }),
