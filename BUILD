@@ -62,3 +62,17 @@ filegroup(
     name = "dot_clang_format",
     srcs = [".clang-format"],
 )
+
+#exports_files(["phtree"])
+
+cc_library(
+    name = "phtree",
+    glob([
+            "phtree/*.h",
+            "phtree/common/*.h",
+#    srcs = ["phtfoo.cc"],
+#    data = [
+#        "//my_package:exported_testdata",
+#        "//my_package:mygroup",
+#    ],
+)
