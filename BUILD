@@ -81,7 +81,7 @@ filegroup(
 )
 
 cc_library(
-    name = "phtree",
+    name = "phtree3",
     srcs = glob(
         include = [
             "phtree/*.h",
