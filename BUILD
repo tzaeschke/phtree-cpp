@@ -67,8 +67,7 @@ filegroup(
 
 cc_library(
     name = "phtree",
-    glob([
-            "phtree/*.h",
+    srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
 #    srcs = ["phtfoo.cc"],
