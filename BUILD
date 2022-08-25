@@ -103,9 +103,10 @@ cc_library(
         "//conditions:default": [],
     }),
     includes = [
-        "googlemock",
-        "googlemock/include",
-        "googletest",
-        "googletest/include",
+        "phtree",
+#        "googlemock",
+#        "googlemock/include",
+#        "googletest",
+#        "googletest/include",
     ],
 )
