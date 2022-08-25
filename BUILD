@@ -70,6 +70,7 @@ cc_library(
     glob([
             "phtree/*.h",
             "phtree/common/*.h",
+            ]),
 #    srcs = ["phtfoo.cc"],
 #    data = [
 #        "//my_package:exported_testdata",
