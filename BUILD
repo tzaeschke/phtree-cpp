@@ -66,7 +66,7 @@ filegroup(
 #exports_files(["phtree"])
 
 filegroup(
-    name = "phtree",
+    name = "phtree2",
     srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
@@ -81,7 +81,7 @@ filegroup(
 )
 
 cc_library(
-    name = "phtree3",
+    name = "phtree",
     srcs = glob(
         include = [
             "phtree/*.h",
