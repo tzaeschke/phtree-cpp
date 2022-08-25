@@ -66,7 +66,7 @@ filegroup(
 #exports_files(["phtree"])
 
 filegroup(
-    name = "phtree",
+    name = "phtree2",
     srcs = glob([  "phtree/*.h",
             "phtree/common/*.h",
             ]),
@@ -80,40 +80,33 @@ filegroup(
 #    ],
 )
 
-#cc_library(
-#    name = "gtest",
-#    srcs = glob(
-#        include = [
-#            "googletest/src/*.cc",
-#            "googletest/src/*.h",
-#            "googletest/include/gtest/**/*.h",
-#            "googlemock/src/*.cc",
-#            "googlemock/include/gmock/**/*.h",
-#        ],
-#        exclude = [
-#            "googletest/src/gtest-all.cc",
-#            "googletest/src/gtest_main.cc",
-#            "googlemock/src/gmock-all.cc",
-#            "googlemock/src/gmock_main.cc",
-#        ],
-#    ),
-#    hdrs = glob([
-#        "googletest/include/gtest/*.h",
+cc_library(
+    name = "phtree",
+    srcs = glob(
+        include = [
+            "phtree/*.h",
+            "phtree/**/*.h",
+        ],
+        exclude = [
+        ],
+    ),
+    hdrs = glob([
+        "phtree/*.h",
 #        "googlemock/include/gmock/*.h",
-#    ]),
-#    copts = select({
-#        ":qnx": [],
-#        ":windows": [],
-#        "//conditions:default": ["-mavx"],
-#    }),
-#    features = select({
-#        ":windows": ["windows_export_all_symbols"],
-#        "//conditions:default": [],
-#    }),
-#    includes = [
-#        "googlemock",
-#        "googlemock/include",
-#        "googletest",
-#        "googletest/include",
-#    ],
-#)
+    ]),
+    copts = select({
+        ":qnx": [],
+        ":windows": [],
+        "//conditions:default": ["-mavx"],
+    }),
+    features = select({
+        ":windows": ["windows_export_all_symbols"],
+        "//conditions:default": [],
+    }),
+    includes = [
+        "googlemock",
+        "googlemock/include",
+        "googletest",
+        "googletest/include",
+    ],
+)
