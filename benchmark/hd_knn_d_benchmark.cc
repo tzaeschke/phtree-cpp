@@ -43,8 +43,8 @@ class IndexBenchmark {
     void CreateQuery(PhPointD<DIM>& center);
 
     const TestGenerator data_type_;
-    const int num_entities_;
-    const double knn_result_size_;
+    const size_t num_entities_;
+    const size_t knn_result_size_;
 
     PhTreeD<DIM, int> tree_;
     std::default_random_engine random_engine_;
@@ -93,7 +93,7 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
 
 template <dimension_t DIM>
 void IndexBenchmark<DIM>::QueryWorld(benchmark::State& state, PhPointD<DIM>& center) {
-    int n = 0;
+    size_t n = 0;
     for (auto q = tree_.begin_knn_query(knn_result_size_, center, DistanceEuclidean<DIM>());
          q != tree_.end();
          ++q) {

@@ -42,7 +42,7 @@ class DoubleRng {
 struct Id {
     Id() = default;
 
-    explicit Id(const int i) : _i(i){};
+    explicit Id(const size_t i) : _i{static_cast<int>(i)} {}
 
     bool operator==(const Id& rhs) const {
         return _i == rhs._i;

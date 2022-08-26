@@ -81,7 +81,7 @@ auto CreateDataCLUSTER = [](auto& points,
 };
 
 auto CreateDuplicates =
-    [](auto& points, size_t num_unique_entries, size_t num_total_entities, std::uint32_t seed) {
+    [](auto& points, int num_unique_entries, size_t num_total_entities, std::uint32_t seed) {
         std::default_random_engine random_engine{seed};
         std::uniform_int_distribution<> distribution(0, num_unique_entries);
         for (size_t i = num_unique_entries; i < num_total_entities; ++i) {
@@ -101,11 +101,13 @@ auto CreatePointDataMinMax = [](auto& points,
                                 double world_minimum,
                                 double world_maximum,
                                 double fraction_of_duplicates) {
-    auto set_coordinate_lambda = [](auto& p, dimension_t dim, auto value) { p[dim] = value; };
+    auto set_coordinate_lambda = [](auto& p, dimension_t dim, auto value) {
+        p[dim] = static_cast < typename std::remove_reference_t<decltype(p[0])>>(value);
+    };
     // Create at least 1 unique point
     // Note that the following point generator is likely, but not guaranteed, to created unique
     // points.
-    size_t num_unique_entries = 1 + (num_entities - 1) * (1. - fraction_of_duplicates);
+    int num_unique_entries = static_cast<int>(1 + (num_entities - 1) * (1. - fraction_of_duplicates));
     points.reserve(num_entities);
     switch (test_generator) {
     case CUBE:
@@ -140,7 +142,7 @@ auto CreateBoxDataMinMax = [](auto& points,
     // Create at least 1 unique point
     // Note that the following point generator is likely, but not guaranteed, to created unique
     // points.
-    int num_unique_entries = 1 + (num_entities - 1) * (1. - fraction_of_duplicates);
+    int num_unique_entries = static_cast<int>(1 + (num_entities - 1) * (1. - fraction_of_duplicates));
     points.reserve(num_entities);
     switch (test_generator) {
     case CUBE:

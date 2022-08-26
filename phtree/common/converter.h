@@ -90,7 +90,7 @@ class ScalarConverterMultiply {
 
   public:
     static scalar_64_t pre(double value) {
-        return value * MULTIPLY;
+        return static_cast<scalar_64_t>(value * MULTIPLY);
     }
 
     static double post(scalar_64_t value) {
@@ -98,7 +98,7 @@ class ScalarConverterMultiply {
     }
 
     static scalar_32_t pre(float value) {
-        return value * MULTIPLY;
+        return  static_cast<scalar_32_t>(value * MULTIPLY);
     }
 
     static float post(scalar_32_t value) {

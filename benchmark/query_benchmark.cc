@@ -53,7 +53,7 @@ class IndexBenchmark {
     const double avg_query_result_size_;
 
     constexpr int query_endge_length() {
-        return GLOBAL_MAX * pow(avg_query_result_size_ / (double)num_entities_, 1. / (double)DIM);
+        return (int)(GLOBAL_MAX * pow(avg_query_result_size_ / (double)num_entities_, 1. / (double)DIM));
     };
 
     PhTree<DIM, int> tree_;
@@ -125,8 +125,8 @@ void IndexBenchmark<DIM>::CreateQuery(PhBox<DIM>& query_box) {
     // scale to ensure query lies within boundary
     double scale = (GLOBAL_MAX - (double)length) / GLOBAL_MAX;
     for (dimension_t d = 0; d < DIM; ++d) {
-        auto s = cube_distribution_(random_engine_);
-        s = s * scale;
+        scalar_64_t s = cube_distribution_(random_engine_);
+        s = (scalar_64_t)(s * scale);
         query_box.min()[d] = s;
         query_box.max()[d] = s + length;
     }

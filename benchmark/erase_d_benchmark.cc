@@ -99,7 +99,7 @@ void IndexBenchmark<DIM>::Insert(benchmark::State&, PhTreeD<DIM, int>& tree) {
 
 template <dimension_t DIM>
 void IndexBenchmark<DIM>::Remove(benchmark::State& state, PhTreeD<DIM, int>& tree) {
-    int n = 0;
+    size_t n = 0;
     for (int i = 0; i < num_entities_; ++i) {
         n += tree.erase(points_[i]);
     }

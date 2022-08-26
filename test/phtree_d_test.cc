@@ -42,7 +42,9 @@ class DoubleRng {
 struct Id {
     Id() = default;
 
-    explicit Id(const int i) : _i(i){};
+    explicit Id(const int i) : _i{i} {}
+
+    explicit Id(const size_t i) : _i{static_cast<int>(i)} {}
 
     bool operator==(const Id& rhs) const {
         return _i == rhs._i;
@@ -287,7 +289,7 @@ TEST(PhTreeDTest, TestEmplace) {
         ASSERT_EQ(i + 1, tree.size());
 
         // try add again, this should _not_ replace the existing value
-        Id id2(-i);
+        Id id2(i + N);
         ASSERT_EQ(false, tree.emplace(p, id2).second);
         ASSERT_EQ(i, tree.emplace(p, id).first._i);
         ASSERT_EQ(tree.count(p), 1);
@@ -331,7 +333,7 @@ TEST(PhTreeDTest, TestSquareBrackets) {
         ASSERT_EQ(0, tree[p]._i);
         ASSERT_EQ(tree.count(p), 1);
         if (i % 2 == 0) {
-            tree[p]._i = i;
+            tree[p]._i = (int)i;
         } else {
             tree[p] = id;
         }
@@ -444,8 +446,8 @@ TEST(PhTreeDTest, TestUpdateWithEmplace) {
     for (auto& p : points) {
         auto pOld = p;
         TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
-        int n = tree.erase(pOld);
-        ASSERT_EQ(1, n);
+        size_t n = tree.erase(pOld);
+        ASSERT_EQ(1u, n);
         tree.emplace(pNew, 42);
         ASSERT_EQ(1, tree.count(pNew));
         ASSERT_EQ(0, tree.count(pOld));
@@ -471,8 +473,8 @@ TEST(PhTreeDTest, TestUpdateWithEmplaceHint) {
         double delta = deltas[d_n];
         TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
         auto iter = tree.find(pOld);
-        int n = tree.erase(iter);
-        ASSERT_EQ(1, n);
+        size_t n = tree.erase(iter);
+        ASSERT_EQ(1u, n);
         tree.emplace_hint(iter, pNew, 42);
         ASSERT_EQ(1, tree.count(pNew));
         if (delta != 0.0) {
@@ -600,8 +602,8 @@ TEST(PhTreeDTest, TestEraseByIterator) {
     for (auto& p : points) {
         auto iter = tree.find(p);
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
         ASSERT_EQ(tree.end(), tree.find(p));
         i++;
     }
@@ -619,8 +621,8 @@ TEST(PhTreeDTest, TestEraseByIteratorQuery) {
     for (size_t i = 0; i < N; ++i) {
         auto iter = tree.begin();
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
     }
 
     ASSERT_EQ(0, tree.erase(tree.end()));
@@ -795,9 +797,9 @@ TEST(PhTreeDTest, TestWindowQueryManyMoving) {
 
     double query_length = 200;
     size_t nn = 0;
-    for (int i = -120; i < 120; i++) {
+    for (long i = -120; i < 120; i++) {
         TestPoint<dim> min{i * 10., i * 9., i * 11.};
-        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+        TestPoint<dim> max{i * 10. + query_length, i * 9. + query_length, i * 11. + query_length};
         std::set<size_t> referenceResult;
         referenceQuery(points, min, max, referenceResult);
 
@@ -831,7 +833,7 @@ TEST(PhTreeDTest, TestWindowForEachQueryManyMoving) {
     size_t nn = 0;
     for (int i = -120; i < 120; i++) {
         TestPoint<dim> min{i * 10., i * 9., i * 11.};
-        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+        TestPoint<dim> max{i * 10. + query_length, i * 9. + query_length, i * 11. + query_length};
         std::set<size_t> referenceResult;
         referenceQuery(points, min, max, referenceResult);
 

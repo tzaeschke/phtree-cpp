@@ -114,7 +114,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
         if (infix_len > 0) {
             bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << infix_len;
             mask = ~mask;
-            mask <<= postfix_len + 1;
+            mask <<= (std::uint64_t)postfix_len + 1;
             for (dimension_t i = 0; i < DIM; ++i) {
                 sb << ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
             }

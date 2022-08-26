@@ -66,7 +66,7 @@ template <dimension_t DIM>
 double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     double sum2 = 0;
     for (dimension_t i = 0; i < DIM; i++) {
-        double d = p1[i] - p2[i];
+        double d = (double)p1[i] - (double)p2[i];
         sum2 += d * d;
     }
     return sqrt(sum2);
@@ -284,7 +284,7 @@ TEST(PhTreeTestPtr, TestEmplace) {
         ASSERT_EQ(i + 1, tree.size());
 
         // try add again, this should _not_ replace the existing value
-        Id* id2 = new Id(-i);
+        Id* id2 = new Id(i + N);
         ASSERT_EQ(false, tree.emplace(p, id2).second);
         ASSERT_EQ(i, tree.emplace(p, id).first->_i);
         ASSERT_EQ(tree.count(p), 1);
@@ -294,11 +294,11 @@ TEST(PhTreeTestPtr, TestEmplace) {
         tree.emplace(p, id2).first->_i++;
         ASSERT_EQ(i + 1, tree.emplace(p, id).first->_i);
         tree.emplace(p, id2).first = id2;
-        ASSERT_EQ(-i, tree.emplace(p, id).first->_i);
+        ASSERT_EQ(i + N, tree.emplace(p, id).first->_i);
         // Replace it with previous value
         tree.emplace(p, id2).first = id;
         ASSERT_EQ(i + 1, tree.emplace(p, id).first->_i);
-        id->_i = i;
+        id->_i = (int)i;
         ASSERT_EQ(i, tree.emplace(p, id).first->_i);
         delete id2;
     }
@@ -332,13 +332,13 @@ TEST(PhTreeTestPtr, TestSquareBrackets) {
     for (size_t i = 0; i < N; i++) {
         TestPoint<dim>& p = points.at(i);
         Id* id = new Id(i);
-        Id* id2 = new Id(-i);
+        Id* id2 = new Id(i + N);
         ASSERT_EQ(nullptr, tree[p]);
         tree[p] = id2;
-        ASSERT_EQ(-i, tree[p]->_i);
+        ASSERT_EQ(i + N, tree[p]->_i);
         ASSERT_EQ(tree.count(p), 1);
         if (i % 2 == 0) {
-            tree[p]->_i = i;
+            tree[p]->_i = (int)i;
             ASSERT_EQ(i, id2->_i);
             delete id;
         } else {
@@ -664,9 +664,9 @@ TEST(PhTreeTestPtr, TestWindowQueryManyMoving) {
 
     int query_length = 200;
     size_t nn = 0;
-    for (int i = -120; i < 120; i++) {
-        TestPoint<dim> min{i * 10, i * 9, i * 11};
-        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+    for (std::int64_t i = -120; i < 120; i++) {
+        TestPoint<dim> min{i * 10l, i * 9l, i * 11l};
+        TestPoint<dim> max{i * 10l + query_length, i * 9l + query_length, i * 11l + query_length};
         std::set<size_t> referenceResult;
         referenceQuery(points, min, max, referenceResult);
 

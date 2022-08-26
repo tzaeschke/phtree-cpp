@@ -48,7 +48,7 @@ int relocate_example() {
         auto t2 = std::chrono::high_resolution_clock::now();
         auto s = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
         ++nT;
-        T += s.count() / 1000;
+        T += (long)s.count() / 1000;
         std::cout << s.count() << "    " << (T / nT)
                   << "     msec/num= " << (s.count() / (double)num) << std::endl;
     }

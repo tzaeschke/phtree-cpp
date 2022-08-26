@@ -207,7 +207,7 @@ struct Counter {
 };
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::SPHERE_WQ, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::SPHERE_WQ, size_t>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     FilterMultiMapSphere filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
     Counter counter{0};
@@ -216,7 +216,7 @@ typename std::enable_if<SCENARIO == Scenario::SPHERE_WQ, int>::type CountEntries
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::SPHERE, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::SPHERE, size_t>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     FilterMultiMapSphere filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
     Counter counter{0};
@@ -225,7 +225,7 @@ typename std::enable_if<SCENARIO == Scenario::SPHERE, int>::type CountEntries(
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::WQ, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::WQ, size_t>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     CounterCheckPosition counter{query.center, query.radius, 0};
     tree.for_each(query.box, counter);
@@ -233,7 +233,7 @@ typename std::enable_if<SCENARIO == Scenario::WQ, int>::type CountEntries(
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::SPHERE_IT_WQ, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::SPHERE_IT_WQ, size_t>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     FilterMultiMapSphere filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
     Counter counter{0};
@@ -244,7 +244,7 @@ typename std::enable_if<SCENARIO == Scenario::SPHERE_IT_WQ, int>::type CountEntr
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::LEGACY_WQ, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::LEGACY_WQ, size_t>::type CountEntries(
     TestMap<DIM>& tree, const Query& query) {
     // Legacy: use non-multi-map filter
     FilterSphereLegacy filter{query.center, query.radius, tree.converter(), DistanceFn<DIM>()};
@@ -270,7 +270,7 @@ void IndexBenchmark<DIM, SCENARIO>::SetupWorld(benchmark::State& state) {
 
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Query& query) {
-    int n = CountEntries<DIM, SCENARIO>(tree_, query);
+    size_t n = CountEntries<DIM, SCENARIO>(tree_, query);
 
     state.counters["query_rate"] += 1;
     state.counters["result_rate"] += n;

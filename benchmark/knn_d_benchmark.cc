@@ -45,7 +45,7 @@ class IndexBenchmark {
 
     const TestGenerator data_type_;
     const int num_entities_;
-    const double knn_result_size_;
+    const size_t knn_result_size_;
 
     PhTreeD<DIM, int> tree_;
     std::default_random_engine random_engine_;

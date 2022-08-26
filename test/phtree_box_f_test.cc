@@ -273,7 +273,7 @@ TEST(PhTreeBoxFTest, TestEmplace) {
         ASSERT_EQ(i + 1, tree.size());
 
         // try add again, this should _not_ replace the existing value
-        Id id2(-i);
+        Id id2(i + N);
         ASSERT_EQ(false, tree.emplace(p, id2).second);
         ASSERT_EQ(i, tree.emplace(p, id).first._i);
         ASSERT_EQ(tree.count(p), 1);
@@ -366,7 +366,7 @@ void populate(
 template <dimension_t DIM>
 void populate(
     TestTree<DIM, Id>& tree, std::vector<TestPoint<DIM>>& points, size_t N, double boxLen = 10) {
-    generateCube(points, N, boxLen);
+    generateCube(points, N, (float)boxLen);
     for (size_t i = 0; i < N; i++) {
         ASSERT_TRUE(tree.emplace(points[i], i + 1).second);
     }
@@ -434,8 +434,8 @@ TEST(PhTreeBoxFTest, TestUpdateWithEmplace) {
         TestPoint<dim> pNew(
             {pOld.min()[0] + delta, pOld.min()[1] + delta, pOld.min()[2] + delta},
             {pOld.max()[0] + delta, pOld.max()[1] + delta, pOld.max()[2] + delta});
-        int n = tree.erase(pOld);
-        ASSERT_EQ(1, n);
+        size_t n = tree.erase(pOld);
+        ASSERT_EQ(1u, n);
         tree.emplace(pNew, 42u);
         ASSERT_EQ(1, tree.count(pNew));
         ASSERT_EQ(0, tree.count(pOld));
@@ -450,7 +450,7 @@ TEST(PhTreeBoxFTest, TestUpdateWithEmplaceHint) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
-    std::array<double, 4> deltas{0, 0.1, 1, 10};
+    std::array<float, 4> deltas{0, 0.1, 1, 10};
     std::vector<TestPoint<dim>> points;
     populate(tree, points, N);
 
@@ -463,8 +463,8 @@ TEST(PhTreeBoxFTest, TestUpdateWithEmplaceHint) {
         PhPointF<dim> max{pOld.max()[0] + delta, pOld.max()[1] + delta, pOld.max()[2] + delta};
         TestPoint<dim> pNew{min, max};
         auto iter = tree.find(pOld);
-        int n = tree.erase(iter);
-        ASSERT_EQ(1, n);
+        size_t n = tree.erase(iter);
+        ASSERT_EQ(1u, n);
         tree.emplace_hint(iter, pNew, 42u);
         ASSERT_EQ(1, tree.count(pNew));
         if (delta != 0.0) {
@@ -488,8 +488,8 @@ TEST(PhTreeBoxFTest, TestEraseByIterator) {
     for (auto& p : points) {
         auto iter = tree.find(p);
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
         ASSERT_EQ(tree.end(), tree.find(p));
         i++;
     }
@@ -507,8 +507,8 @@ TEST(PhTreeBoxFTest, TestEraseByIteratorQuery) {
     for (size_t i = 0; i < N; ++i) {
         auto iter = tree.begin();
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
     }
 
     ASSERT_EQ(0, tree.erase(tree.end()));

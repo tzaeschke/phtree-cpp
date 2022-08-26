@@ -66,7 +66,7 @@ int get_resident_mem_kb() {
 }
 
 void print_mem() {
-    double vm, rss;
+    double vm = 0, rss = 0;
     //mem_usage(vm, rss);
     cout << "  Virtual Memory: " << vm << " KB" << std::endl << "  Resident set size: " << rss << " KB" << endl;
 }

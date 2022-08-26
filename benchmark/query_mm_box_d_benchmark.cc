@@ -144,7 +144,7 @@ struct CounterMultiMap {
 };
 
 template <dimension_t DIM, Scenario SCENARIO>
-typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, int>::type CountEntries(
+typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type CountEntries(
     TestMap<Scenario::TREE_WITH_MAP, DIM>& tree, const Query& query) {
     CounterTreeWithMap counter{query.box_, 0};
     tree.for_each(query.box_, counter);
@@ -152,7 +152,7 @@ typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, int>::type CountEnt
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
-int CountEntries(TestMap<Scenario::MULTI_MAP, DIM>& tree, const Query& query) {
+size_t CountEntries(TestMap<Scenario::MULTI_MAP, DIM>& tree, const Query& query) {
     CounterMultiMap counter{query.box_, 0};
     tree.for_each(query.box_, counter);
     return counter.n_;
@@ -175,7 +175,7 @@ void IndexBenchmark<DIM, SCENARIO>::SetupWorld(benchmark::State& state) {
 
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Query& query) {
-    int n = CountEntries<DIM, SCENARIO>(tree_, query);
+    size_t n = CountEntries<DIM, SCENARIO>(tree_, query);
 
     state.counters["query_rate"] += 1;
     state.counters["result_rate"] += n;

@@ -136,7 +136,7 @@ class NodeIterator {
     using EntriesT = EntryMap<DIM, EntryT>;
 
   public:
-    NodeIterator() : iter_{}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}
+    NodeIterator() : iter_{}, entries_{nullptr}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}
 
     void Init(const KeyT& range_min, const KeyT& range_max, const EntryT& entry) {
         auto& node = entry.GetNode();

@@ -42,7 +42,7 @@ class IndexBenchmark {
     void Insert(benchmark::State& state, Index& tree);
 
     const TestGenerator data_type_;
-    const int num_entities_;
+    const size_t num_entities_;
     std::vector<PhPointD<DIM>> points_;
 };
 

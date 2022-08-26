@@ -43,7 +43,9 @@ class FloatRng {
 struct Id {
     Id() = default;
 
-    explicit Id(const int i) : _i(i){};
+    explicit Id(const int i) : _i{i} {}
+
+    explicit Id(const size_t i) : _i{static_cast<int>(i)} {}
 
     bool operator==(const Id& rhs) const {
         return _i == rhs._i;
@@ -67,7 +69,7 @@ template <dimension_t DIM>
 double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     double sum2 = 0;
     for (dimension_t i = 0; i < DIM; i++) {
-        double d = p1[i] - p2[i];
+        double d = (double)(p1[i]) - (double)p2[i];
         sum2 += d * d;
     }
     return sqrt(sum2);
@@ -281,7 +283,7 @@ TEST(PhTreeFTest, TestEmplace) {
         ASSERT_EQ(i + 1, tree.size());
 
         // try add again, this should _not_ replace the existing value
-        Id id2(-i);
+        Id id2(i + N);
         ASSERT_EQ(false, tree.emplace(p, id2).second);
         ASSERT_EQ(i, tree.emplace(p, id).first._i);
         ASSERT_EQ(tree.count(p), 1);
@@ -325,7 +327,7 @@ TEST(PhTreeFTest, TestSquareBrackets) {
         ASSERT_EQ(0, tree[p]._i);
         ASSERT_EQ(tree.count(p), 1);
         if (i % 2 == 0) {
-            tree[p]._i = i;
+            tree[p]._i = (int)i;
         } else {
             tree[p] = id;
         }
@@ -441,8 +443,8 @@ TEST(PhTreeFTest, TestUpdateWithEmplace) {
             static_cast<float>(pOld[0] + delta),
             static_cast<float>(pOld[1] + delta),
             static_cast<float>(pOld[2] + delta)};
-        int n = tree.erase(pOld);
-        ASSERT_EQ(1, n);
+        size_t n = tree.erase(pOld);
+        ASSERT_EQ(1u, n);
         tree.emplace(pNew, 42);
         ASSERT_EQ(1, tree.count(pNew));
         ASSERT_EQ(0, tree.count(pOld));
@@ -464,8 +466,8 @@ TEST(PhTreeFTest, TestEraseByIterator) {
     for (auto& p : points) {
         auto iter = tree.find(p);
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
         ASSERT_EQ(tree.end(), tree.find(p));
         i++;
     }
@@ -483,8 +485,8 @@ TEST(PhTreeFTest, TestEraseByIteratorQuery) {
     for (size_t i = 0; i < N; ++i) {
         auto iter = tree.begin();
         ASSERT_NE(tree.end(), iter);
-        int count = tree.erase(iter);
-        ASSERT_EQ(1, count);
+        size_t count = tree.erase(iter);
+        ASSERT_EQ(1u, count);
     }
 
     ASSERT_EQ(0, tree.erase(tree.end()));
