@@ -45,6 +45,7 @@ struct IdObj {
     IdObj() = default;
 
     explicit IdObj(const int i) : _i(i), data_{0} {};
+    explicit IdObj(const size_t i) : _i(static_cast<int>(i)), data_{0} {};
 
     bool operator==(const IdObj& rhs) const noexcept {
         return _i == rhs._i;

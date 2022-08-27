@@ -192,7 +192,7 @@ class b_plus_tree_hash_set {
         assert(hint.node_->is_leaf());
 
         T t(std::forward<Args>(args)...);
-        auto hash = HashT{}(t);
+        auto hash = (hash_t)HashT{}(t);
         auto node = hint.node_->as_leaf();
 
         // The following may drop a valid hint but is easy to check.
@@ -205,7 +205,7 @@ class b_plus_tree_hash_set {
 
     size_t erase(const T& value) {
         auto node = root_;
-        auto hash = HashT{}(value);
+        auto hash = (hash_t)HashT{}(value);
         while (!node->is_leaf()) {
             node = node->as_inner()->find(hash);
             if (node == nullptr) {

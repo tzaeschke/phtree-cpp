@@ -232,7 +232,7 @@ TEST(PhTreeTestUniquePtr, TestUpdateWithRelocate) {
     ASSERT_EQ(0, tree.relocate(points[0], points[1]));
     // Check that small tree works
     tree.emplace(points[0], std::make_unique<IdObj>(1));
-    ASSERT_EQ(1, tree.relocate(points[0], points[1]));
+    ASSERT_EQ(1u, tree.relocate(points[0], points[1]));
     ASSERT_EQ(tree.end(), tree.find(points[0]));
     ASSERT_EQ(1, (*tree.find(points[1]))->_i);
     ASSERT_EQ(1u, tree.size());

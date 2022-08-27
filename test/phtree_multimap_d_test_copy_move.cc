@@ -45,7 +45,7 @@ class DoubleRng {
 };
 
 struct IdCopyOnly {
-    explicit IdCopyOnly(const size_t i) : _i{i} {}
+    explicit IdCopyOnly(const size_t i) : _i{static_cast<int>(i)} {}
 
     IdCopyOnly() = default;
     IdCopyOnly(const IdCopyOnly& other) = default;
@@ -58,7 +58,7 @@ struct IdCopyOnly {
         return _i == rhs._i;
     }
 
-    size_t _i{};
+    int _i{};
     int _data{};
 };
 
@@ -113,13 +113,13 @@ struct hash<IdCopyOnly> {
 template <>
 struct hash<IdMoveOnly> {
     size_t operator()(const IdMoveOnly& x) const {
-        return std::hash<int>{}(x._i);
+        return std::hash<size_t>{}(x._i);
     }
 };
 template <>
 struct hash<IdCopyOrMove> {
     size_t operator()(const IdCopyOrMove& x) const {
-        return std::hash<int>{}(x._i);
+        return std::hash<size_t>{}(x._i);
     }
 };
 };  // namespace std

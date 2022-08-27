@@ -47,7 +47,8 @@ class DoubleRng {
 struct Id {
     Id() = default;
 
-    explicit Id(const int i) : _i(i), data_{0} {};
+    explicit Id(const int i) : _i{i}, data_{0} {}
+    explicit Id(const size_t i) : _i{static_cast<int>(i)}, data_{0} {}
 
     bool operator==(const Id& rhs) const {
         return _i == rhs._i;
@@ -67,7 +68,7 @@ struct hash<Id> {
 };  // namespace std
 
 struct PointDistance {
-    PointDistance(double distance, size_t id) : _distance(distance), _id(id) {}
+    PointDistance(double distance, size_t id) : _distance(distance), _id(static_cast<int>(id)) {}
 
     double _distance;
     int _id;
@@ -849,7 +850,7 @@ TEST(PhTreeMMDTest, TestWindowQueryManyMoving) {
     size_t nn = 0;
     for (int i = -120; i < 120; i++) {
         TestPoint<dim> min{i * 10., i * 9., i * 11.};
-        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+        TestPoint<dim> max{i * 10. + query_length, i * 9. + query_length, i * 11. + query_length};
         std::set<size_t> referenceResult;
         referenceQuery(points, min, max, referenceResult);
 
@@ -880,7 +881,7 @@ TEST(PhTreeMMDTest, TestWindowForEachQueryManyMoving) {
     size_t nn = 0;
     for (int i = -120; i < 120; i++) {
         TestPoint<dim> min{i * 10., i * 9., i * 11.};
-        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+        TestPoint<dim> max{i * 10. + query_length, i * 9. + query_length, i * 11. + query_length};
         std::set<size_t> referenceResult;
         referenceQuery(points, min, max, referenceResult);
 

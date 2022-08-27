@@ -450,7 +450,7 @@ TEST(PhTreeBoxFTest, TestUpdateWithEmplaceHint) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
-    std::array<float, 4> deltas{0, 0.1, 1, 10};
+    std::array<float, 4> deltas{0.f, 0.1f, 1.f, 10.f};
     std::vector<TestPoint<dim>> points;
     populate(tree, points, N);
 
