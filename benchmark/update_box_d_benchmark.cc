@@ -106,7 +106,7 @@ void IndexBenchmark<DIM, UPDATE_TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("Setting up world with {} entities and {} dimensions.", num_entities_, DIM);
     CreateBoxData<DIM>(boxes_, data_type_, num_entities_, 0, GLOBAL_MAX, BOX_LEN);
     for (size_t i = 0; i < num_entities_; ++i) {
-        tree_.emplace(boxes_[i], i);
+        tree_.emplace(boxes_[i], (int)i);
     }
 
     state.counters["total_upd_count"] = benchmark::Counter(0);

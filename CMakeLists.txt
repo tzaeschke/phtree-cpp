@@ -5,6 +5,9 @@ project(phtree VERSION 1.2.0
         DESCRIPTION "PH-Tree C++"
         LANGUAGES CXX)
 
+
+cmake_policy(SET CMP0077 NEW)
+
 # ---------------------------------------------------------------------------------------
 # Set default build to release
 # ---------------------------------------------------------------------------------------
@@ -48,16 +51,26 @@ if (NOT CMAKE_CXX_STANDARD)
 endif ()
 
 if (MSVC)
-    #set(CMAKE_CXX_FLAGS_RELEASE "/MT")
-    #set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
 
-    #    set(CMAKE_CXX_FLAGS "-DNOMINMAX ${CMAKE_CXX_FLAGS}") # exclude M$ min/max macros
-    #    set(CMAKE_CXX_FLAGS "/wd4996 ${CMAKE_CXX_FLAGS}") # don't warn about use of plain C functions without (non-portable) "_s" suffix
-    #    set(CMAKE_EXE_LINKER_FLAGS "/WX:NO ${CMAKE_EXE_LINKER_FLAGS}" ) # don't treat warnings as compile errors--gtest doesn't build
-    #    #set(CMAKE_CXX_FLAGS_DEBUG "/analyze ${CMAKE_CXX_FLAGS_DEBUG}")
+    if (PHTREE_BUILD_TESTS OR PHTREE_BUILD_ALL)
+        add_compile_options(/bigobj)
+    endif()
+
+    # For google benchmark
+    if (PHTREE_BUILD_BENCHMARKS) # OR PHTREE_BUILD_ALL)
+        # This still doesn't work. This also breaks gtest
+        # See for example
+        # https://stackoverflow.com/questions/55376111/how-to-build-and-link-google-benchmark-using-cmake-in-windows
+        # https://github.com/google/benchmark/issues/1348
+        # https://github.com/google/benchmark/issues/639
+       # set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+       # set(BUILD_SHARED_LIBS TRUE) #=TRUE
+       # set(BENCHMARK_DOWNLOAD_DEPENDENCIES on)
+       # set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+    endif()
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror")
     if (PHTREE_BUILD_BENCHMARKS)
@@ -77,7 +90,7 @@ if (PHTREE_BUILD_EXAMPLES OR PHTREE_BUILD_ALL)
     add_subdirectory(examples)
 endif ()
 
-if (PHTREE_BUILD_BENCHMARKS OR PHTREE_BUILD_ALL)
+if (!MSVC AND (PHTREE_BUILD_BENCHMARKS OR PHTREE_BUILD_ALL))
     message(STATUS "Generating benchmarks")
     add_subdirectory(benchmark)
 endif ()

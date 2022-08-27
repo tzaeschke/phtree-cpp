@@ -26,6 +26,7 @@ using namespace improbable::phtree::phbenchmark;
 namespace {
 
 const double GLOBAL_MAX = 10000;
+using payload_t = std::uint32_t;
 
 /*
  * Benchmark for k-nearest-neighbour queries.
@@ -46,7 +47,7 @@ class IndexBenchmark {
     const size_t num_entities_;
     const size_t knn_result_size_;
 
-    PhTreeD<DIM, int> tree_;
+    PhTreeD<DIM, payload_t> tree_;
     std::default_random_engine random_engine_;
     std::uniform_real_distribution<> cube_distribution_;
     std::vector<PhPointD<DIM>> points_;
@@ -80,8 +81,8 @@ template <dimension_t DIM>
 void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
     logging::info("Setting up world with {} entities and {} dimensions.", num_entities_, DIM);
     CreatePointData<DIM>(points_, data_type_, num_entities_, 0, GLOBAL_MAX);
-    for (int i = 0; i < num_entities_; ++i) {
-        tree_.emplace(points_[i], i);
+    for (size_t i = 0; i < num_entities_; ++i) {
+        tree_.emplace(points_[i], (int)i);
     }
 
     state.counters["total_query_count"] = benchmark::Counter(0);

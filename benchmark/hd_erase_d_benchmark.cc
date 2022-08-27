@@ -26,6 +26,7 @@ using namespace improbable::phtree::phbenchmark;
 namespace {
 
 const int GLOBAL_MAX = 10000;
+using payload_t = std::uint32_t;
 
 /*
  * Benchmark for removing entries.
@@ -38,8 +39,8 @@ class IndexBenchmark {
 
   private:
     void SetupWorld(benchmark::State& state);
-    void Insert(benchmark::State& state, PhTreeD<DIM, int>& tree);
-    void Remove(benchmark::State& state, PhTreeD<DIM, int>& tree);
+    void Insert(benchmark::State& state, PhTreeD<DIM, payload_t>& tree);
+    void Remove(benchmark::State& state, PhTreeD<DIM, payload_t>& tree);
 
     const TestGenerator data_type_;
     const size_t num_entities_;
@@ -64,7 +65,7 @@ template <dimension_t DIM>
 void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
     for (auto _ : state) {
         state.PauseTiming();
-        auto* tree = new PhTreeD<DIM, int>();
+        auto* tree = new PhTreeD<DIM, payload_t>();
         Insert(state, *tree);
         state.ResumeTiming();
 
@@ -89,16 +90,16 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
 }
 
 template <dimension_t DIM>
-void IndexBenchmark<DIM>::Insert(benchmark::State&, PhTreeD<DIM, int>& tree) {
-    for (int i = 0; i < num_entities_; ++i) {
-        tree.emplace(points_[i], i);
+void IndexBenchmark<DIM>::Insert(benchmark::State&, PhTreeD<DIM, payload_t>& tree) {
+    for (size_t i = 0; i < num_entities_; ++i) {
+        tree.emplace(points_[i], (int)i);
     }
 }
 
 template <dimension_t DIM>
-void IndexBenchmark<DIM>::Remove(benchmark::State& state, PhTreeD<DIM, int>& tree) {
+void IndexBenchmark<DIM>::Remove(benchmark::State& state, PhTreeD<DIM, payload_t>& tree) {
     size_t n = 0;
-    for (int i = 0; i < num_entities_; ++i) {
+    for (size_t i = 0; i < num_entities_; ++i) {
         n += tree.erase(points_[i]);
     }
 

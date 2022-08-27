@@ -61,7 +61,7 @@ class IndexBenchmark {
     void CreateQuery(BoxType<DIM>& query_box);
 
     const TestGenerator data_type_;
-    const int num_entities_;
+    const size_t num_entities_;
     const double avg_query_result_size_;
 
     constexpr int query_endge_length() {
@@ -106,8 +106,8 @@ template <dimension_t DIM, QueryType QUERY_TYPE>
 void IndexBenchmark<DIM, QUERY_TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("Setting up world with {} entities and {} dimensions.", num_entities_, DIM);
     CreateBoxData<DIM>(boxes_, data_type_, num_entities_, 0, GLOBAL_MAX, BOX_LEN);
-    for (int i = 0; i < num_entities_; ++i) {
-        tree_.emplace(boxes_[i], i);
+    for (size_t i = 0; i < num_entities_; ++i) {
+        tree_.emplace(boxes_[i], (int)i);
     }
 
     state.counters["total_result_count"] = benchmark::Counter(0);

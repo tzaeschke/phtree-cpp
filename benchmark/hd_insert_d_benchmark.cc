@@ -84,9 +84,9 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
 
 template <dimension_t DIM>
 void IndexBenchmark<DIM>::Insert(benchmark::State& state, Index& tree) {
-    for (int i = 0; i < num_entities_; ++i) {
+    for (size_t i = 0; i < num_entities_; ++i) {
         PhPointD<DIM>& p = points_[i];
-        tree.emplace(p, i);
+        tree.emplace(p, (int)i);
     }
 
     state.counters["total_put_count"] += num_entities_;

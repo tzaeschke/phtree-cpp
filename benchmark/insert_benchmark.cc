@@ -52,7 +52,7 @@ class IndexBenchmark {
     void Insert(benchmark::State& state, PhTree<DIM, int>& tree);
 
     const TestGenerator data_type_;
-    const int num_entities_;
+    const size_t num_entities_;
     const InsertionType insertion_type_;
     std::vector<PhPoint<DIM>> points_;
 };
@@ -99,20 +99,20 @@ template <dimension_t DIM>
 void IndexBenchmark<DIM>::Insert(benchmark::State& state, PhTree<DIM, int>& tree) {
     switch (insertion_type_) {
     case INSERT: {
-        for (int i = 0; i < num_entities_; ++i) {
-            tree.insert(points_[i], i);
+        for (size_t i = 0; i < num_entities_; ++i) {
+            tree.insert(points_[i], (int)i);
         }
         break;
     }
     case EMPLACE: {
-        for (int i = 0; i < num_entities_; ++i) {
-            tree.emplace(points_[i], i);
+        for (size_t i = 0; i < num_entities_; ++i) {
+            tree.emplace(points_[i], (int)i);
         }
         break;
     }
     case SQUARE_BR: {
-        for (int i = 0; i < num_entities_; ++i) {
-            tree[points_[i]] = i;
+        for (size_t i = 0; i < num_entities_; ++i) {
+            tree[points_[i]] = (int)i;
         }
         break;
     }
