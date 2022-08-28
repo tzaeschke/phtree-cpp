@@ -36,13 +36,13 @@ option(PHTREE_BUILD_BENCHMARKS "Build benchmarks (Requires https://github.com/go
 # Compiler config
 # ---------------------------------------------------------------------------------------
 find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
+if (CCACHE_FOUND)
     message("CCACHE is found")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-else(CCACHE_FOUND)
+else (CCACHE_FOUND)
     message("CCACHE is NOT found")
-endif(CCACHE_FOUND)
+endif (CCACHE_FOUND)
 
 # specify the C++ standard
 if (NOT CMAKE_CXX_STANDARD)
@@ -57,7 +57,7 @@ if (MSVC)
 
     if (PHTREE_BUILD_TESTS OR PHTREE_BUILD_ALL)
         add_compile_options(/bigobj)
-    endif()
+    endif ()
 
     # For google benchmark
     if (PHTREE_BUILD_BENCHMARKS) # OR PHTREE_BUILD_ALL)
@@ -66,11 +66,11 @@ if (MSVC)
         # https://stackoverflow.com/questions/55376111/how-to-build-and-link-google-benchmark-using-cmake-in-windows
         # https://github.com/google/benchmark/issues/1348
         # https://github.com/google/benchmark/issues/639
-       # set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-       # set(BUILD_SHARED_LIBS TRUE) #=TRUE
-       # set(BENCHMARK_DOWNLOAD_DEPENDENCIES on)
-       # set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
-    endif()
+        # set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+        # set(BUILD_SHARED_LIBS TRUE) #=TRUE
+        # set(BENCHMARK_DOWNLOAD_DEPENDENCIES on)
+        # set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+    endif ()
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror")
     if (PHTREE_BUILD_BENCHMARKS)
