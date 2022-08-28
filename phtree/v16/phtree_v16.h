@@ -347,6 +347,7 @@ class PhTreeV16 {
         }
 
         // Are we inserting in same node and same quadrant? Or are the keys equal?
+        assert(old_node_entry != nullptr);
         if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
             auto iter = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
             return std::make_pair(iter, iter);

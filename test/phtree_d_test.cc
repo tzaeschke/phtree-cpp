@@ -539,6 +539,38 @@ TEST(PhTreeDTest, TestUpdateWithRelocate) {
     ASSERT_EQ(0, tree.relocate(points[0], points[1]));
 }
 
+TEST(PhTreeDTest, TestUpdateWithRelocateCorenerCases) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    TestPoint<dim> point0{1, 2, 3};
+    TestPoint<dim> point1{4, 5, 6};
+
+    // Check that empty tree works
+    ASSERT_EQ(0, tree.relocate(point0, point1));
+    ASSERT_EQ(0, tree.size());
+
+    // Check that small tree works
+    tree.emplace(point0, 1);
+    ASSERT_EQ(1, tree.relocate(point0, point1));
+    ASSERT_EQ(tree.end(), tree.find(point0));
+    ASSERT_EQ(Id(1), *tree.find(point1));
+    ASSERT_EQ(1, tree.size());
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(point0, Id(0));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source fails
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+}
+
 TEST(PhTreeDTest, TestUpdateWithRelocateIf) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
