@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing.
 
 ### Changed
-- Nothing.
+- Cleaned up build scripts. Added linting for C++ and bazel files. CI status badges.
+  [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
 
 ### Removed
 - Nothing.
