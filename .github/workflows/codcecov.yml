@@ -49,7 +49,7 @@ jobs:
       - name: Generate Report
         id: generate_test_report
         shell: cmd
-        run: OpenCppCoverage.exe --sources phtree-cpp --export_type cobertura:phtree.xml -- "vstest.console.exe"
+        run: OpenCppCoverage.exe --modules phtree --export_type cobertura:phtree.xml -- "vstest.console.exe" phtree_test.exe
       - name: Upload Report to Codecov
         uses: codecov/codecov-action@v2
         with:
