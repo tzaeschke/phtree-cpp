@@ -15,7 +15,7 @@ jobs:
         id: setup_msbuild
 
 
-      - uses: ilammy/msvc-dev-cmd@v1
+     # - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Build
         run: cmake -G "Visual Studio 17 2022" -A x64 .
@@ -46,6 +46,14 @@ jobs:
         run: |
           choco install OpenCppCoverage -y
           echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
+
+      - name: FIND
+        shell: bash
+        run: find . -name "*.exe"
+
+
+
+
       - name: Generate Report
         id: generate_test_report
         shell: cmd
