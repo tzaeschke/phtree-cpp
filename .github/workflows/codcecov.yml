@@ -18,7 +18,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Build
-        run: cmake -G "Visual Studio 16 2019"
+        run: cmake -G "Visual Studio 17 2022"
 
       - name: DIR
         run: dir
