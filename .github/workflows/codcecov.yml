@@ -29,7 +29,7 @@ jobs:
 
       - name: Run MSBuild
         id: run_msbuild
-        run: msbuild /p:Configuration=Debug /p:Platform=x86 HelloCovDemo.sln
+        run: msbuild /p:Configuration=Debug /p:Platform=x86 ALL_BUILD.sln
       - name: Setup VSTest and add to PATH
         uses: darenm/Setup-VSTest@v1
         id: setup_vstest
@@ -49,11 +49,11 @@ jobs:
       - name: Generate Report
         id: generate_test_report
         shell: cmd
-        run: OpenCppCoverage.exe --sources HelloCov --export_type cobertura:HelloCov.xml -- "vstest.console.exe" Debug\HelloTest.dll
+        run: OpenCppCoverage.exe --sources phtree-cpp --export_type cobertura:phtree.xml -- "vstest.console.exe"
       - name: Upload Report to Codecov
         uses: codecov/codecov-action@v2
         with:
-          files: ./HelloCov.xml
+          files: ./phtree.xml
           fail_ci_if_error: true
           functionalities: fix
 
