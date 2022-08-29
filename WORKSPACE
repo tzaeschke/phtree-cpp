@@ -1,18 +1,6 @@
 # Bazel bootstrapping
 
-load("//tools/build_rules:http.bzl", "http_archive", "http_file")
-
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "1dde365491125a3db70731e25658dfdd3bc5dbdfd11b840b3e987ecf043c7ca0",
-    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/0.9.0/bazel_skylib-0.9.0.tar.gz",
-)
-
-load("@bazel_skylib//lib:versions.bzl", "versions")
-
-versions.check(
-    minimum_bazel_version = "2.0.0",
-)
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
 # NOTE: We make third_party/ its own bazel workspace because it allows to run `bazel build ...` without
 # having all targets defined in third-party BUILD files in that directory buildable.

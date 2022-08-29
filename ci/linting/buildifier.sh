@@ -4,7 +4,6 @@ set -x -e -u -o pipefail
 
 cd "$(dirname "$0")/../../"
 
-source ci/includes/bazel.sh
 source ci/includes/os.sh
 
 MAYBEARG='-mode=check'
