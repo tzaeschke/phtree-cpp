@@ -30,7 +30,7 @@ jobs:
       #  run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}\out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON -DCMAKE_CXX_FLAGS="--coverage"
 
       - name: Build
-        working-directory: ${{github.workspace}}\out
+        #working-directory: ${{github.workspace}}\out
         # Execute the build.  You can specify a specific target with "--target <NAME>"
         #run: cmake --build . --config ${env:BUILD_TYPE}
         run: cmake -G "Visual Studio 16 2019"
