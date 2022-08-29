@@ -27,9 +27,21 @@ jobs:
         shell: bash
         run: ls -la
 
+      - name: LESS_A_B
+        shell: bash
+        run: less ALL_BUILD.vcxproj
+
+      - name: LESS_I
+        shell: bash
+        run: less  INSTALL.vcxproj
+
+      - name: LESS_RT
+        shell: bash
+        run: less  RUN_TESTS.vcxproj
+
       - name: Run MSBuild
         id: run_msbuild
-        run: msbuild /p:Configuration=Debug /p:Platform=x64 phtree.sln /p:PHTREE_BUILD_TESTS=TRUE
+        run: msbuild /p:Configuration=Debug /p:Platform=x64 phtree.sln /p:PHTREE_BUILD_TESTS=TRUE /p:ConfigurationType=StaticLibrary
       - name: Setup VSTest and add to PATH
         uses: darenm/Setup-VSTest@v1
         id: setup_vstest
