@@ -4,8 +4,8 @@ cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = [
-        "logging.h",
         "benchmark_util.h",
+        "logging.h",
     ],
     visibility = [
         "//visibility:public",
