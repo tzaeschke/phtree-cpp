@@ -11,6 +11,7 @@ compile_commands.json
 perf.data*
 build
 out
+cygwin
 CMakeSettings.json
 
 /cmake-build-debug/
