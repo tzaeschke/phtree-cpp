@@ -18,7 +18,7 @@ jobs:
      # - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Generate Solution
-        run: cmake -G "Visual Studio 17 2022" -A x64 . -DPHTREE_BUILD_TESTS
+        run: cmake -G "Visual Studio 17 2022" -A x64 . -DPHTREE_BUILD_TESTS=ON
 
       - name: DIR
         run: dir
@@ -29,7 +29,7 @@ jobs:
 
       - name: Run MSBuild
         id: run_msbuild
-        run: msbuild /p:Configuration=Debug /p:Platform=x64 phtree.sln
+        run: msbuild /p:Configuration=Debug /p:Platform=x64 phtree.sln /p:PHTREE_BUILD_TESTS=TRUE
       - name: Setup VSTest and add to PATH
         uses: darenm/Setup-VSTest@v1
         id: setup_vstest
