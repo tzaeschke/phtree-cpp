@@ -33,11 +33,15 @@ jobs:
 
       - name: LESS_I
         shell: bash
-        run: less  INSTALL.vcxproj
+        run: less INSTALL.vcxproj
 
       - name: LESS_RT
         shell: bash
-        run: less  RUN_TESTS.vcxproj
+        run: less RUN_TESTS.vcxproj
+
+      - name: LESS_PHT_SLN
+        shell: bash
+        run: less phtree.sln
 
       - name: Run MSBuild
         id: run_msbuild
