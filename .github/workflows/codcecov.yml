@@ -41,7 +41,7 @@ jobs:
 
       - name: Run MSBuild
         id: run_msbuild
-        run: msbuild /p:Configuration=Debug /p:Platform=x64 /p:gtest_force_shared_crt=on phtree.sln
+        run: msbuild /p:Configuration=Debug /p:Platform=x64 /p:gtest_force_shared_crt=on /MTd phtree.sln
       - name: Setup VSTest and add to PATH
         uses: darenm/Setup-VSTest@v1
         id: setup_vstest
