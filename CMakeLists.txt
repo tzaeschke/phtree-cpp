@@ -15,6 +15,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose Release or Debug" FORCE)
 endif ()
 
+
 # ---------------------------------------------------------------------------------------
 # Build options
 # ---------------------------------------------------------------------------------------
@@ -28,9 +29,11 @@ option(PHTREE_BUILD_EXAMPLES "Build examples" OFF)
 # testing options
 option(PHTREE_BUILD_TESTS "Build tests" OFF)
 #option(PHTREE_BUILD_TESTS_HO "Build tests using the header only version" OFF)
+option(PHTREE_CODE_COVERAGE "Collect coverage from test library" OFF)
 
 # bench options
 option(PHTREE_BUILD_BENCHMARKS "Build benchmarks (Requires https://github.com/google/benchmark.git to be installed)" OFF)
+
 
 # ---------------------------------------------------------------------------------------
 # Compiler config
@@ -52,7 +55,7 @@ endif ()
 
 if (MSVC)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Wall")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
 
     if (PHTREE_BUILD_TESTS OR PHTREE_BUILD_ALL)
