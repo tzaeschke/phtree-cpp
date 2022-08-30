@@ -18,7 +18,7 @@ jobs:
      # - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Generate Solution
-        run: cmake -G "Visual Studio 17 2022" -A x64 . -DPHTREE_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug 
+        run: cmake -G "Visual Studio 17 2022" -A x64 . -DPHTREE_CODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug 
 
       - name: DIR
         run: dir
@@ -80,7 +80,7 @@ jobs:
       - name: Generate Report
         id: generate_test_report
         shell: cmd
-        run: OpenCppCoverage.exe --modules phtree --export_type cobertura:phtree.xml -- "vstest.console.exe" test\all_tests.exe
+        run: OpenCppCoverage.exe --modules phtree --export_type cobertura:phtree.xml -- "vstest.console.exe" test\Debug\all_tests.exe
       - name: Upload Report to Codecov
         uses: codecov/codecov-action@v2
         with:

@@ -30,6 +30,9 @@ option(PHTREE_BUILD_EXAMPLES "Build examples" OFF)
 option(PHTREE_BUILD_TESTS "Build tests" OFF)
 #option(PHTREE_BUILD_TESTS_HO "Build tests using the header only version" OFF)
 option(PHTREE_CODE_COVERAGE "Collect coverage from test library" OFF)
+if (PHTREE_CODE_COVERAGE) 
+    set(PHTREE_BUILD_TESTS ON)
+endif ()
 
 # bench options
 option(PHTREE_BUILD_BENCHMARKS "Build benchmarks (Requires https://github.com/google/benchmark.git to be installed)" OFF)

@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
 project(phtree-tests LANGUAGES CXX)
 
-if(PHTREE_CODE_COVERAGE)
-    include(${CMAKE_SOURCE_DIR}/cmake/CodeCoverage.cmake)
-    append_coverage_compiler_flags()
-    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest -C Debug BASE_DIRECTORY ../coverage)
-endif()
+#if(PHTREE_CODE_COVERAGE)
+#    include(${CMAKE_SOURCE_DIR}/cmake/CodeCoverage.cmake)
+#    append_coverage_compiler_flags()
+#    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest -C Debug BASE_DIRECTORY ../coverage)
+#endif()
 
 
 
@@ -74,12 +74,13 @@ package_add_test(phtree_f_test phtree_f_test.cc)
 #add_subdirectory(common)
 
 #gtest_discover_tests(phtree_f_test)
-
-package_add_test_main(all_tests 
-    phtree_test.cc 
-    phtree_f_test.cc 
-    phtree_box_f_test.cc
-    phtree_box_d_test.cc
-    phtree_box_d_test_filter.cc
-    phtree_box_d_test_query_types.cc
-    all_tests.cc)
+if (PHTREE_CODE_COVERAGE)
+    package_add_test_main(all_tests 
+        phtree_test.cc 
+        phtree_f_test.cc 
+        phtree_box_f_test.cc
+        phtree_box_d_test.cc
+        phtree_box_d_test_filter.cc
+        phtree_box_d_test_query_types.cc
+        all_tests.cc)
+endif ()
