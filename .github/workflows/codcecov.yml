@@ -27,25 +27,25 @@ jobs:
         shell: bash
         run: ls -la test
 
-      - name: LESS_A_B
-        shell: bash
-        run: cat ALL_BUILD.vcxproj
+      #- name: LESS_A_B
+      #  shell: bash
+      #  run: cat ALL_BUILD.vcxproj
 
-      - name: LESS_I
-        shell: bash
-        run: cat INSTALL.vcxproj
+      #- name: LESS_I
+      #  shell: bash
+      #  run: cat INSTALL.vcxproj
 
-      - name: LESS_RT
-        shell: bash
-        run: cat RUN_TESTS.vcxproj
+      #- name: LESS_RT
+      #  shell: bash
+      #  run: cat RUN_TESTS.vcxproj
 
-      - name: LESS_PHT_SLN
-        shell: bash
-        run: cat phtree.sln
+      #- name: LESS_PHT_SLN
+      #  shell: bash
+      #  run: cat phtree.sln
 
-      - name: LESS test
-        shell: bash
-        run: cat test/common/b_plus_tree_hash_map_test.vcxproj
+      #- name: LESS test
+      #  shell: bash
+      #  run: cat test/common/b_plus_tree_hash_map_test.vcxproj
 
       - name: Run MSBuild
         id: run_msbuild
