@@ -1,5 +1,5 @@
 name: Upload CodeCov Report
-on: [push, pull_request]
+on: [push]
 jobs:
   run:
     runs-on: windows-latest
@@ -14,38 +14,9 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.2
         id: setup_msbuild
 
-
-     # - uses: ilammy/msvc-dev-cmd@v1
-
       - name: Generate Solution
         run: cmake -G "Visual Studio 17 2022" -A x64 . -DPHTREE_CODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug 
 
-      - name: DIR
-        run: dir
-
-      - name: LS
-        shell: bash
-        run: ls -la test
-
-      #- name: LESS_A_B
-      #  shell: bash
-      #  run: cat ALL_BUILD.vcxproj
-
-      #- name: LESS_I
-      #  shell: bash
-      #  run: cat INSTALL.vcxproj
-
-      #- name: LESS_RT
-      #  shell: bash
-      #  run: cat RUN_TESTS.vcxproj
-
-      #- name: LESS_PHT_SLN
-      #  shell: bash
-      #  run: cat phtree.sln
-
-      #- name: LESS test
-      #  shell: bash
-      #  run: cat test/common/b_plus_tree_hash_map_test.vcxproj
 
       - name: Run MSBuild
         id: run_msbuild
@@ -61,32 +32,19 @@ jobs:
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       #  run: ctest -C ${env:BUILD_TYPE}
 
-      - name: Setup OpenCppCoverage and add to PATh
+      - name: Setup OpenCppCoverage and add to PATH
         id: setup_opencppcoverage
         run: |
           choco install OpenCppCoverage -y
           echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
-
-      - name: FIND
-        shell: bash
-        run: find . -name "*.exe"
-      - name: FIND dll
-        shell: bash
-        run: find . -name "*.dll"
-
-
-
 
       - name: Generate Report
         id: generate_test_report
         shell: cmd
         run: OpenCppCoverage.exe --modules phtree --export_type cobertura:phtree.xml -- "vstest.console.exe" test\Debug\all_tests.exe
       - name: Upload Report to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: ./phtree.xml
           fail_ci_if_error: true
           functionalities: fix
-
-          # https://github.com/codecov/codecov-action#usage
-          # https://app.codecov.io/gh/tzaeschke/phtree-cpp/new

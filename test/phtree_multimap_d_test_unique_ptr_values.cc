@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_multimap_d_test_unique_ptr_values {
+
 // Number of entries that have the same coordinate
 static const size_t NUM_DUPL = 4;
 static const double WORLD_MIN = -1000;
@@ -56,25 +58,32 @@ struct IdObj {
 };
 
 using Id = std::unique_ptr<IdObj>;
+}  // namespace phtree_multimap_d_test_unique_ptr_values
 
 namespace std {
 template <>
-struct hash<Id> {
-    size_t operator()(const Id& x) const {
+struct hash<phtree_multimap_d_test_unique_ptr_values::Id> {
+    size_t operator()(const phtree_multimap_d_test_unique_ptr_values::Id& x) const {
         return std::hash<int>{}(x->_i);
     }
 };
 };  // namespace std
 struct equal_to_content {
-    bool operator()(const Id& x1, const Id& x2) const {
+    bool operator()(
+        const phtree_multimap_d_test_unique_ptr_values::Id& x1,
+        const phtree_multimap_d_test_unique_ptr_values::Id& x2) const {
         return (*x1) == (*x2);
     }
 };
 struct less_content {
-    bool operator()(const Id& x1, const Id& x2) const {
+    bool operator()(
+        const phtree_multimap_d_test_unique_ptr_values::Id& x1,
+        const phtree_multimap_d_test_unique_ptr_values::Id& x2) const {
         return (*x1)._i < (*x2)._i;
     }
 };
+
+namespace phtree_multimap_d_test_unique_ptr_values {
 
 template <dimension_t DIM, typename T>
 using TestTree = PhTreeMultiMap<
@@ -375,3 +384,5 @@ TEST(PhTreeMMDTestUniquePtr, TestUpdateWithRelocateIfCornerCases) {
     ASSERT_EQ(0u, tree.relocate_if(point0, point1, TWO));
     PhTreeDebugHelper::CheckConsistency(tree);
 }
+
+}  // namespace phtree_multimap_d_test_unique_ptr_values

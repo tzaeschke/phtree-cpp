@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_test_unique_ptr_values {
+
 template <dimension_t DIM>
 using TestPoint = PhPoint<DIM>;
 
@@ -295,3 +297,5 @@ TEST(PhTreeTestUniquePtr, TestUpdateWithRelocateIf) {
     ASSERT_EQ(1, (*tree.find(points[1]))->_i);
     ASSERT_EQ(1u, tree.size());
 }
+
+}  // namespace phtree_test_unique_ptr_values

@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_d_test_preprocessor {
+
 template <dimension_t DIM>
 using TestPoint = PhPointD<DIM>;
 
@@ -151,3 +153,5 @@ TEST(PhTreeDTestPreprocessor, SmokeTestBasicOps) {
     SmokeTestBasicOps<10>();
     SmokeTestBasicOps<20>();
 }
+
+}  // namespace phtree_d_test_preprocessor

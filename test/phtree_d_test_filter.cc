@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_d_test_filter {
+
 template <dimension_t DIM>
 using TestPoint = PhPointD<DIM>;
 
@@ -240,8 +242,7 @@ struct CallbackConst {
     }
 };
 
-[[maybe_unused]]
-static void print_id_counters() {
+[[maybe_unused]] static void print_id_counters() {
     std::cout << "dc=" << f_default_construct_ << " c=" << f_construct_
               << " cc=" << f_copy_construct_ << " mc=" << f_move_construct_
               << " ca=" << f_copy_assign_ << " ma=" << f_move_assign_ << " d=" << f_destruct_
@@ -479,3 +480,5 @@ TEST(PhTreeDFilterTest, TestSphereQueryAll) {
     testSphereQuery<dim>(p, 10000, 1000, n);
     ASSERT_EQ(1000, n);
 }
+
+}  // namespace phtree_d_test_filter

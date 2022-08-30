@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_multimap_d_test_filter {
+
 // Number of entries that have the same coordinate
 static const size_t NUM_DUPL = 4;
 [[maybe_unused]] static const double WORLD_MIN = -1000;
@@ -61,15 +63,18 @@ struct Id {
 
     int _i;
 };
+}  // namespace phtree_multimap_d_test_filter
 
 namespace std {
 template <>
-struct hash<Id> {
-    size_t operator()(const Id& x) const {
+struct hash<phtree_multimap_d_test_filter::Id> {
+    size_t operator()(const phtree_multimap_d_test_filter::Id& x) const {
         return std::hash<int>{}(x._i);
     }
 };
 };  // namespace std
+
+namespace phtree_multimap_d_test_filter {
 
 struct IdHash {
     template <class T1, class T2>
@@ -683,3 +688,5 @@ TEST(PhTreeMMDFilterTest, TestAABBQuery) {
     QueryManyAABB<3>(&testAABBQuery<3>);
     QueryAll<3>(&testAABBQuery<3>);
 }
+
+}  // namespace phtree_multimap_d_test_filter

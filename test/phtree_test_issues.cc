@@ -22,28 +22,28 @@
 
 using namespace improbable::phtree;
 
-
 using namespace std;
+
+namespace phtree_test_issues {
 
 #if defined(__clang__) || defined(__GNUC__)
 
-void mem_usage(double &vm_usage, double &resident_set) {
+void mem_usage(double& vm_usage, double& resident_set) {
     vm_usage = 0.0;
     resident_set = 0.0;
-    ifstream stat_stream("/proc/self/stat", ios_base::in); //get info from proc directory
-    //create some variables to get info
+    ifstream stat_stream("/proc/self/stat", ios_base::in);  // get info from proc directory
+    // create some variables to get info
     string pid, comm, state, ppid, pgrp, session, tty_nr;
     string tpgid, flags, minflt, cminflt, majflt, cmajflt;
     string utime, stime, cutime, cstime, priority, nice;
     string O, itrealvalue, starttime;
     unsigned long vsize;
     long rss;
-    stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
-                >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
-                >> utime >> stime >> cutime >> cstime >> priority >> nice
-                >> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
+    stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr >> tpgid >> flags >>
+        minflt >> cminflt >> majflt >> cmajflt >> utime >> stime >> cutime >> cstime >> priority >>
+        nice >> O >> itrealvalue >> starttime >> vsize >> rss;  // don't care about the rest
     stat_stream.close();
-    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // for x86-64 is configured to use 2MB pages
+    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;  // for x86-64 is configured to use 2MB pages
     vm_usage = vsize / 1024.0;
     resident_set = rss * page_size_kb;
 }
@@ -57,7 +57,8 @@ int get_resident_mem_kb() {
 void print_mem() {
     double vm, rss;
     mem_usage(vm, rss);
-    cout << "  Virtual Memory: " << vm << " KB" << std::endl << "  Resident set size: " << rss << " KB" << endl;
+    cout << "  Virtual Memory: " << vm << " KB" << std::endl
+         << "  Resident set size: " << rss << " KB" << endl;
 }
 
 #elif defined(_MSC_VER)
@@ -67,8 +68,9 @@ int get_resident_mem_kb() {
 
 void print_mem() {
     double vm = 0, rss = 0;
-    //mem_usage(vm, rss);
-    cout << "  Virtual Memory: " << vm << " KB" << std::endl << "  Resident set size: " << rss << " KB" << endl;
+    // mem_usage(vm, rss);
+    cout << "  Virtual Memory: " << vm << " KB" << std::endl
+         << "  Resident set size: " << rss << " KB" << endl;
 }
 #endif
 
@@ -76,17 +78,18 @@ auto start_timer() {
     return std::chrono::steady_clock::now();
 }
 
-template<typename T>
-void end_timer(T start, const char *prefix) {
+template <typename T>
+void end_timer(T start, const char* prefix) {
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds1 = end - start;
-    std::cout << "elapsed time " << prefix << " = " << elapsed_seconds1.count() << " s" << std::endl;
+    std::cout << "elapsed time " << prefix << " = " << elapsed_seconds1.count() << " s"
+              << std::endl;
 }
 
 // Disabled for cmake CI builds because it always fails
 #if !defined(SKIP_TEST_MEMORY_LEAKS)
 TEST(PhTreeTestIssues, TestIssue60) {
-    //auto tree = PhTreeMultiMapD<2, int>();
+    // auto tree = PhTreeMultiMapD<2, int>();
     auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::set<int>>();
     std::vector<PhPointD<2>> vecPos;
     int dim = 1000;
@@ -94,18 +97,19 @@ TEST(PhTreeTestIssues, TestIssue60) {
 
     auto start1 = start_timer();
     for (int i = 0; i < num; ++i) {
-        PhPointD<2> p = {(double) (rand() % dim), (double) (rand() % dim)};
+        PhPointD<2> p = {(double)(rand() % dim), (double)(rand() % dim)};
         vecPos.push_back(p);
         tree.emplace(p, i);
     }
     end_timer(start1, "1");
 
     // "warm up": relocate() will inevitably allocate a little bit of memory (new nodes etc).
-    // This warm up allocates this memory before we proceed to leak testing which ensures that the memory does not grow.
+    // This warm up allocates this memory before we proceed to leak testing which ensures that the
+    // memory does not grow.
     for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
-            PhPointD<2> &p = vecPos[i];
-            PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+            PhPointD<2>& p = vecPos[i];
+            PhPointD<2> newp = {(double)(rand() % dim), (double)(rand() % dim)};
             tree.relocate(p, newp, i);
             p = newp;
         }
@@ -117,8 +121,8 @@ TEST(PhTreeTestIssues, TestIssue60) {
     auto mem_start_2 = get_resident_mem_kb();
     for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
-            PhPointD<2> &p = vecPos[i];
-            PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+            PhPointD<2>& p = vecPos[i];
+            PhPointD<2> newp = {(double)(rand() % dim), (double)(rand() % dim)};
             tree.relocate(p, newp, i);
             p = newp;
         }
@@ -134,7 +138,7 @@ TEST(PhTreeTestIssues, TestIssue60) {
 // Disabled for cmake CI builds because it always fails
 #if !defined(SKIP_TEST_MEMORY_LEAKS)
 TEST(PhTreeTestIssues, TestIssue60_minimal) {
-    //auto tree = PhTreeMultiMapD<2, int>();
+    // auto tree = PhTreeMultiMapD<2, int>();
     auto tree = PhTreeMultiMapD<2, int, ConverterIEEE<2>, std::set<int>>();
     std::vector<PhPointD<2>> vecPos;
     int dim = 1000;
@@ -142,18 +146,19 @@ TEST(PhTreeTestIssues, TestIssue60_minimal) {
 
     auto start1 = start_timer();
     for (int i = 0; i < num; ++i) {
-        PhPointD<2> p = {(double) (rand() % dim), (double) (rand() % dim)};
+        PhPointD<2> p = {(double)(rand() % dim), (double)(rand() % dim)};
         vecPos.push_back(p);
         tree.emplace(p, i);
     }
     end_timer(start1, "1");
 
     // "warm up": relocate() will inevitably allocate a little bit of memory (new nodes etc).
-    // This warm up allocates this memory before we proceed to leak testing which ensures that the memory does not grow.
+    // This warm up allocates this memory before we proceed to leak testing which ensures that the
+    // memory does not grow.
     for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
-            PhPointD<2> &p = vecPos[i];
-            PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+            PhPointD<2>& p = vecPos[i];
+            PhPointD<2> newp = {(double)(rand() % dim), (double)(rand() % dim)};
             tree.relocate(p, newp, i);
             p = newp;
         }
@@ -165,7 +170,7 @@ TEST(PhTreeTestIssues, TestIssue60_minimal) {
     auto mem_start_2 = get_resident_mem_kb();
     for (int j = 0; j < 100; ++j) {
         for (int i = 0; i < num; ++i) {
-            PhPointD<2> &p = vecPos[i];
+            PhPointD<2>& p = vecPos[i];
             PhPointD<2> newp = {p[0] + 1, p[1] + 1};
             tree.relocate(p, newp, i);
             p = newp;
@@ -186,7 +191,7 @@ TEST(PhTreeTestIssues, TestIssue6_3_MAP) {
 
     int num = 100000;
     for (int i = 0; i < num; ++i) {
-        PhPointD<2> p = {(double) (rand() % dim), (double) (rand() % dim)};
+        PhPointD<2> p = {(double)(rand() % dim), (double)(rand() % dim)};
         vecPos.push_back(p);
         tree.emplace(p, i);
     }
@@ -194,10 +199,10 @@ TEST(PhTreeTestIssues, TestIssue6_3_MAP) {
     print_mem();
     for (int i = 0; i < num; ++i) {
         PhPointD<2> p = vecPos[i];
-        PhPointD<2> newp = {(double) (rand() % dim), (double) (rand() % dim)};
+        PhPointD<2> newp = {(double)(rand() % dim), (double)(rand() % dim)};
         tree.relocate(p, newp);
     }
     print_mem();
 }
 
-
+}  // namespace phtree_test_issues

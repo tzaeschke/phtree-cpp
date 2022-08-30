@@ -39,48 +39,62 @@ set_target_properties(gtest_main PROPERTIES FOLDER extern)
 
 
 
-include(GoogleTest)
-#gtest_discover_tests(phtree_test_f)
-
-# package_add_test(phtree_all_test phtree_test.cc phtree_d_test.cc phtree_f_test.cc)
-package_add_test(phtree_test phtree_test.cc)
-#package_add_test(phtree_test_const_values phtree_test_const_values.cc)
-#package_add_test(phtree_test_issues phtree_test_issues.cc)
-#target_compile_definitions(phtree_test_issues PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
-#package_add_test(phtree_test_ptr_values phtree_test_ptr_values.cc)
-#package_add_test(phtree_test_unique_ptr_values phtree_test_unique_ptr_values.cc)
-
-package_add_test(phtree_f_test phtree_f_test.cc)
-
-#package_add_test(phtree_d_test phtree_d_test.cc)
-#package_add_test(phtree_d_test_copy_move phtree_d_test_copy_move.cc)
-#package_add_test(phtree_d_test_custom_key phtree_d_test_custom_key.cc)
-#package_add_test(phtree_d_test_filter phtree_d_test_filter.cc)
-#package_add_test(phtree_d_test_preprocessor phtree_d_test_preprocessor.cc)
-
-#package_add_test(phtree_box_f_test phtree_box_f_test.cc)
-
-#package_add_test(phtree_box_d_test phtree_box_d_test.cc)
-#package_add_test(phtree_box_d_test_filter phtree_box_d_test_filter.cc)
-#package_add_test(phtree_box_d_test_query_types phtree_box_d_test_query_types.cc)
-
-#package_add_test(phtree_multimap_d_test phtree_multimap_d_test.cc)
-#package_add_test(phtree_multimap_d_test_copy_move phtree_multimap_d_test_copy_move.cc)
-#package_add_test(phtree_multimap_d_test_filter phtree_multimap_d_test_filter.cc)
-#package_add_test(phtree_multimap_d_test_unique_ptr_values phtree_multimap_d_test_unique_ptr_values.cc)
-
-#package_add_test(phtree_multimap_box_d_test phtree_multimap_box_d_test.cc)
-
-#add_subdirectory(common)
+#include(GoogleTest)
+#gtest_discover_tests(all_tests_driver)
 
 #gtest_discover_tests(phtree_f_test)
 if (PHTREE_CODE_COVERAGE)
     package_add_test_main(all_tests 
-        phtree_test.cc 
+        all_tests.cc
+        phtree_test.cc
+        phtree_test_const_values.cc
+        phtree_test_issues.cc
+        phtree_test_ptr_values.cc
+        phtree_test_unique_ptr_values.cc
         phtree_f_test.cc 
+        phtree_d_test.cc
+        phtree_d_test_copy_move.cc
+        phtree_d_test_custom_key.cc
+        phtree_d_test_filter.cc
+        phtree_d_test_preprocessor.cc
         phtree_box_f_test.cc
         phtree_box_d_test.cc
         phtree_box_d_test_filter.cc
         phtree_box_d_test_query_types.cc
-        all_tests.cc)
+        phtree_multimap_d_test.cc
+        phtree_multimap_d_test_copy_move.cc
+        phtree_multimap_d_test_filter.cc
+        phtree_multimap_d_test_unique_ptr_values.cc
+        phtree_multimap_box_d_test.cc)
+    target_compile_definitions(all_tests PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
+else ()
+    package_add_test(phtree_test phtree_test.cc)
+    package_add_test(phtree_test_const_values phtree_test_const_values.cc)
+    package_add_test(phtree_test_issues phtree_test_issues.cc)
+    target_compile_definitions(phtree_test_issues PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
+    package_add_test(phtree_test_ptr_values phtree_test_ptr_values.cc)
+    package_add_test(phtree_test_unique_ptr_values phtree_test_unique_ptr_values.cc)
+
+    package_add_test(phtree_f_test phtree_f_test.cc)
+
+    package_add_test(phtree_d_test phtree_d_test.cc)
+    package_add_test(phtree_d_test_copy_move phtree_d_test_copy_move.cc)
+    package_add_test(phtree_d_test_custom_key phtree_d_test_custom_key.cc)
+    package_add_test(phtree_d_test_filter phtree_d_test_filter.cc)
+    package_add_test(phtree_d_test_preprocessor phtree_d_test_preprocessor.cc)
+
+    package_add_test(phtree_box_f_test phtree_box_f_test.cc)
+
+    package_add_test(phtree_box_d_test phtree_box_d_test.cc)
+    package_add_test(phtree_box_d_test_filter phtree_box_d_test_filter.cc)
+    package_add_test(phtree_box_d_test_query_types phtree_box_d_test_query_types.cc)
+
+    package_add_test(phtree_multimap_d_test phtree_multimap_d_test.cc)
+    package_add_test(phtree_multimap_d_test_copy_move phtree_multimap_d_test_copy_move.cc)
+    package_add_test(phtree_multimap_d_test_filter phtree_multimap_d_test_filter.cc)
+    package_add_test(phtree_multimap_d_test_unique_ptr_values phtree_multimap_d_test_unique_ptr_values.cc)
+
+    package_add_test(phtree_multimap_box_d_test phtree_multimap_box_d_test.cc)
+
+    add_subdirectory(common)
 endif ()

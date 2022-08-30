@@ -84,6 +84,9 @@ else ()
     else ()
         set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx")
     endif ()
+    if (PHTREE_CODE_COVERAGE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror -Wa,-mbig-obj")
+    endif ()
 endif ()
 
 # ---------------------------------------------------------------------------------------

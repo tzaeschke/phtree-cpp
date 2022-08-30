@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_test_ptr_values {
+
 template <dimension_t DIM>
 using TestPoint = PhPoint<DIM>;
 
@@ -780,3 +782,5 @@ TEST(PhTreeTestPtr, TestKnnQuery) {
     }
     depopulate(values);
 }
+
+}  // namespace phtree_test_ptr_values

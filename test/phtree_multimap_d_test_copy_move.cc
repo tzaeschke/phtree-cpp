@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_multimap_d_test_copy_move {
+
 // Number of entries that have the same coordinate
 static const size_t NUM_DUPL = 4;
 static const double WORLD_MIN = -1000;
@@ -102,27 +104,30 @@ struct IdCopyOrMove {
     size_t _i{};
     int _data{};
 };
+}
 
 namespace std {
 template <>
-struct hash<IdCopyOnly> {
-    size_t operator()(const IdCopyOnly& x) const {
+struct hash<phtree_multimap_d_test_copy_move::IdCopyOnly> {
+    size_t operator()(const phtree_multimap_d_test_copy_move::IdCopyOnly& x) const {
         return std::hash<int>{}(x._i);
     }
 };
 template <>
-struct hash<IdMoveOnly> {
-    size_t operator()(const IdMoveOnly& x) const {
+struct hash<phtree_multimap_d_test_copy_move::IdMoveOnly> {
+    size_t operator()(const phtree_multimap_d_test_copy_move::IdMoveOnly& x) const {
         return std::hash<size_t>{}(x._i);
     }
 };
 template <>
-struct hash<IdCopyOrMove> {
-    size_t operator()(const IdCopyOrMove& x) const {
+struct hash<phtree_multimap_d_test_copy_move::IdCopyOrMove> {
+    size_t operator()(const phtree_multimap_d_test_copy_move::IdCopyOrMove& x) const {
         return std::hash<size_t>{}(x._i);
     }
 };
 };  // namespace std
+
+namespace phtree_multimap_d_test_copy_move {
 
 struct IdHash {
     template <class T1, class T2>
@@ -321,3 +326,5 @@ TEST(PhTreeMMDTestCopyMove, SmokeTestBasicOpsCopyFails) {
     SmokeTestBasicOpsMoveOnly<20, IdCopyOrMove>(100);
     SmokeTestBasicOpsMoveOnly<63, IdCopyOrMove>(100);
 }
+
+}  // namespace phtree_multimap_d_test_copy_move

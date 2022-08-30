@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_test_const_values {
+
 template <dimension_t DIM>
 using TestPoint = PhPoint<DIM>;
 
@@ -697,3 +699,5 @@ TEST(PhTreeTestConst, TestKnnQuery) {
         ASSERT_EQ(Nq, n);
     }
 }
+
+}  // namespace phtree_test_const_values

@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_d_test_copy_move {
+
 template <dimension_t DIM>
 using TestPoint = PhPointD<DIM>;
 
@@ -296,3 +298,5 @@ TEST(PhTreeDTestCopyMove, SmokeTestBasicOpsCopyFails) {
     SmokeTestBasicOpsMoveOnly<20, IdCopyOrMove>(100);
     SmokeTestBasicOpsMoveOnly<63, IdCopyOrMove>(100);
 }
+
+}  // namespace phtree_d_test_copy_move

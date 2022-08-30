@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_multimap_d_test {
+
 // Number of entries that have the same coordinate
 static const size_t NUM_DUPL = 4;
 static const double WORLD_MIN = -1000;
@@ -57,15 +59,18 @@ struct Id {
     int _i;
     int data_;
 };
+}
 
 namespace std {
 template <>
-struct hash<Id> {
-    size_t operator()(const Id& x) const {
+struct hash<phtree_multimap_d_test::Id> {
+    size_t operator()(const phtree_multimap_d_test::Id& x) const {
         return std::hash<int>{}(x._i);
     }
 };
 };  // namespace std
+
+namespace phtree_multimap_d_test {
 
 struct PointDistance {
     PointDistance(double distance, size_t id) : _distance(distance), _id(static_cast<int>(id)) {}
@@ -1279,3 +1284,5 @@ TEST(PhTreeMMDTest, TestMovableIterators) {
     // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_knn_query(
     //                 3, {2, 3, 4}, DistanceEuclidean<3>()))>);
 }
+
+}  // namespace phtree_multimap_d_test

@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_multimap_box_d_test {
+
 // Number of entries that have the same coordinate
 static const size_t NUM_DUPL = 4;
 static const double WORLD_MIN = -1000;
@@ -58,15 +60,18 @@ struct Id {
     int _i;
     int data_;
 };
+}  // namespace phtree_multimap_box_d_test
 
 namespace std {
 template <>
-struct hash<Id> {
-    size_t operator()(const Id& x) const {
+struct hash<phtree_multimap_box_d_test::Id> {
+    size_t operator()(const phtree_multimap_box_d_test::Id& x) const {
         return std::hash<int>{}(x._i);
     }
 };
 };  // namespace std
+
+namespace phtree_multimap_box_d_test {
 
 struct PointDistance {
     PointDistance(double distance, size_t id) : _distance(distance), _id(static_cast<int>(id)) {}
@@ -1012,3 +1017,5 @@ TEST(PhTreeMMBoxDTest, SmokeTestTreeAPI) {
     treePtr.clear();
     delete idPtr;
 }
+
+}  // namespace phtree_multimap_box_d_test

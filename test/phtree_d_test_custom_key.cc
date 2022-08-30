@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_d_test_custom_key {
+
 static const double MY_MULTIPLIER = 1000000.;
 
 /*
@@ -215,3 +217,5 @@ void SmokeTestBasicOps() {
 TEST(PhTreeDTestCustomKey, SmokeTestBasicOps) {
     SmokeTestBasicOps<3>();
 }
+
+}  // namespace phtree_d_test_custom_key
