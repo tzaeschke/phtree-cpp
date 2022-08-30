@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_box_d_test {
+
 class DoubleRng {
   public:
     DoubleRng(double minIncl, double maxExcl) : eng(), rnd{minIncl, maxExcl} {}
@@ -752,3 +754,5 @@ TEST(PhTreeBoxDTest, SmokeTestTreeAPI) {
     PhTreeBoxD<3, const Id> treeConst;
     treeConst.emplace(PhBoxD<3>({1, 2, 3}, {4, 5, 6}), Id(1));
 }
+
+}  // namespace phtree_box_d_test

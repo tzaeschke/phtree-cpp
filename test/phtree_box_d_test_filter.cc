@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_box_d_test_filter {
+
 template <dimension_t DIM>
 using TestKey = PhBoxD<DIM>;
 
@@ -630,3 +632,5 @@ TEST(PhTreeBoxDFilterTest, TestAABBQuery) {
     QueryManyAABB<3>(&testAABBQuery<3>);
     QueryAll<3>(&testAABBQuery<3>);
 }
+
+}  // namespace phtree_box_d_test_filter

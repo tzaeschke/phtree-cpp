@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_f_test {
+
 template <dimension_t DIM>
 using TestPoint = PhPointF<DIM>;
 
@@ -993,3 +995,5 @@ TEST(PhTreeFTest, SmokeTestTreeAPI) {
     PhTreeF<3, const Id> treeConst;
     treeConst.emplace(PhPointF<3>{1, 2, 3}, Id(1));
 }
+
+}  // namespace phtree_f_test

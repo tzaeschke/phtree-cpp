@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_test {
+
 template <dimension_t DIM>
 using TestPoint = PhPoint<DIM>;
 
@@ -1361,3 +1363,5 @@ TEST(PhTreeTest, TestMovableIterators) {
     // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_knn_query(
     //                3, {2, 3, 4}, DistanceEuclidean<3>()))>);
 }
+
+}  // namespace phtree_test

@@ -21,6 +21,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_box_f_test {
+
 template <dimension_t DIM>
 using TestPoint = PhBoxF<DIM>;
 
@@ -756,3 +758,5 @@ TEST(PhTreeBoxFTest, SmokeTestTreeAPI) {
     PhTreeBoxF<3, const Id> treeConst;
     treeConst.emplace(TestPoint<3>({1, 2, 3}, {4, 5, 6}), Id(1));
 }
+
+}  // namespace phtree_box_f_test

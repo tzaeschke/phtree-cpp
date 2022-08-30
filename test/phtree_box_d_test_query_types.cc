@@ -20,6 +20,8 @@
 
 using namespace improbable::phtree;
 
+namespace phtree_box_d_test_query_types {
+
 template <dimension_t DIM>
 using TestPoint = PhBoxD<DIM>;
 
@@ -60,3 +62,5 @@ TEST(PhTreeBoxDTestQueryTypes, SmokeTestQuery) {
     q3++;
     ASSERT_EQ(q3, tree.end());
 }
+
+}  // namespace phtree_box_d_test_query_types
