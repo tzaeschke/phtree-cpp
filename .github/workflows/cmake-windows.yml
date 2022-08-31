@@ -19,12 +19,12 @@ jobs:
 
       - name: Configure CMake
         working-directory: ${{github.workspace}}\out
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}\out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON -j2
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}\out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}\out
         # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config ${env:BUILD_TYPE}
+        run: cmake --build . --config ${env:BUILD_TYPE} -j2
 
       - name: Test
         working-directory: ${{github.workspace}}\out
