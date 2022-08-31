@@ -51,7 +51,17 @@ if (PHTREE_CODE_COVERAGE)
             phtree_multimap_d_test_copy_move.cc
             phtree_multimap_d_test_filter.cc
             phtree_multimap_d_test_unique_ptr_values.cc
-            phtree_multimap_box_d_test.cc)
+            phtree_multimap_box_d_test.cc
+            common/b_plus_tree_hash_map_test.cc
+            common/b_plus_tree_map_test.cc
+            common/base_types_test.cc
+            common/bits_test.cc
+            common/common_test.cc
+            common/converter_test.cc
+            common/distance_test.cc
+            common/filter_test.cc
+            common/flat_array_map_test.cc
+            common/flat_sparse_map_test.cc)
     target_compile_definitions(all_tests PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
 else ()
     package_add_test(phtree_test phtree_test.cc)
