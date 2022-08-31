@@ -6,11 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Nothing.
+- Added build features: 
+  - linting for C++ and bazel files.
+  - Added CI status badges.
+  - Added test coverage
+    [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
 
 ### Changed
-- Cleaned up build scripts. Added linting for C++ and bazel files. CI status badges.
-  [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
+- Cleaned up build scripts. [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
 
 ### Removed
 - Nothing.

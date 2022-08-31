@@ -1,6 +1,6 @@
 name: Bazel build
 
-on: [push]
+on: [ push ]
 
 jobs:
   build:

@@ -1,14 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(phtree-tests LANGUAGES CXX)
 
-#if(PHTREE_CODE_COVERAGE)
-#    include(${CMAKE_SOURCE_DIR}/cmake/CodeCoverage.cmake)
-#    append_coverage_compiler_flags()
-#    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest -C Debug BASE_DIRECTORY ../coverage)
-#endif()
-
-
-
 include(FetchContent)
 include(common/scripts.cmake)
 
@@ -22,9 +14,6 @@ if (MSVC)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif ()
 FetchContent_MakeAvailable(googletest)
-#add_library(GTest::GTest INTERFACE IMPORTED)
-#target_link_libraries(GTest::GTest INTERFACE gtest_main)
-#target_link_libraries(GTest::gtest_main)
 
 # The next line is optional, but keeps your CACHE cleaner:
 mark_as_advanced(
@@ -37,35 +26,32 @@ mark_as_advanced(
 set_target_properties(gtest PROPERTIES FOLDER extern)
 set_target_properties(gtest_main PROPERTIES FOLDER extern)
 
-
-
 #include(GoogleTest)
 #gtest_discover_tests(all_tests_driver)
 
-#gtest_discover_tests(phtree_f_test)
 if (PHTREE_CODE_COVERAGE)
-    package_add_test_main(all_tests 
-        all_tests.cc
-        phtree_test.cc
-        phtree_test_const_values.cc
-        phtree_test_issues.cc
-        phtree_test_ptr_values.cc
-        phtree_test_unique_ptr_values.cc
-        phtree_f_test.cc 
-        phtree_d_test.cc
-        phtree_d_test_copy_move.cc
-        phtree_d_test_custom_key.cc
-        phtree_d_test_filter.cc
-        phtree_d_test_preprocessor.cc
-        phtree_box_f_test.cc
-        phtree_box_d_test.cc
-        phtree_box_d_test_filter.cc
-        phtree_box_d_test_query_types.cc
-        phtree_multimap_d_test.cc
-        phtree_multimap_d_test_copy_move.cc
-        phtree_multimap_d_test_filter.cc
-        phtree_multimap_d_test_unique_ptr_values.cc
-        phtree_multimap_box_d_test.cc)
+    package_add_test_main(all_tests
+            all_tests.cc
+            phtree_test.cc
+            phtree_test_const_values.cc
+            phtree_test_issues.cc
+            phtree_test_ptr_values.cc
+            phtree_test_unique_ptr_values.cc
+            phtree_f_test.cc
+            phtree_d_test.cc
+            phtree_d_test_copy_move.cc
+            phtree_d_test_custom_key.cc
+            phtree_d_test_filter.cc
+            phtree_d_test_preprocessor.cc
+            phtree_box_f_test.cc
+            phtree_box_d_test.cc
+            phtree_box_d_test_filter.cc
+            phtree_box_d_test_query_types.cc
+            phtree_multimap_d_test.cc
+            phtree_multimap_d_test_copy_move.cc
+            phtree_multimap_d_test_filter.cc
+            phtree_multimap_d_test_unique_ptr_values.cc
+            phtree_multimap_box_d_test.cc)
     target_compile_definitions(all_tests PUBLIC SKIP_TEST_MEMORY_LEAKS=ON)
 else ()
     package_add_test(phtree_test phtree_test.cc)
