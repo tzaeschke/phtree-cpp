@@ -55,7 +55,7 @@ jobs:
       - name: l2
         #working-directory: ${{github.workspace}}/build
         shell: bash
-        run: lcov -r coverage.info */build/* */test/* */c++/* */gtest/* -o coverageFiltered.info
+        run: lcov -r coverage.info */build/* */tests/* */c++/* */gtest/* -o coverageFiltered.info
 
       - name: l3
         #working-directory: ${{github.workspace}}/build
@@ -70,7 +70,7 @@ jobs:
 #          functionalities: fix
 
       - name: curl
-        working-directory: ${{github.workspace}}/build
+        #working-directory: ${{github.workspace}}/build
         shell: bash
         run: bash <(curl -s https://codecov.io/bash) -f coverageFiltered.info || echo "Codecov did not collect coverage reports"
 
