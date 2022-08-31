@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Cleaned up build scripts. [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
+- Fixed code coverage + migrate to linux. [#80](https://github.com/tzaeschke/phtree-cpp/issues/80)
 
 ### Removed
 - Nothing.
