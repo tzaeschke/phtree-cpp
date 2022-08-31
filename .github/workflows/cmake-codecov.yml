@@ -17,7 +17,6 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install lcov
-        #shell: bash
         run: sudo apt-get install lcov -y
 
       - name: Create Build Environment
@@ -26,37 +25,23 @@ jobs:
           cd build
 
       - name: Configure CMake
-        #working-directory: ${{github.workspace}}/build
-        # Note the current convention is to use the -S and -B options here to specify source
-        # and build directories, but this is only available with CMake 3.13 and higher.
-        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+        working-directory: ${{github.workspace}}\out
         run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DPHTREE_CODE_COVERAGE=ON
 
       - name: Build
-        #working-directory: ${{github.workspace}}/build
-        #shell: bash
-        # Execute the build.  You can specify a specific target with "--target <NAME>"
+        working-directory: ${{github.workspace}}\out
         run: cmake --build . --config $BUILD_TYPE -j2
 
-      - name: Test
-        #working-directory: ${{github.workspace}}/build
-        #shell: bash
+      - name: Run tests
+        working-directory: ${{github.workspace}}\out
         run: ctest -C $BUILD_TYPE
 
-#      - name: cd
-#        #working-directory: ${{github.workspace}}/build
-#        #shell: bash
-#        run:
-
-      - name: lcov
-        #shell: bash
+      - name: Create and upload coverage
+        working-directory: ${{github.workspace}}\out
         run: |
           cd test/CMakeFiles/all_tests.dir/
           lcov --directory . --capture -o coverage.info
           lcov -r coverage.info */build/* */test/* */c++/* */gtest/* -o coverageFiltered.info
           lcov --list coverageFiltered.info
-
-      - name: Upload to codecov
-        #shell: bash
-        run: bash <(curl -s https://codecov.io/bash) -f coverageFiltered.info || echo "Codecov did not collect coverage reports"
+          bash <(curl -s https://codecov.io/bash) -f coverageFiltered.info || echo "Upload failed"
 
