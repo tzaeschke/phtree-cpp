@@ -2,8 +2,12 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "phtree",
-    srcs = [
-    ],
+    srcs = glob(
+        include = [
+            "common/*.h",
+            "v16/*.h",
+        ],
+    ),
     hdrs = [
         "phtree.h",
         "phtree_multimap.h",
