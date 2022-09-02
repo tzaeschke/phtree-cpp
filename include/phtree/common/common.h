@@ -17,13 +17,10 @@
 #ifndef PHTREE_COMMON_COMMON_H
 #define PHTREE_COMMON_COMMON_H
 
+#include "b_plus_tree_map.h"
 #include "base_types.h"
 #include "bits.h"
-#include "converter.h"
-#include "distance.h"
-#include "filter.h"
 #include "flat_array_map.h"
-#include "b_plus_tree_map.h"
 #include "flat_sparse_map.h"
 #include "tree_stats.h"
 #include <cassert>

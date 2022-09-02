@@ -69,3 +69,30 @@ filegroup(
     name = "dot_clang_format",
     srcs = [".clang-format"],
 )
+
+cc_library(
+    name = "phtree",
+    srcs = glob(
+        include = [
+            "include/**/*.h",
+        ],
+    ),
+    hdrs = [
+        "include/phtree/converter.h",
+        "include/phtree/distance.h",
+        "include/phtree/filter.h",
+        "include/phtree/phtree.h",
+        "include/phtree/phtree_multimap.h",
+    ],
+    linkstatic = True,
+    visibility = [
+        "//visibility:public",
+    ],
+    includes = [
+       "include",
+       ],
+   deps = [
+        "//include/phtree/v16",
+        "//include/phtree/common",
+    ],
+)

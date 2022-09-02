@@ -1,6 +1,45 @@
 package(default_visibility = ["//visibility:private"])
 
 cc_test(
+    name = "converter_test",
+    timeout = "long",
+    srcs = [
+        "converter_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "//test/testing/gtest_main",
+    ],
+)
+
+cc_test(
+    name = "distance_test",
+    timeout = "long",
+    srcs = [
+        "distance_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "//test/testing/gtest_main",
+    ],
+)
+
+cc_test(
+    name = "filter_test",
+    timeout = "long",
+    srcs = [
+        "filter_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "//test/testing/gtest_main",
+    ],
+)
+
+cc_test(
     name = "phtree_test",
     timeout = "long",
     srcs = [
@@ -8,7 +47,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -21,7 +60,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -34,7 +73,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -47,7 +86,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -60,7 +99,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -73,7 +112,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -86,7 +125,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -99,7 +138,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -112,7 +151,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -125,7 +164,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -138,7 +177,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -151,7 +190,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -164,7 +203,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -177,7 +216,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -190,7 +229,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -203,7 +242,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -216,7 +255,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -229,7 +268,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -242,7 +281,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )
@@ -255,7 +294,7 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "//phtree",
+        "//:phtree",
         "//test/testing/gtest_main",
     ],
 )

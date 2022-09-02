@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#include "phtree/common/converter.h"
-#include "phtree/common/common.h"
+#include "phtree/converter.h"
 #include <include/gtest/gtest.h>
 
 using namespace improbable::phtree;

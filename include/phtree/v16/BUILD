@@ -21,6 +21,6 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        "//phtree/common",
+        "//include/phtree/common",
     ],
 )

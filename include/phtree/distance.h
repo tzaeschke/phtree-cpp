@@ -17,12 +17,12 @@
 #ifndef PHTREE_COMMON_DISTANCES_H
 #define PHTREE_COMMON_DISTANCES_H
 
-#include "base_types.h"
-#include "bits.h"
-#include "converter.h"
-#include "flat_array_map.h"
-#include "flat_sparse_map.h"
-#include "tree_stats.h"
+#include "include/phtree/common/base_types.h"
+#include "include/phtree/common/bits.h"
+#include "include/phtree/common/flat_array_map.h"
+#include "include/phtree/common/flat_sparse_map.h"
+#include "include/phtree/common/tree_stats.h"
+#include "include/phtree/converter.h"
 #include <cassert>
 #include <cmath>
 #include <functional>

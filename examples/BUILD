@@ -7,6 +7,6 @@ cc_binary(
         "//visibility:public",
     ],
     deps = [
-        "//phtree",
+        "//:phtree",
     ],
 )

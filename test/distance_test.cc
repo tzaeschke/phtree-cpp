@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "phtree/common/common.h"
+#include "phtree/distance.h"
 #include <include/gtest/gtest.h>
 #include <random>
 

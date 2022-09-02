@@ -93,7 +93,7 @@ endif ()
 # ---------------------------------------------------------------------------------------
 # Build binaries
 # ---------------------------------------------------------------------------------------
-add_subdirectory(phtree)
+add_subdirectory(include/phtree)
 
 if (PHTREE_BUILD_EXAMPLES OR PHTREE_BUILD_ALL)
     message(STATUS "Generating examples")

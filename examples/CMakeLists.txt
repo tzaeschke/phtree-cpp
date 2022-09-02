@@ -3,7 +3,7 @@ project(phtree-examples)
 
 if (WIN32 OR UNIX)
     add_executable(Example example.cc)
-    target_include_directories(Example PRIVATE ${PROJECT_SOURCE_DIR}/..)
+    target_include_directories(Example PRIVATE ${PROJECT_SOURCE_DIR}/include/..)
 else ()
     add_executable(Example example.cc)
     target_link_libraries(Example phtree)

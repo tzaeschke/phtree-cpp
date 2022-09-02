@@ -26,7 +26,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -41,7 +41,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -56,7 +56,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -71,7 +71,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -86,7 +86,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -101,7 +101,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -116,7 +116,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -131,7 +131,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -146,7 +146,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -161,7 +161,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -176,7 +176,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -191,7 +191,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -206,7 +206,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -221,7 +221,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -236,7 +236,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -251,7 +251,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -266,7 +266,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -281,7 +281,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -296,7 +296,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -311,7 +311,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -326,7 +326,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -341,7 +341,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -356,7 +356,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],
@@ -371,7 +371,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":benchmark",
-        "//phtree",
+        "//:phtree",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],

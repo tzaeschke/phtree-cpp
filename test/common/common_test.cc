@@ -15,8 +15,8 @@
  */
 
 #include "phtree/common/common.h"
+#include "phtree/converter.h"
 #include <include/gtest/gtest.h>
-#include <random>
 
 using namespace improbable::phtree;
 
@@ -30,26 +30,26 @@ TEST(PhTreeCommonTest, NumberOfDivergingBits) {
     scalar_64_t l_max = std::numeric_limits<scalar_64_t>::max();
 
     bit_width_t x = NumberOfDivergingBits(PhPoint<2>({l1, l1}), PhPoint<2>({l2, l2}));
-    ASSERT_EQ(64, x);
+    ASSERT_EQ(64u, x);
     x = NumberOfDivergingBits(PhPoint<2>({-1, -1}), PhPoint<2>({l_min, l_min}));
-    ASSERT_EQ(63, x);
+    ASSERT_EQ(63u, x);
     x = NumberOfDivergingBits(PhPoint<2>({1, 1}), PhPoint<2>({l_max, l_max}));
-    ASSERT_EQ(63, x);
+    ASSERT_EQ(63u, x);
 
     x = NumberOfDivergingBits(PhPoint<2>({l1, l2}), PhPoint<2>({l1, l2}));
-    ASSERT_EQ(0, x);
+    ASSERT_EQ(0u, x);
 
     // PhPointD{679.186, 519.897, 519.897}
     PhPoint<3> p1{0x4085397c9ffc65e8, 0x40803f2cf7158e9a, 0x40803f2cf7158e9a};
     // PhPointD{35.5375, 8.69049, 8.69049}
     PhPoint<3> p2{0x4041c4ce0e8a359e, 0x40216187a0776fd5, 0x40216187a0776fd5};
     x = NumberOfDivergingBits(p1, p2);
-    ASSERT_EQ(56, x);
+    ASSERT_EQ(56u, x);
 
     // PhPointD{132.406, 219.74, 219.74}
     PhPoint<3> p20{0x40608cffffe5b480, 0x406b77aff096adc1, 0x406b77aff096adc1};
     // PhPointD{679.186, 519.897, 519.897}
     PhPoint<3> p21{0x4085397c9ffc65e8, 0x40803f2cf7158e9a, 0x40803f2cf7158e9a};
     x = NumberOfDivergingBits(p20, p21);
-    ASSERT_EQ(56, x);
+    ASSERT_EQ(56u, x);
 }
