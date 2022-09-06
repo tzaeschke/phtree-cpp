@@ -105,7 +105,6 @@ add_library(phtree::phtree ALIAS phtree) # TODO  ALIAS  phtree_header_only
 
 #target_include_directories(phtree INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
 #        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-#target_link_libraries(phtree INTERFACE Threads::Threads)
 target_include_directories(phtree INTERFACE include/)
 
 
