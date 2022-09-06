@@ -17,13 +17,8 @@
 #ifndef PHTREE_COMMON_FILTERS_H
 #define PHTREE_COMMON_FILTERS_H
 
-//#include "include/phtree/common/base_types.h"
-//#include "include/phtree/common/bits.h"
-//#include "include/phtree/common/flat_array_map.h"
-//#include "include/phtree/common/flat_sparse_map.h"
-//#include "include/phtree/common/tree_stats.h"
-#include "include/phtree/converter.h"
-#include "include/phtree/distance.h"
+#include "converter.h"
+#include "distance.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>

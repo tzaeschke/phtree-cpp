@@ -17,7 +17,7 @@
 #ifndef PHTREE_COMMON_CONVERTER_H
 #define PHTREE_COMMON_CONVERTER_H
 
-#include "include/phtree/common/base_types.h"
+#include "common/common.h"
 #include <cstring>
 
 /*

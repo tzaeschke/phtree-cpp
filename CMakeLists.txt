@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 set(PHTREE_VERSION 1.3.0)
 
 # set the project name
-project(phtree-distribution VERSION ${PHTREE_VERSION}
+project(phtree VERSION ${PHTREE_VERSION}
         DESCRIPTION "PH-Tree C++"
         LANGUAGES CXX)
 
@@ -95,7 +95,21 @@ endif ()
 # ---------------------------------------------------------------------------------------
 # Build binaries
 # ---------------------------------------------------------------------------------------
-add_subdirectory(include/phtree)
+
+#add_subdirectory(include/phtree)
+# ---------------------------------------------------------------------------------------
+# Header only version
+# ---------------------------------------------------------------------------------------
+add_library(phtree INTERFACE)  # TODO  ALIAS  phtree_header_only
+add_library(phtree::phtree ALIAS phtree) # TODO  ALIAS  phtree_header_only
+
+#target_include_directories(phtree INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+#        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+#target_link_libraries(phtree INTERFACE Threads::Threads)
+target_include_directories(phtree INTERFACE include/)
+
+
+
 
 if (PHTREE_BUILD_EXAMPLES OR PHTREE_BUILD_ALL)
     message(STATUS "Generating examples")
