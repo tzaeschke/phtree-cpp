@@ -14,4 +14,4 @@ out
 cygwin
 CMakeSettings.json
 
-/cmake-build-debug/
+**/cmake-build-debug/
