@@ -84,15 +84,15 @@ cc_library(
         "include/phtree/phtree.h",
         "include/phtree/phtree_multimap.h",
     ],
+    includes = [
+        "include",
+    ],
     linkstatic = True,
     visibility = [
         "//visibility:public",
     ],
-    includes = [
-       "include",
-       ],
-   deps = [
-        "//include/phtree/v16",
+    deps = [
         "//include/phtree/common",
+        "//include/phtree/v16",
     ],
 )
