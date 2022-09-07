@@ -533,8 +533,8 @@ There are numerous ways to improve performance. The following list gives an over
 
 ## Compiling the PH-Tree
 
-The PH-Tree index itself is a *header only* library, it can be used by simply copying all headers in the `phtree` 
-folder. 
+The PH-Tree index itself is a *header only* library, it can be used by simply copying everything in the 
+`include/phtree` folder. 
 The examples, tests and benchmarks can be build with bazel or cmake.  
 
 <a id="build-system-and-dependencies"></a>
@@ -545,7 +545,7 @@ PH-Tree can be built with [Bazel](https://bazel.build) (primary build system) or
 [cmake](https://cmake.org/) *3.14*. 
 All code is written in C++ targeting the C++17 standard. 
 The code has been verified to compile on Linux with Clang 11 and GCC 9, and on Windows with Visual Studio 2019
-(except benchmarks, which don't work wi VS).
+(except benchmarks, which don't work with VS).
 The PH-tree makes use of vectorization, so suggested compilation options for clang/gcc are:
 ```
 -O3 -mavx
@@ -555,6 +555,25 @@ The PH-tree makes use of vectorization, so suggested compilation options for cla
 <a id="bazel"></a>
 
 ### Bazel
+<!--
+`WORKSPACE` file:
+```
+http_archive(
+    name = "phtree",
+    strip_prefix = "phtree-cpp-v1.4.0",
+    url = "https://github.com/tzaeschke/phtree-cpp",
+)
+```
+`BUILD` file:
+```
+cc_binary(
+    ...
+    deps = [
+        "@phtree//:phtree",
+    ],
+)
+```
+-->
 
 Once you have set up your dependencies, you should be able to build the PH-Tree repository by running:
 ```
@@ -575,6 +594,19 @@ bazel run //benchmark:update_mm_d_benchmark --config=benchmark  -- --benchmark_c
 <a id="cmake"></a>
 
 ### cmake
+<!--With `FetchContent_...()`: ***NOTE This will only work once v1.4.0 has been released!***
+```
+include(FetchContent)
+FetchContent_Declare(
+        phtree
+        GIT_REPOSITORY https://github.com/tzaeschke/phtree-cpp.git
+        #GIT_TAG v1.3.0
+        GIT_TAG 9e81dd52560b346895379586d03ff4c51508d9d4
+)
+FetchContent_MakeAvailable(phtree)
+```
+-->
+
 `cmake` uses `ccache` when available.
 ```
 mkdir build
@@ -597,7 +629,8 @@ cmake --build .
 ctest
 ```
 Next to example (`PHTREE_BUILD_EXAMPLES`) there are also tests (`PHTREE_BUILD_TESTS`) and 
-benchmarks (`PHTREE_BUILD_BENCHMARKS`). To build all, use `PHTREE_BUILD_ALL`.
+benchmarks (`PHTREE_BUILD_BENCHMARKS`). To build all, use `PHTREE_BUILD_ALL`. 
+**Note that the benchmarks currently don't work on Windows.** 
 
 ## Further Resources
 

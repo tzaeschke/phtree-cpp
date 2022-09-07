@@ -6,15 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Added build features: 
+- Added build features: [#53](https://github.com/tzaeschke/phtree-cpp/issues/53) 
   - linting for C++ and bazel files.
   - Added CI status badges.
   - Added test coverage
-    [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
 
 ### Changed
 - Cleaned up build scripts. [#53](https://github.com/tzaeschke/phtree-cpp/issues/53)
 - Fixed code coverage + migrate to linux. [#80](https://github.com/tzaeschke/phtree-cpp/issues/80)
+- ***BREAKING CHANGE*** The project has been restructured to have a more "standard" directory structure.
+  This affects how **bazel** dependencies work (use `deps = ["@phtree//:phtree",]`) and enables **cmake FetchContent_**.
+  See README for details. [#75](https://github.com/tzaeschke/phtree-cpp/issues/75)
 
 ### Removed
 - Nothing.

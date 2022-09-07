@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 
-set(PHTREE_VERSION 1.3.0)
-
-# set the project name
-project(phtree VERSION ${PHTREE_VERSION}
+project(phtree VERSION 1.3.0
         DESCRIPTION "PH-Tree C++"
+        HOMEPAGE_URL "https://github.com/tzaeschke/phtree-cpp"
         LANGUAGES CXX)
 
 
@@ -21,16 +19,13 @@ endif ()
 # ---------------------------------------------------------------------------------------
 # Build options
 # ---------------------------------------------------------------------------------------
-# example options
 option(PHTREE_BUILD_ALL "Build examples, tests and benchmarks" OFF)
 
 # example options
 option(PHTREE_BUILD_EXAMPLES "Build examples" OFF)
-#option(PHTREE_BUILD_EXAMPLE_HO "Build header only example" OFF)
 
 # testing options
 option(PHTREE_BUILD_TESTS "Build tests" OFF)
-#option(PHTREE_BUILD_TESTS_HO "Build tests using the header only version" OFF)
 option(PHTREE_CODE_COVERAGE "Collect coverage from test library" OFF)
 if (PHTREE_CODE_COVERAGE)
     set(PHTREE_BUILD_TESTS ON)
@@ -99,23 +94,10 @@ endif ()
 # ---------------------------------------------------------------------------------------
 # Header only version
 # ---------------------------------------------------------------------------------------
-add_library(phtree INTERFACE)  # TODO  ALIAS  phtree_header_only
-add_library(phtree::phtree ALIAS phtree) # TODO  ALIAS  phtree_header_only
+add_library(phtree INTERFACE)
+add_library(phtree::phtree ALIAS phtree)
 
-#target_include_directories(phtree INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
-#        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-
-
-#target_include_directories(phtree INTERFACE include/)
-
-
-#    $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}>
-#    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-
-#    $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
-#    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-
- target_include_directories(phtree INTERFACE 
+target_include_directories(phtree INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
