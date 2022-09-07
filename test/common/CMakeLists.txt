@@ -6,9 +6,5 @@ package_add_test(base_types_test base_types_test.cc)
 package_add_test(bits_test bits_test.cc)
 package_add_test(common_test common_test.cc)
 
-package_add_test(converter_test ../converter_test.cc)
-
-package_add_test(distance_test ../distance_test.cc)
-package_add_test(filter_test ../filter_test.cc)
 package_add_test(flat_array_map_test flat_array_map_test.cc)
 package_add_test(flat_sparse_map_test flat_sparse_map_test.cc)

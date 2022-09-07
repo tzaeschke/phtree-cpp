@@ -92,5 +92,9 @@ else ()
 
     package_add_test(phtree_multimap_box_d_test phtree_multimap_box_d_test.cc)
 
+    package_add_test(converter_test converter_test.cc)
+    package_add_test(distance_test distance_test.cc)
+    package_add_test(filter_test filter_test.cc)
+
     add_subdirectory(common)
 endif ()

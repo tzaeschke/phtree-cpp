@@ -24,7 +24,6 @@
 #include <cmath>
 #include <functional>
 #include <limits>
-//#include <sstream>
 
 namespace improbable::phtree {
 

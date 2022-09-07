@@ -17,8 +17,8 @@
 #ifndef PHTREE_V16_DEBUG_HELPER_H
 #define PHTREE_V16_DEBUG_HELPER_H
 
-#include "../common/common.h"
-#include "../common/debug_helper.h"
+#include "phtree/common/common.h"
+#include "phtree/common/debug_helper.h"
 #include "node.h"
 #include "phtree_v16.h"
 #include <string>

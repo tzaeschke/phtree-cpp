@@ -17,7 +17,7 @@
 #ifndef PHTREE_V16_ITERATOR_SIMPLE_H
 #define PHTREE_V16_ITERATOR_SIMPLE_H
 
-#include "../common/common.h"
+#include "phtree/common/common.h"
 #include "iterator_base.h"
 
 namespace improbable::phtree::v16 {

@@ -17,7 +17,7 @@
 #ifndef PHTREE_V16_QUERY_KNN_HS_H
 #define PHTREE_V16_QUERY_KNN_HS_H
 
-#include "../common/common.h"
+#include "phtree/common/common.h"
 #include "iterator_base.h"
 #include <queue>
 

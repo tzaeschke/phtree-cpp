@@ -17,7 +17,7 @@
 #ifndef PHTREE_V16_FOR_EACH_H
 #define PHTREE_V16_FOR_EACH_H
 
-#include "../common/common.h"
+#include "phtree/common/common.h"
 #include "iterator_with_parent.h"
 
 namespace improbable::phtree::v16 {

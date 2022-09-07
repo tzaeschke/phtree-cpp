@@ -17,8 +17,7 @@
 #ifndef PHTREE_V16_NODE_H
 #define PHTREE_V16_NODE_H
 
-#include "../common/common.h"
-#include "../common/tree_stats.h"
+#include "phtree/common/common.h"
 #include "entry.h"
 #include "phtree_v16.h"
 #include <map>
