@@ -54,8 +54,7 @@ if (NOT CMAKE_CXX_STANDARD)
 endif ()
 
 if (MSVC)
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Wall")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Wall")
     set(CMAKE_CXX_FLAGS_RELEASE "/O2")
 
     if (PHTREE_BUILD_TESTS OR PHTREE_BUILD_ALL)
