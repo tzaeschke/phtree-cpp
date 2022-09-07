@@ -19,14 +19,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
-set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/phtree)
-set(INCLUDE_FILES ${INCLUDE_DIR}/phtree.h ${INCLUDE_DIR}/phtree_multimap.h benchmark_util.h logging.h)
+#set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/phtree)
+#set(INCLUDE_FILES ${INCLUDE_DIR}/phtree.h ${INCLUDE_DIR}/phtree_multimap.h benchmark_util.h logging.h)
 
 macro(package_add_benchmark TESTNAME)
     add_executable(${TESTNAME} ${ARGN} ${INCLUDE_FILES})
     target_link_libraries(${TESTNAME} PRIVATE benchmark::benchmark)
     target_link_libraries(${TESTNAME} PRIVATE spdlog::spdlog)
-    target_include_directories(${TESTNAME} PRIVATE ${PROJECT_SOURCE_DIR}/include/..)
+    target_link_libraries(${TESTNAME} PRIVATE phtree::phtree)
+#    target_include_directories(${TESTNAME} PRIVATE ${PROJECT_SOURCE_DIR}/include/..)
 endmacro()
 
 add_compile_definitions(RUN_HAVE_STD_REGEX=0 RUN_HAVE_POSIX_REGEX=0 COMPILE_HAVE_GNU_POSIX_REGEX=0)

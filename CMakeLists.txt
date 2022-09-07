@@ -96,7 +96,6 @@ endif ()
 # Build binaries
 # ---------------------------------------------------------------------------------------
 
-#add_subdirectory(include/phtree)
 # ---------------------------------------------------------------------------------------
 # Header only version
 # ---------------------------------------------------------------------------------------
@@ -105,10 +104,20 @@ add_library(phtree::phtree ALIAS phtree) # TODO  ALIAS  phtree_header_only
 
 #target_include_directories(phtree INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
 #        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_include_directories(phtree INTERFACE include/)
 
 
+#target_include_directories(phtree INTERFACE include/)
 
+
+#    $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}>
+#    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+
+#    $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
+#    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+ target_include_directories(phtree INTERFACE 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 if (PHTREE_BUILD_EXAMPLES OR PHTREE_BUILD_ALL)
     message(STATUS "Generating examples")
@@ -122,26 +131,6 @@ endif ()
 
 if (PHTREE_BUILD_TESTS OR PHTREE_BUILD_ALL)
     message(STATUS "Generating tests")
-    if (FALSE)
-        add_compile_definitions(GTEST_HAS_ABSL=0)
-        add_compile_definitions(GTEST_OS_WINDOWS_MOBILE=0)
-        if (MSVC)
-            add_compile_definitions(GTEST_OS_WINDOWS_MINGW=0)
-        endif ()
-        add_compile_definitions(GTEST_OS_LINUX_ANDROID=0)
-        if (LINUX)
-            add_compile_definitions(GTEST_OS_LINUX=1)
-        else ()
-            add_compile_definitions(GTEST_OS_LINUX=0)
-        endif ()
-        add_compile_definitions(
-                GTEST_OS_WINDOWS_MOBILE=0
-                GTEST_OS_WINDOWS_PHONE=0
-                GTEST_OS_WINDOWS_RT=0
-                GTEST_OS_ESP8266=0
-                GTEST_OS_XTENSA=0)
-    endif ()
-
     enable_testing()
     include(GoogleTest)
     add_subdirectory(test)
