@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "benchmark/benchmark_util.h"
-#include "benchmark/logging.h"
+#include "benchmark_util.h"
+#include "logging.h"
 #include "phtree/phtree.h"
 #include <benchmark/benchmark.h>
 
