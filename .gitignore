@@ -1,6 +1,5 @@
 .*
 !.bazelrc
-!.bazelversion
 !.clang-format
 !.gitignore
 !.github
