@@ -25,6 +25,7 @@
 #include "iterator_knn_hs.h"
 #include "iterator_with_parent.h"
 #include "node.h"
+#include <iostream>
 
 namespace improbable::phtree::v16 {
 
@@ -468,13 +469,38 @@ class PhTreeV16 {
         const PhBox<DIM, ScalarInternal> query_box,
         CALLBACK&& callback,
         FILTER&& filter = FILTER()) const {
+        auto& key = query_box.min();
+        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        const EntryT* current_entry = &root_;
+        const EntryT* current_node = &root_;
+        static size_t size = num_entries_;
+        static int skip = 0;
+        static int call = 0;
+        if (size != num_entries_) {
+            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
+            size = num_entries_;
+            skip = 0;
+            call = 0;
+        }
+        ++call;
+//        while (current_entry && current_entry->IsNode() &&
+//               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
+//            current_node = current_entry;
+//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+//            ++skip;
+//        }
+
+//        if (call % 10000 == 0) {
+//            std::cout << "call = " << call << "   skip = " << skip << std::endl;
+//        }
+
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
             query_box.max(),
             converter_,
             std::forward<CALLBACK>(callback),
             std::forward<FILTER>(filter))
-            .Traverse(root_);
+            .Traverse(*current_node);
     }
 
     /*
