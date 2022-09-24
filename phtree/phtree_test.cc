@@ -536,6 +536,7 @@ void populate(TestTree<DIM, Id>& tree, std::vector<TestPoint<DIM>>& points, size
      std::vector<TestPoint<dim>> points;
      populate(tree, points, N);
 
+     int x = 0;
      size_t d_n = 0;
      for (auto& p : points) {
          auto pOld = p;
@@ -546,11 +547,15 @@ void populate(TestTree<DIM, Id>& tree, std::vector<TestPoint<DIM>>& points, size
          int n = tree.erase(iter);
          ASSERT_EQ(1, n);
          tree.emplace_hint(iter, pNew, 42);
+         if (tree.count(pNew) == 0) {
+             FAIL();
+         }
          ASSERT_EQ(1, tree.count(pNew));
          if (delta != 0.0) {
              ASSERT_EQ(0, tree.count(pOld));
          }
          p = pNew;
+         ++x;
      }
 
      ASSERT_EQ(N, tree.size());

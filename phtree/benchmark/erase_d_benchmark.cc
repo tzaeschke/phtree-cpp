@@ -25,52 +25,60 @@ using namespace improbable::phtree::phbenchmark;
 
 namespace {
 
-const int GLOBAL_MAX = 10000;
+const double GLOBAL_MAX = 10000;
+
+enum OpType { ERASE_BY_KEY, ERASE_BY_ITER };
+
+template <dimension_t DIM>
+using PointType = PhPointD<DIM>;
+
+template <dimension_t DIM>
+using TreeType = PhTreeD<DIM, size_t>;
 
 /*
  * Benchmark for removing entries.
  */
-template <dimension_t DIM>
+template <dimension_t DIM, OpType OP_TYPE>
 class IndexBenchmark {
   public:
-    IndexBenchmark(benchmark::State& state, TestGenerator data_type, int num_entities);
+    IndexBenchmark(benchmark::State& state);
 
     void Benchmark(benchmark::State& state);
 
   private:
     void SetupWorld(benchmark::State& state);
-    void Insert(benchmark::State& state, PhTreeD<DIM, int>& tree);
-    void Remove(benchmark::State& state, PhTreeD<DIM, int>& tree);
+    void Insert(benchmark::State& state);
+    void Remove(benchmark::State& state);
 
     const TestGenerator data_type_;
-    const int num_entities_;
+    const size_t num_entities_;
 
+    TreeType<DIM> tree_;
     std::default_random_engine random_engine_;
     std::uniform_real_distribution<> cube_distribution_;
     std::vector<PhPointD<DIM>> points_;
 };
 
-template <dimension_t DIM>
-IndexBenchmark<DIM>::IndexBenchmark(
-    benchmark::State& state, TestGenerator data_type, int num_entities)
-: data_type_{data_type}
-, num_entities_(num_entities)
+template <dimension_t DIM, OpType OP_TYPE>
+IndexBenchmark<DIM, OP_TYPE>::IndexBenchmark(benchmark::State& state)
+: data_type_{static_cast<TestGenerator>(state.range(1))}
+, num_entities_(state.range(0))
 , random_engine_{1}
 , cube_distribution_{0, GLOBAL_MAX}
-, points_(num_entities) {
+, points_(num_entities_) {
     logging::SetupDefaultLogging();
     SetupWorld(state);
 }
 
-template <dimension_t DIM>
-void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
+template <dimension_t DIM, OpType OP_TYPE>
+void IndexBenchmark<DIM, OP_TYPE>::Benchmark(benchmark::State& state) {
     for (auto _ : state) {
         state.PauseTiming();
         auto* tree = new PhTreeD<DIM, int>();
-        Insert(state, *tree);
+        Insert(state);
         state.ResumeTiming();
 
-        Remove(state, *tree);
+        Remove(state);
 
         state.PauseTiming();
         // avoid measuring deallocation
@@ -79,29 +87,52 @@ void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
     }
 }
 
-template <dimension_t DIM>
-void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
+template <dimension_t DIM, OpType OP_TYPE>
+void IndexBenchmark<DIM, OP_TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("Setting up world with {} entities and {} dimensions.", num_entities_, DIM);
     CreatePointData<DIM>(points_, data_type_, num_entities_, 0, GLOBAL_MAX);
 
     state.counters["total_remove_count"] = benchmark::Counter(0);
     state.counters["remove_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
-
     logging::info("World setup complete.");
 }
 
-template <dimension_t DIM>
-void IndexBenchmark<DIM>::Insert(benchmark::State&, PhTreeD<DIM, int>& tree) {
-    for (int i = 0; i < num_entities_; ++i) {
-        tree.emplace(points_[i], i);
+template <dimension_t DIM, OpType OP_TYPE>
+void IndexBenchmark<DIM, OP_TYPE>::Insert(benchmark::State&) {
+    for (size_t i = 0; i < num_entities_; ++i) {
+        tree_.emplace(points_[i], i);
     }
 }
 
 template <dimension_t DIM>
-void IndexBenchmark<DIM>::Remove(benchmark::State& state, PhTreeD<DIM, int>& tree) {
-    int n = 0;
-    for (int i = 0; i < num_entities_; ++i) {
-        n += tree.erase(points_[i]);
+size_t EraseByKey(TreeType<DIM>& tree, std::vector<PhPointD<DIM>>& points) {
+    size_t n = 0;
+    for (size_t i = 0; i < points.size(); ++i) {
+        n += tree.erase(points[i]);
+    }
+    return n;
+}
+
+template <dimension_t DIM>
+size_t EraseByIter(TreeType<DIM>& tree, std::vector<PhPointD<DIM>>& points) {
+    size_t n = 0;
+    for (size_t i = 0; i < points.size(); ++i) {
+        auto iter = tree.find(points[i]);
+        n += tree.erase(iter);
+    }
+    return n;
+}
+
+template <dimension_t DIM, OpType OP_TYPE>
+void IndexBenchmark<DIM, OP_TYPE>::Remove(benchmark::State& state) {
+    size_t n = 0;
+    switch (OP_TYPE) {
+    case OpType::ERASE_BY_KEY:
+        n = EraseByKey(tree_, points_);
+        break;
+    case OpType::ERASE_BY_ITER:
+        n = EraseByIter(tree_, points_);
+        break;
     }
 
     state.counters["total_remove_count"] += n;
@@ -111,39 +142,28 @@ void IndexBenchmark<DIM>::Remove(benchmark::State& state, PhTreeD<DIM, int>& tre
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3> benchmark{state, arguments...};
+void PhTreeEraseKey3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, OpType::ERASE_BY_KEY> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
-// index type, scenario name, data_generator, num_entities
-// PhTree 3D CUBE
-BENCHMARK_CAPTURE(PhTree3D, REM_CU_1K, TestGenerator::CUBE, 1000)->Unit(benchmark::kMillisecond);
+template <typename... Arguments>
+void PhTreeEraseIter3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, OpType::ERASE_BY_ITER> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
 
-BENCHMARK_CAPTURE(PhTree3D, REM_CU_10K, TestGenerator::CUBE, 10000)->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CU_100K, TestGenerator::CUBE, 100000)
+// index type, scenario name, data_type, num_entities
+// PhTree with erase()
+BENCHMARK(PhTreeEraseKey3D)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D, REM_CU_1M, TestGenerator::CUBE, 1000000)->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CU_10M, TestGenerator::CUBE, 10000000)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_generator, num_entities
-// PhTree 3D CLUSTER
-BENCHMARK_CAPTURE(PhTree3D, REM_CL_1K, TestGenerator::CLUSTER, 1000)->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CL_10K, TestGenerator::CLUSTER, 10000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CL_100K, TestGenerator::CLUSTER, 100000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CL_1M, TestGenerator::CLUSTER, 1000000)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, REM_CL_10M, TestGenerator::CLUSTER, 10000000)
+// PhTree with erase(iter)
+BENCHMARK(PhTreeEraseIter3D)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

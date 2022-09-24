@@ -133,12 +133,21 @@ class PhTreeV16 {
             // - Using 'parent' allows a scenario where the iterator was previously used with
             //   erase(iterator). This is safe because erase() will never erase the 'parent' node.
 
-            if (!iterator.GetParentNodeEntry()) {
+            auto* parent_entry = iterator.GetCurrentNodeEntry(); // TODO remove root check!?!?!
+            if (!parent_entry || parent_entry == &root_) {// || !parent_entry->IsNode()) {
+                // TODO if IsValue(), look at calling HandleCollision directly.
                 // No hint available, use standard try_emplace()
                 return try_emplace(key, std::forward<Args>(args)...);
             }
 
-            auto* parent_entry = iterator.GetParentNodeEntry();
+            if (parent_entry->IsValue()) {
+                bool is_inserted;
+                auto& entry = Node<DIM, T, ScalarInternal>::HandleCollision(*parent_entry, is_inserted, key, 0, std::forward<Args>(args)...);
+                num_entries_ += is_inserted;
+                return {entry.GetValue(), is_inserted};
+            }
+            assert(parent_entry->IsNode());
+
             if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
                 parent_entry->GetNodePostfixLen() + 1) {
                 // replace higher up in the tree

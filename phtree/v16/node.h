@@ -252,6 +252,7 @@ class Node {
         }
     }
 
+  public:
     /*
      * Handles the case where we want to insert a new entry into a node but the node already
      * has an entry in that position.
@@ -267,7 +268,7 @@ class Node {
      * an entry with the exact same key as new_key, so insertion has failed.
      */
     template <typename... Args>
-    auto& HandleCollision(
+    static auto& HandleCollision(
         EntryT& existing_entry,
         bool& is_inserted,
         const KeyT& new_key,
@@ -301,8 +302,9 @@ class Node {
         return existing_entry;
     }
 
+  private:
     template <typename... Args>
-    auto& InsertSplit(
+    static auto& InsertSplit(
         EntryT& current_entry,
         const KeyT& new_key,
         bit_width_t max_conflicting_bits,
