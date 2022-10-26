@@ -185,6 +185,7 @@ void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Qu
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::CreateQuery(Query& query) {
     double radius = query_endge_length() * 0.5;
+    radius += BOX_LEN * 0.5;
     for (dimension_t d = 0; d < DIM; ++d) {
         auto x = cube_distribution_(random_engine_);
         query.box_.min()[d] = x - radius;
@@ -208,13 +209,13 @@ void PhTreeMultiMapM3D(benchmark::State& state, Arguments&&... arguments) {
 
 // index type, scenario name, data_type, num_entities, avg_query_result_size
 // PhTree
-BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTree3D, WQ_100, 1.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMapM3D, WQ_100, 100.0)
+BENCHMARK_CAPTURE(PhTreeMultiMapM3D, WQ_100, 1.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

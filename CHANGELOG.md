@@ -5,8 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+- Improved performance of window queries by executing them partially as point queries.
+  This works best for point datasets, and somewhat for box datasets with "include" queries.
+  There is no benefit for "intersection" queries. [#88](https://github.com/tzaeschke/phtree-cpp/issues/88)
+
 ### Removed
-- bazel version requirement file `.bazelversion`. [89](https://github.com/tzaeschke/phtree-cpp/issues/89)
+- bazel version requirement file `.bazelversion`. [#89](https://github.com/tzaeschke/phtree-cpp/issues/89)
 
 ### Changed
 - Improved benchmarks for insert and query to use a more compact format. [91](https://github.com/tzaeschke/phtree-cpp/pull/91)

@@ -483,16 +483,12 @@ class PhTreeV16 {
             call = 0;
         }
         ++call;
-//        while (current_entry && current_entry->IsNode() &&
-//               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
-//            current_node = current_entry;
-//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
-//            ++skip;
-//        }
-
-//        if (call % 10000 == 0) {
-//            std::cout << "call = " << call << "   skip = " << skip << std::endl;
-//        }
+        while (current_entry && current_entry->IsNode() &&
+               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
+            current_node = current_entry;
+            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+            ++skip;
+        }
 
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
