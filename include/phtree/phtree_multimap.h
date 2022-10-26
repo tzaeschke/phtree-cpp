@@ -790,7 +790,7 @@ template <
     typename T,
     typename CONVERTER_BOX,
     typename BUCKET = b_plus_tree_hash_set<T>>
-using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryInclude>;
+using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
 
 /**
  * A PH-Tree multi-map that uses (axis aligned) boxes as keys.
