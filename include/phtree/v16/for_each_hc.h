@@ -17,8 +17,9 @@
 #ifndef PHTREE_V16_FOR_EACH_HC_H
 #define PHTREE_V16_FOR_EACH_HC_H
 
-#include "phtree/common/common.h"
 #include "iterator_with_parent.h"
+#include "phtree/common/common.h"
+#include <optional>
 
 namespace improbable::phtree::v16 {
 
@@ -54,14 +55,14 @@ class ForEachHC {
     , callback_{std::forward<CB>(callback)}
     , filter_(std::forward<F>(filter)) {}
 
-    void Traverse(const EntryT& entry) {
+    void Traverse(const EntryT& entry, const std::optional<const EntryIteratorC<DIM, EntryT>> opt_it = std::nullopt) {
         assert(entry.IsNode());
         hc_pos_t mask_lower = 0;
         hc_pos_t mask_upper = 0;
         CalcLimits(entry.GetNodePostfixLen(), entry.GetKey(), mask_lower, mask_upper);
         auto& entries = entry.GetNode().Entries();
         auto postfix_len = entry.GetNodePostfixLen();
-        auto iter = entries.lower_bound(mask_lower);
+        auto iter = opt_it.has_value() ? *opt_it : entries.lower_bound(mask_lower);
         auto end = entries.end();
         for (; iter != end && iter->first <= mask_upper; ++iter) {
             auto child_hc_pos = iter->first;
