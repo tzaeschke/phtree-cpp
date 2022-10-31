@@ -85,6 +85,14 @@ class ForEachHC {
         }
     }
 
+    void TraverseSingle(const EntryT& entry) {
+        assert(entry.IsValue());
+        if (filter_.IsEntryValid(entry.GetKey(), entry.GetValue())) {
+            callback_(converter_->post(entry.GetKey()), entry.GetValue());
+        }
+    }
+
+  private:
     bool CheckNode(const EntryT& entry, bit_width_t parent_postfix_len) {
         const KeyInternal& key = entry.GetKey();
         // Check if the node overlaps with the query box.

@@ -453,6 +453,33 @@ class PhTreeV16 {
             .Traverse(root_);
     }
 
+//    const EntryT* find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+//        auto& key = query_box.min();
+//        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+//        const EntryT* current_entry = &root_;
+//        const EntryT* current_node = &root_;
+//        while (current_entry && current_entry->IsNode() &&
+//               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
+//            current_node = current_entry;
+//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+//        }
+//        return current_node;
+//    }
+//
+    const std::pair<const EntryT*, const EntryT*> find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+        auto& key = query_box.min();
+        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        const EntryT* current_entry = &root_;
+        const EntryT* current_node = &root_;
+        while (current_entry && current_entry->IsNode() &&
+               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
+            current_node = current_entry;
+            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+        }
+        //return std::make_pair<EntryT*, EntryT*>(current_node, current_entry);
+        return {current_node, current_entry};
+    }
+
     /*
      * Performs a rectangular window query. The parameters are the min and max keys which
      * contain the minimum respectively the maximum keys in every dimension.
@@ -469,34 +496,48 @@ class PhTreeV16 {
         const PhBox<DIM, ScalarInternal> query_box,
         CALLBACK&& callback,
         FILTER&& filter = FILTER()) const {
-        auto& key = query_box.min();
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-        const EntryT* current_entry = &root_;
-        const EntryT* current_node = &root_;
-        static size_t size = num_entries_;
-        static int skip = 0;
-        static int call = 0;
-        if (size != num_entries_) {
-            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
-            size = num_entries_;
-            skip = 0;
-            call = 0;
-        }
-        ++call;
-        while (current_entry && current_entry->IsNode() &&
-               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
-            current_node = current_entry;
-            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
-            ++skip;
-        }
+//        auto& key = query_box.min();
+//        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+//        const EntryT* current_entry = &root_;
+//        const EntryT* current_node = &root_;
+//        static size_t size = num_entries_;
+//        static int skip = 0;
+//        static int call = 0;
+//        if (size != num_entries_) {
+//            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
+//            size = num_entries_;
+//            skip = 0;
+//            call = 0;
+//        }
+//        ++call;
+//        while (current_entry && current_entry->IsNode() &&
+//               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
+//            current_node = current_entry;
+//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+//            ++skip;
+//        }
 
+        auto pair = find_starting_node(query_box);
+//        if (pair.second != nullptr && pair.second->IsValue()) {
+//            ForEachHC<T, CONVERT, CALLBACK, FILTER>(
+//                query_box.min(),
+//                query_box.max(),
+//                converter_,
+//                std::forward<CALLBACK>(callback),
+//                std::forward<FILTER>(filter))
+//                .TraverseSingle(*pair.second);
+//            return;
+//        }
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
             query_box.max(),
             converter_,
             std::forward<CALLBACK>(callback),
             std::forward<FILTER>(filter))
-            .Traverse(*current_node);
+            //.Traverse(*current_node);
+            //.Traverse(*find_starting_node(query_box));
+            .Traverse(*pair.first);
+
     }
 
     /*
