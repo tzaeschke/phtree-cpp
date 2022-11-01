@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,9 +139,9 @@ class Node {
      */
     const EntryT* Find(const KeyT& key, bit_width_t postfix_len) const {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-        const auto entry = entries_.find(hc_pos);
-        if (entry != entries_.end() && DoesEntryMatch(entry->second, key, postfix_len)) {
-            return &entry->second;
+        const auto iter = entries_.find(hc_pos);
+        if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
+            return &iter->second;
         }
         return nullptr;
     }
@@ -149,7 +150,8 @@ class Node {
         return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
     }
 
-    std::optional<const EntryIteratorC<DIM, EntryT>> FindIter(const KeyT& key, bit_width_t postfix_len) const {
+    std::optional<const EntryIteratorC<DIM, EntryT>> FindIter(
+        const KeyT& key, bit_width_t postfix_len) const {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         const auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {

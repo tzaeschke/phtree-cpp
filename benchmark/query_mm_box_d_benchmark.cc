@@ -185,7 +185,6 @@ void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Qu
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::CreateQuery(Query& query) {
     double radius = query_endge_length() * 0.5;
-    radius += BOX_LEN * 0.5;
     for (dimension_t d = 0; d < DIM; ++d) {
         auto x = cube_distribution_(random_engine_);
         query.box_.min()[d] = x - radius;

@@ -963,46 +963,46 @@ TEST(PhTreeTest, TestWindowQueryManyMoving) {
     ASSERT_GE(5000, nn);
 }
 
-//TEST(PhTreeTest, TestWindowForEachManyMoving) {
-//    size_t N = 10000;
-//    const dimension_t dim = 3;
-//    TestTree<dim, Id> tree;
-//    std::vector<TestPoint<dim>> points;
-//    populate(tree, points, N);
-//
-//    int query_length = 200;
-//    size_t nn = 0;
-//    for (std::int64_t i = -120; i < 120; i++) {
-//        TestPoint<dim> min{i * 10, i * 9, i * 11};
-//        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
-//        std::set<size_t> referenceResult;
-//        referenceQuery(points, min, max, referenceResult);
-//
-//        struct Counter {
-//            void operator()(TestPoint<dim>, Id& t) {
-//                ++n_;
-//                ASSERT_EQ(referenceResult.count(t._i), 1);
-//            }
-//            std::set<size_t>& referenceResult;
-//            size_t n_ = 0;
-//        };
-//
-//        size_t n = 0;
-//        Counter callback{referenceResult, 0};
-//        tree.for_each({min, max}, callback);
-//        n += callback.n_;
-//        nn += callback.n_;
-//        ASSERT_EQ(referenceResult.size(), n);
-//
-//        // basic check to ensure healthy queries
-//        if (i > -50 && i < 50) {
-//            ASSERT_LE(1, n);
-//        }
-//        ASSERT_GE(100, n);
-//    }
-//    ASSERT_LE(500, nn);
-//    ASSERT_GE(5000, nn);
-//}
+TEST(PhTreeTest, TestWindowForEachManyMoving) {
+    size_t N = 10000;
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    int query_length = 200;
+    size_t nn = 0;
+    for (std::int64_t i = -120; i < 120; i++) {
+        TestPoint<dim> min{i * 10, i * 9, i * 11};
+        TestPoint<dim> max{i * 10 + query_length, i * 9 + query_length, i * 11 + query_length};
+        std::set<size_t> referenceResult;
+        referenceQuery(points, min, max, referenceResult);
+
+        struct Counter {
+            void operator()(TestPoint<dim>, Id& t) {
+                ++n_;
+                ASSERT_EQ(referenceResult.count(t._i), 1);
+            }
+            std::set<size_t>& referenceResult;
+            size_t n_ = 0;
+        };
+
+        size_t n = 0;
+        Counter callback{referenceResult, 0};
+        tree.for_each({min, max}, callback);
+        n += callback.n_;
+        nn += callback.n_;
+        ASSERT_EQ(referenceResult.size(), n);
+
+        // basic check to ensure healthy queries
+        if (i > -50 && i < 50) {
+            ASSERT_LE(1, n);
+        }
+        ASSERT_GE(100, n);
+    }
+    ASSERT_LE(500, nn);
+    ASSERT_GE(5000, nn);
+}
 
 TEST(PhTreeTest, TestWindowForEachExact) {
     size_t N = 1000;

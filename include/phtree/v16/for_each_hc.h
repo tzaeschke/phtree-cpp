@@ -20,7 +20,6 @@
 
 #include "iterator_with_parent.h"
 #include "phtree/common/common.h"
-#include <optional>
 
 namespace improbable::phtree::v16 {
 
@@ -84,13 +83,6 @@ class ForEachHC {
                     }
                 }
             }
-        }
-    }
-
-    void TraverseSingle(const EntryT& entry) {
-        assert(entry.IsValue());
-        if (filter_.IsEntryValid(entry.GetKey(), entry.GetValue())) {
-            callback_(converter_->post(entry.GetKey()), entry.GetValue());
         }
     }
 
