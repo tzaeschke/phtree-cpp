@@ -454,63 +454,66 @@ class PhTreeV16 {
             .Traverse(root_);
     }
 
-//    const EntryT* find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
-//        auto& key = query_box.min();
-//        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-//        const EntryT* current_entry = &root_;
-//        const EntryT* current_node = &root_;
-//        while (current_entry && current_entry->IsNode() &&
-//               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
-//            current_node = current_entry;
-//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
-//        }
-//        return current_node;
-//    }
+    //    const EntryT* find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+    //        auto& key = query_box.min();
+    //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
+    //        query_box.max()); const EntryT* current_entry = &root_; const EntryT* current_node =
+    //        &root_; while (current_entry && current_entry->IsNode() &&
+    //               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
+    //            current_node = current_entry;
+    //            current_entry = current_entry->GetNode().Find(key,
+    //            current_entry->GetNodePostfixLen());
+    //        }
+    //        return current_node;
+    //    }
 
-    //const std::pair<const EntryT*, const EntryIteratorC<DIM, EntryT>> find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
-    const std::pair<const EntryT*, std::optional<const EntryIteratorC<DIM, EntryT>>> find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+    // const std::pair<const EntryT*, const EntryIteratorC<DIM, EntryT>> find_starting_node(const
+    // PhBox<DIM, ScalarInternal>& query_box) const {
+    const std::pair<const EntryT*, std::optional<const EntryIteratorC<DIM, EntryT>>>
+    find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& key = query_box.min();
         bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
         if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
             return {&root_, std::nullopt};
         }
-        const EntryT* current_node = &root_;
-        //const auto current_entry_it = root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
-        std::optional<EntryIteratorC<DIM, EntryT>> current_entry_it = root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
-        //const EntryT* current_entry = current_entry_it != ;
-        while (current_entry_it.has_value() && (*current_entry_it)->second.IsNode() &&
-               (*current_entry_it)->second.GetNodePostfixLen() >= max_conflicting_bits) {
-            current_node = &(*current_entry_it)->second;
-            current_entry_it = current_node->GetNode().FindIter(key, current_node->GetNodePostfixLen());
-            // TODO improve: in case of it==VALUE, return directly
-            // TODO think properly, can this really never happen? ("this" being iter pointing to a VALUE)
-         }
+        const EntryT* parent = &root_;
+        std::optional<EntryIteratorC<DIM, EntryT>> entry_iter =
+            root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
+        while (entry_iter.has_value() && (*entry_iter)->second.IsNode() &&
+               (*entry_iter)->second.GetNodePostfixLen() >= max_conflicting_bits) {
+            parent = &(*entry_iter)->second;
+            entry_iter = parent->GetNode().FindIter(key, parent->GetNodePostfixLen());
+        }
 
-         // TODO is the iterator ever NOT null?
-        // assert(!current_entry_it.has_value());
+        // TODO is the iterator ever NOT null?
+        // assert(!entry_iter.has_value());
 
-         // TODO Remember the goal: We want to avoid the additional "lower_bound()" search assuming that it is the cause of slowed box queries
+        // TODO Remember the goal: We want to avoid the additional "lower_bound()" search assuming
+        // that it is the cause of slowed box queries
 
-        return {current_node, current_entry_it};
+        return {parent, entry_iter};
     }
 
-//    const std::pair<const EntryT*, const EntryT*> find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
-//        auto& key = query_box.min();
-//        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-////        EntryMap<DIM, EntryT> root_map{};
-////        root_map.emplace($root);
-//        //std::optional<EntryIteratorT> iter{root_map.begin};
-//        const EntryT* current_entry = &root_;
-//        //const EntryT* current_entry_it = root_Map.begin();
-//        const EntryT* current_node = &root_;
-//        while (current_entry != nullptr && current_entry->IsNode() &&
-//               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
-//            current_node = current_entry;
-//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
-//        }
-//        //return std::make_pair<EntryT*, EntryT*>(current_node, current_entry);
-//        return {current_node, current_entry};
-//    }
+    //    const std::pair<const EntryT*, const EntryT*> find_starting_node(const PhBox<DIM,
+    //    ScalarInternal>& query_box) const {
+    //        auto& key = query_box.min();
+    //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
+    //        query_box.max());
+    ////        EntryMap<DIM, EntryT> root_map{};
+    ////        root_map.emplace($root);
+    //        //std::optional<EntryIteratorT> iter{root_map.begin};
+    //        const EntryT* current_entry = &root_;
+    //        //const EntryT* current_entry_it = root_Map.begin();
+    //        const EntryT* current_node = &root_;
+    //        while (current_entry != nullptr && current_entry->IsNode() &&
+    //               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
+    //            current_node = current_entry;
+    //            current_entry = current_entry->GetNode().Find(key,
+    //            current_entry->GetNodePostfixLen());
+    //        }
+    //        //return std::make_pair<EntryT*, EntryT*>(current_node, current_entry);
+    //        return {current_node, current_entry};
+    //    }
 
     /*
      * Performs a rectangular window query. The parameters are the min and max keys which
@@ -528,38 +531,26 @@ class PhTreeV16 {
         const PhBox<DIM, ScalarInternal> query_box,
         CALLBACK&& callback,
         FILTER&& filter = FILTER()) const {
-//        auto& key = query_box.min();
-//        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-//        const EntryT* current_entry = &root_;
-//        const EntryT* current_node = &root_;
-//        static size_t size = num_entries_;
-//        static int skip = 0;
-//        static int call = 0;
-//        if (size != num_entries_) {
-//            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
-//            size = num_entries_;
-//            skip = 0;
-//            call = 0;
-//        }
-//        ++call;
-//        while (current_entry && current_entry->IsNode() &&
-//               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
-//            current_node = current_entry;
-//            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
-//            ++skip;
-//        }
+        //        auto& key = query_box.min();
+        //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
+        //        query_box.max()); const EntryT* current_entry = &root_; const EntryT* current_node
+        //        = &root_; static size_t size = num_entries_; static int skip = 0; static int call
+        //        = 0; if (size != num_entries_) {
+        //            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
+        //            size = num_entries_;
+        //            skip = 0;
+        //            call = 0;
+        //        }
+        //        ++call;
+        //        while (current_entry && current_entry->IsNode() &&
+        //               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
+        //            current_node = current_entry;
+        //            current_entry = current_entry->GetNode().Find(key,
+        //            current_entry->GetNodePostfixLen());
+        //            ++skip;
+        //        }
 
-        auto pair = find_starting_node(query_box);
-//        if (pair.second != nullptr && pair.second->IsValue()) {
-//            ForEachHC<T, CONVERT, CALLBACK, FILTER>(
-//                query_box.min(),
-//                query_box.max(),
-//                converter_,
-//                std::forward<CALLBACK>(callback),
-//                std::forward<FILTER>(filter))
-//                .TraverseSingle(*pair.second);
-//            return;
-//        }
+        //auto pair = find_starting_node(query_box);
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
             query_box.max(),
@@ -567,10 +558,8 @@ class PhTreeV16 {
             std::forward<CALLBACK>(callback),
             std::forward<FILTER>(filter))
             //.Traverse(*current_node);
-            //.Traverse(*find_starting_node(query_box));
-            //.Traverse(*pair.first);
-            .Traverse(*pair.first, pair.second);
-
+            .Traverse(root_, std::nullopt);
+            //.Traverse(*pair.first, pair.second);
     }
 
     /*
