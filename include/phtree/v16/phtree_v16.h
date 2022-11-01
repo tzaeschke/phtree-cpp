@@ -503,8 +503,9 @@ class PhTreeV16 {
     template <typename FILTER = FilterNoOp>
     auto begin_query(
         const PhBox<DIM, ScalarInternal>& query_box, FILTER&& filter = FILTER()) const {
+        auto pair = find_starting_node(query_box);
         return IteratorHC<T, CONVERT, FILTER>(
-            root_, query_box.min(), query_box.max(), converter_, std::forward<FILTER>(filter));
+            *pair.first, query_box.min(), query_box.max(), converter_, std::forward<FILTER>(filter));
     }
 
     /*
