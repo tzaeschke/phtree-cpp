@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -790,7 +791,7 @@ template <
     typename T,
     typename CONVERTER_BOX,
     typename BUCKET = b_plus_tree_hash_set<T>>
-using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryInclude>;
+using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
 
 /**
  * A PH-Tree multi-map that uses (axis aligned) boxes as keys.

@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -454,67 +455,6 @@ class PhTreeV16 {
             .Traverse(root_);
     }
 
-    //    const EntryT* find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
-    //        auto& key = query_box.min();
-    //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
-    //        query_box.max()); const EntryT* current_entry = &root_; const EntryT* current_node =
-    //        &root_; while (current_entry && current_entry->IsNode() &&
-    //               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
-    //            current_node = current_entry;
-    //            current_entry = current_entry->GetNode().Find(key,
-    //            current_entry->GetNodePostfixLen());
-    //        }
-    //        return current_node;
-    //    }
-
-    // const std::pair<const EntryT*, const EntryIteratorC<DIM, EntryT>> find_starting_node(const
-    // PhBox<DIM, ScalarInternal>& query_box) const {
-    const std::pair<const EntryT*, std::optional<const EntryIteratorC<DIM, EntryT>>>
-    find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
-        auto& key = query_box.min();
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-        if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
-            return {&root_, std::nullopt};
-        }
-        const EntryT* parent = &root_;
-        std::optional<EntryIteratorC<DIM, EntryT>> entry_iter =
-            root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
-        while (entry_iter.has_value() && (*entry_iter)->second.IsNode() &&
-               (*entry_iter)->second.GetNodePostfixLen() >= max_conflicting_bits) {
-            parent = &(*entry_iter)->second;
-            entry_iter = parent->GetNode().FindIter(key, parent->GetNodePostfixLen());
-        }
-
-        // TODO is the iterator ever NOT null?
-        // assert(!entry_iter.has_value());
-
-        // TODO Remember the goal: We want to avoid the additional "lower_bound()" search assuming
-        // that it is the cause of slowed box queries
-
-        return {parent, entry_iter};
-    }
-
-    //    const std::pair<const EntryT*, const EntryT*> find_starting_node(const PhBox<DIM,
-    //    ScalarInternal>& query_box) const {
-    //        auto& key = query_box.min();
-    //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
-    //        query_box.max());
-    ////        EntryMap<DIM, EntryT> root_map{};
-    ////        root_map.emplace($root);
-    //        //std::optional<EntryIteratorT> iter{root_map.begin};
-    //        const EntryT* current_entry = &root_;
-    //        //const EntryT* current_entry_it = root_Map.begin();
-    //        const EntryT* current_node = &root_;
-    //        while (current_entry != nullptr && current_entry->IsNode() &&
-    //               current_entry->GetNodePostfixLen() >= max_conflicting_bits) {
-    //            current_node = current_entry;
-    //            current_entry = current_entry->GetNode().Find(key,
-    //            current_entry->GetNodePostfixLen());
-    //        }
-    //        //return std::make_pair<EntryT*, EntryT*>(current_node, current_entry);
-    //        return {current_node, current_entry};
-    //    }
-
     /*
      * Performs a rectangular window query. The parameters are the min and max keys which
      * contain the minimum respectively the maximum keys in every dimension.
@@ -531,35 +471,15 @@ class PhTreeV16 {
         const PhBox<DIM, ScalarInternal> query_box,
         CALLBACK&& callback,
         FILTER&& filter = FILTER()) const {
-        //        auto& key = query_box.min();
-        //        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(),
-        //        query_box.max()); const EntryT* current_entry = &root_; const EntryT* current_node
-        //        = &root_; static size_t size = num_entries_; static int skip = 0; static int call
-        //        = 0; if (size != num_entries_) {
-        //            std::cout << "PREV: call = " << call << "   skip = " << skip << std::endl;
-        //            size = num_entries_;
-        //            skip = 0;
-        //            call = 0;
-        //        }
-        //        ++call;
-        //        while (current_entry && current_entry->IsNode() &&
-        //               current_entry->GetNodePostfixLen() > max_conflicting_bits) {
-        //            current_node = current_entry;
-        //            current_entry = current_entry->GetNode().Find(key,
-        //            current_entry->GetNodePostfixLen());
-        //            ++skip;
-        //        }
-
-        //auto pair = find_starting_node(query_box);
+        auto pair = find_starting_node(query_box);
+        auto * it = pair.second.has_value() ? &*pair.second : nullptr;
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
             query_box.max(),
             converter_,
             std::forward<CALLBACK>(callback),
             std::forward<FILTER>(filter))
-            //.Traverse(*current_node);
-            .Traverse(root_, std::nullopt);
-            //.Traverse(*pair.first, pair.second);
+            .Traverse(*pair.first, it);
     }
 
     /*
@@ -656,7 +576,33 @@ class PhTreeV16 {
         return DebugHelperV16(root_, num_entries_);
     }
 
-  private:
+    /*
+     * Motivation: Point queries a la find() are faster than window queries.
+     * Since a window query may have a significant common prefix in their min and max coordinates,
+     * the part with the common prefix can be executed as point query.
+     *
+     * This works if there really is a common prefix, e.g. when querying point data or when
+     * querying box data with QueryInclude. Unfortunately, QueryIntersect queries have +/-0 infinity
+     * in their coordinates, so their never is an overlap.
+     */
+    const std::pair<const EntryT*, std::optional<const EntryIteratorC<DIM, EntryT>>>
+    find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+        auto& key = query_box.min();
+        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
+            return {&root_, std::nullopt};
+        }
+        const EntryT* parent = &root_;
+        std::optional<EntryIteratorC<DIM, EntryT>> entry_iter =
+            root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
+        while (entry_iter.has_value() && (*entry_iter)->second.IsNode() &&
+               (*entry_iter)->second.GetNodePostfixLen() >= max_conflicting_bits) {
+            parent = &(*entry_iter)->second;
+            entry_iter = parent->GetNode().FindIter(key, parent->GetNodePostfixLen());
+        }
+        return {parent, entry_iter};
+    }
+
     size_t num_entries_;
     // Contract: root_ contains a Node with 0 or more entries. The root node is the only Node
     // that is allowed to have less than two entries.

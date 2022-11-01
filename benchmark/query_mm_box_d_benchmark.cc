@@ -209,13 +209,13 @@ void PhTreeMultiMapM3D(benchmark::State& state, Arguments&&... arguments) {
 
 // index type, scenario name, data_type, num_entities, avg_query_result_size
 // PhTree
-BENCHMARK_CAPTURE(PhTree3D, WQ_100, 1.0)
+BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMapM3D, WQ_100, 1.0)
+BENCHMARK_CAPTURE(PhTreeMultiMapM3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

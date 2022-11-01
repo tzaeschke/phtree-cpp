@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,14 +56,14 @@ class ForEachHC {
     , callback_{std::forward<CB>(callback)}
     , filter_(std::forward<F>(filter)) {}
 
-    void Traverse(const EntryT& entry, const std::optional<const EntryIteratorC<DIM, EntryT>> opt_it = std::nullopt) {
+    void Traverse(const EntryT& entry, const EntryIteratorC<DIM, EntryT>* opt_it = nullptr) {
         assert(entry.IsNode());
         hc_pos_t mask_lower = 0;
         hc_pos_t mask_upper = 0;
         CalcLimits(entry.GetNodePostfixLen(), entry.GetKey(), mask_lower, mask_upper);
         auto& entries = entry.GetNode().Entries();
         auto postfix_len = entry.GetNodePostfixLen();
-        auto iter = opt_it.has_value() ? *opt_it : entries.lower_bound(mask_lower);
+        auto iter = opt_it != nullptr ? *opt_it : entries.lower_bound(mask_lower);
         auto end = entries.end();
         for (; iter != end && iter->first <= mask_upper; ++iter) {
             auto child_hc_pos = iter->first;
