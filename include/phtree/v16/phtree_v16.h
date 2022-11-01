@@ -26,7 +26,6 @@
 #include "iterator_knn_hs.h"
 #include "iterator_with_parent.h"
 #include "node.h"
-#include <optional>
 
 namespace improbable::phtree::v16 {
 
@@ -471,14 +470,13 @@ class PhTreeV16 {
         CALLBACK&& callback,
         FILTER&& filter = FILTER()) const {
         auto pair = find_starting_node(query_box);
-        auto * it = pair.second.has_value() ? &*pair.second : nullptr;
         ForEachHC<T, CONVERT, CALLBACK, FILTER>(
             query_box.min(),
             query_box.max(),
             converter_,
             std::forward<CALLBACK>(callback),
             std::forward<FILTER>(filter))
-            .Traverse(*pair.first, it);
+            .Traverse(*pair.first, &pair.second);
     }
 
     /*
@@ -584,19 +582,20 @@ class PhTreeV16 {
      * querying box data with QueryInclude. Unfortunately, QueryIntersect queries have +/-0 infinity
      * in their coordinates, so their never is an overlap.
      */
-    const std::pair<const EntryT*, std::optional<const EntryIteratorC<DIM, EntryT>>>
-    find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
+    std::pair<const EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
+        const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& key = query_box.min();
         bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
-        if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
-            return {&root_, std::nullopt};
-        }
         const EntryT* parent = &root_;
-        std::optional<EntryIteratorC<DIM, EntryT>> entry_iter =
+        if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
+            // Abort early if we have no shared prefix in the query
+            return {&root_, root_.GetNode().Entries().end()};
+        }
+        EntryIteratorC<DIM, EntryT> entry_iter =
             root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
-        while (entry_iter.has_value() && (*entry_iter)->second.IsNode() &&
-               (*entry_iter)->second.GetNodePostfixLen() >= max_conflicting_bits) {
-            parent = &(*entry_iter)->second;
+        while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
+               entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
+            parent = &entry_iter->second;
             entry_iter = parent->GetNode().FindIter(key, parent->GetNodePostfixLen());
         }
         return {parent, entry_iter};

@@ -62,8 +62,8 @@ class ForEachHC {
         CalcLimits(entry.GetNodePostfixLen(), entry.GetKey(), mask_lower, mask_upper);
         auto& entries = entry.GetNode().Entries();
         auto postfix_len = entry.GetNodePostfixLen();
-        auto iter = opt_it != nullptr ? *opt_it : entries.lower_bound(mask_lower);
         auto end = entries.end();
+        auto iter = opt_it != nullptr && *opt_it != end ? *opt_it : entries.lower_bound(mask_lower);
         for (; iter != end && iter->first <= mask_upper; ++iter) {
             auto child_hc_pos = iter->first;
             // Use bit-mask magic to check whether we are in a valid quadrant.

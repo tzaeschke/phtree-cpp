@@ -22,7 +22,6 @@
 #include "phtree/common/common.h"
 #include "phtree_v16.h"
 #include <map>
-#include <optional>
 
 namespace improbable::phtree::v16 {
 
@@ -150,14 +149,14 @@ class Node {
         return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
     }
 
-    std::optional<const EntryIteratorC<DIM, EntryT>> FindIter(
+    EntryIteratorC<DIM, EntryT> FindIter(
         const KeyT& key, bit_width_t postfix_len) const {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         const auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
             return {iter};
         }
-        return std::nullopt;
+        return entries_.end();
     }
 
     /*
