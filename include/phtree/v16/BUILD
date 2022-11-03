@@ -13,6 +13,7 @@ cc_library(
         "iterator_full.h",
         "iterator_hc.h",
         "iterator_knn_hs.h",
+        "iterator_with_full_pos.h",
         "iterator_with_parent.h",
         "node.h",
         "phtree_v16.h",

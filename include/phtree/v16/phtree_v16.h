@@ -24,6 +24,7 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
+#include "iterator_with_full_pos.h"
 #include "iterator_with_parent.h"
 #include "node.h"
 
@@ -322,28 +323,40 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      */
     auto _find_two(const KeyT& old_key, const KeyT& new_key) {
-        using Iter = IteratorWithParent<T, CONVERT>;
+        using Iter = IteratorWithFullPos<T, CONVERT>;
+        using NodeIter = EntryIteratorC<DIM, EntryT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
-        const EntryT* current_entry = &root_;           // An entry.
-        const EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
+        const EntryT* old_node_entry = &root_;          // Node that contains entry to be removed
         const EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        const EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
+        NodeIter new_node_entry{};                      // Node that will contain  new entry
+
+        bool found;
+        bool found_new = false;
+        NodeIter current_entry =
+            root_.GetNode().FindIter(old_key, root_.GetNodePostfixLen(), found);
+        if (found && current_entry->second.IsNode() && current_entry->second.GetNodePostfixLen() + 1 >= n_diverging_bits) {
+            found_new = true;
+            new_node_entry = current_entry;
+        }
+
         // Find node for removal
-        while (current_entry && current_entry->IsNode()) {
+        while (found && current_entry->second.IsNode()) {
             old_node_entry_parent = old_node_entry;
-            old_node_entry = current_entry;
+            old_node_entry = &current_entry->second;
             auto postfix_len = old_node_entry->GetNodePostfixLen();
             if (postfix_len + 1 >= n_diverging_bits) {
-                new_node_entry = old_node_entry;
+                found_new = true;
+                new_node_entry = current_entry;
             }
-            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
+            current_entry = current_entry->second.GetNode().FindIter(old_key, postfix_len, found);
         }
-        const EntryT* old_entry = current_entry;  // Entry to be removed
+        NodeIter old_entry = current_entry;  // Entry to be removed
 
         // Can we stop already?
-        if (old_entry == nullptr) {
-            auto iter = Iter(nullptr, nullptr, nullptr, converter_);
+        if (old_entry == old_node_entry->GetNode().Entries().end()) {
+            // TODO pass in end()?
+            auto iter = Iter(converter_);
             return std::make_pair(iter, iter);  // old_key not found!
         }
 
@@ -355,14 +368,24 @@ class PhTreeV16 {
         }
 
         // Find node for insertion
-        auto new_entry = new_node_entry;
-        while (new_entry && new_entry->IsNode()) {
+        NodeIter new_entry = new_node_entry;
+        bool found_new_parent = found_new;
+
+        if (!found_new) {
+            new_entry = root_.GetNode().FindIter(new_key, root_.GetNodePostfixLen(), found_new);
+        }
+
+        while (found_new && new_entry->second.IsNode()) {
             new_node_entry = new_entry;
-            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
+            found_new_parent = true;
+            new_entry = new_entry->second.GetNode().FindIter(
+                new_key, new_entry->second.GetNodePostfixLen(), found_new);
         }
 
         auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-        auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
+        const EntryT* new_node_entry_ptr = found_new_parent ? &new_node_entry->second : &root_;
+        auto iter2 = found_new ? Iter(new_entry, new_node_entry_ptr, nullptr, converter_)
+                               : Iter(new_node_entry_ptr, nullptr, converter_);
         return std::make_pair(iter1, iter2);
     }
 

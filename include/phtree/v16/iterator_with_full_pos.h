@@ -14,37 +14,54 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ITERATOR_PARENT_H
-#define PHTREE_V16_ITERATOR_PARENT_H
+#ifndef PHTREE_V16_ITERATOR_FULL_POS_H
+#define PHTREE_V16_ITERATOR_FULL_POS_H
 
-#include "phtree/common/common.h"
 #include "iterator_base.h"
+#include "node.h"
+#include "phtree/common/common.h"
 
 namespace improbable::phtree::v16 {
 
 template <typename T, typename CONVERT>
-class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
+// TODO FILTER + CONVERTER ????
+class IteratorWithFullPos : public IteratorWithFilter<T, CONVERT> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT>::EntryT;
+    using NodeIter = EntryIteratorC<DIM, EntryT>;
     friend PhTreeV16<DIM, T, CONVERT>;
 
   public:
-    explicit IteratorWithParent(
-        const EntryT* current_result,
+    explicit IteratorWithFullPos(const CONVERT* converter) noexcept
+    : IteratorWithFilter<T, CONVERT>(nullptr, converter)
+    , current_node_{nullptr}
+    , parent_node_{nullptr}
+    , node_iter_{} {}
+
+    explicit IteratorWithFullPos(
+        const EntryT* current_node, const EntryT* parent_node, const CONVERT* converter) noexcept
+    : IteratorWithFilter<T, CONVERT>(nullptr, converter)
+    , current_node_{current_node}
+    , parent_node_{parent_node}
+    , node_iter_{} {}
+
+    explicit IteratorWithFullPos(
+        NodeIter current_iter,
         const EntryT* current_node,
         const EntryT* parent_node,
         const CONVERT* converter) noexcept
-    : IteratorWithFilter<T, CONVERT>(current_result, converter)
+    : IteratorWithFilter<T, CONVERT>(&current_iter->second, converter)
     , current_node_{current_node}
-    , parent_node_{parent_node} {}
+    , parent_node_{parent_node}
+    , node_iter_{current_iter} {}
 
-    IteratorWithParent& operator++() {
+    IteratorWithFullPos& operator++() {
         this->SetFinished();
         return *this;
     }
 
-    IteratorWithParent operator++(int) {
+    IteratorWithFullPos operator++(int) {
         IteratorWithParent iterator(*this);
         ++(*this);
         return iterator;
@@ -65,8 +82,9 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
 
     const EntryT* current_node_;
     const EntryT* parent_node_;
+    NodeIter node_iter_;
 };
 
 }  // namespace improbable::phtree::v16
 
-#endif  // PHTREE_V16_ITERATOR_PARENT_H
+#endif  // PHTREE_V16_ITERATOR_FULL_POS_H

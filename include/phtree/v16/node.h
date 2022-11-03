@@ -149,6 +149,17 @@ class Node {
         return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
     }
 
+    EntryIteratorC<DIM, EntryT> FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) const {
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        auto iter = entries_.find(hc_pos);
+        if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
+            found = true;
+            return iter;
+        }
+        found = false;
+        return entries_.end();
+    }
+
     EntryIteratorC<DIM, EntryT> FindPrefix(
         const KeyT& prefix, bit_width_t prefix_post_len, bit_width_t node_postfix_len) const {
         assert(prefix_post_len <= node_postfix_len);
