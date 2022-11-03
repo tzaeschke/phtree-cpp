@@ -505,7 +505,11 @@ class PhTreeV16 {
         const PhBox<DIM, ScalarInternal>& query_box, FILTER&& filter = FILTER()) const {
         auto pair = find_starting_node(query_box);
         return IteratorHC<T, CONVERT, FILTER>(
-            *pair.first, query_box.min(), query_box.max(), converter_, std::forward<FILTER>(filter));
+            *pair.first,
+            query_box.min(),
+            query_box.max(),
+            converter_,
+            std::forward<FILTER>(filter));
     }
 
     /*
@@ -585,19 +589,20 @@ class PhTreeV16 {
      */
     std::pair<const EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
         const PhBox<DIM, ScalarInternal>& query_box) const {
-        auto& key = query_box.min();
+        auto& prefix = query_box.min();
         bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
         const EntryT* parent = &root_;
-        if (max_conflicting_bits >= improbable::phtree::MAX_BIT_WIDTH<ScalarInternal>) {
+        if (max_conflicting_bits > root_.GetNodePostfixLen()) {
             // Abort early if we have no shared prefix in the query
             return {&root_, root_.GetNode().Entries().end()};
         }
         EntryIteratorC<DIM, EntryT> entry_iter =
-            root_.GetNode().FindIter(key, root_.GetNodePostfixLen());
+            root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
             parent = &entry_iter->second;
-            entry_iter = parent->GetNode().FindIter(key, parent->GetNodePostfixLen());
+            entry_iter = parent->GetNode().FindPrefix(
+                prefix, max_conflicting_bits, parent->GetNodePostfixLen());
         }
         return {parent, entry_iter};
     }
