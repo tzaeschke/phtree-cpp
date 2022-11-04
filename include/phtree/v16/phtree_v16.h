@@ -303,11 +303,14 @@ class PhTreeV16 {
 
         // Erase old value. See comments in try_emplace(iterator) for details.
         EntryT* old_node_entry = iter_old.GetNodeEntry();
+        bool found = false;
         if (iter_old.GetParentNodeEntry() == iter_new.GetNodeEntry()) {
             // In this case the old_node_entry may have been invalidated by the previous insertion.
             old_node_entry = iter_old.GetParentNodeEntry();
+        } else {
+            old_node_entry = old_node_entry->GetNode().Erase(iter_old.GetEntryIter(),
+                old_key, old_node_entry, old_node_entry != &root_, found);
         }
-        bool found = false;
         while (old_node_entry) {
             old_node_entry = old_node_entry->GetNode().Erase(
                 old_key, old_node_entry, old_node_entry != &root_, found);
@@ -324,7 +327,7 @@ class PhTreeV16 {
      */
     auto _find_two(const KeyT& old_key, const KeyT& new_key) {
         using Iter = IteratorWithFullPos<T, CONVERT>;
-        using NodeIter = EntryIteratorC<DIM, EntryT>;
+        using NodeIter = EntryIterator<DIM, EntryT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         const EntryT* old_node_entry = &root_;          // Node that contains entry to be removed

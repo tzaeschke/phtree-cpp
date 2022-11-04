@@ -129,6 +129,19 @@ class Node {
         return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
     }
 
+//    template <typename... Args>
+//    EntryT& Emplace(bool& is_inserted, const EntryIterator<DIM, EntryT> hint, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
+//        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+//        auto emplace_result = entries_.try_emplace(hc_pos, key, std::forward<Args>(args)...);
+//        auto& entry = emplace_result.first->second;
+//        // Return if emplace succeed, i.e. there was no entry.
+//        if (emplace_result.second) {
+//            is_inserted = true;
+//            return entry;
+//        }
+//        return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
+//    }
+
     /*
      * Returns the value (T or Node) if the entry exists and matches the key. Child nodes are
      * _not_ traversed.
@@ -149,7 +162,7 @@ class Node {
         return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
     }
 
-    EntryIteratorC<DIM, EntryT> FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) const {
+    EntryIterator<DIM, EntryT> FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
@@ -198,6 +211,28 @@ class Node {
                 return &it->second;
             }
             entries_.erase(it);
+
+            found = true;
+            if (allow_move_into_parent && GetEntryCount() == 1) {
+                // We take the remaining entry from the current node and inserts it into the
+                // parent_entry where it replaces (and implicitly deletes) the current node.
+                parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
+                // WARNING: (this) is deleted here, do not refer to it beyond this point.
+            }
+        }
+        return nullptr;
+    }
+
+    EntryT* Erase(const EntryIterator<DIM, EntryT> hint, const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
+        assert(hint != entries_.end());
+        auto postfix_len = parent_entry->GetNodePostfixLen();
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        //auto it = entries_.find(hc_pos);
+        if (hint != entries_.end() && DoesEntryMatch(hint->second, key, postfix_len)) {
+            if (hint->second.IsNode()) {
+                return &hint->second;
+            }
+            entries_.erase(hint);
 
             found = true;
             if (allow_move_into_parent && GetEntryCount() == 1) {

@@ -114,7 +114,7 @@ class array_map {
         return false;
     }
 
-    bool erase(PhFlatMapIterator<T, SIZE>& iterator) {
+    bool erase(const PhFlatMapIterator<T, SIZE>& iterator) {
         return erase(iterator.first);
     }
 
@@ -210,11 +210,13 @@ class PhFlatMapIterator {
 
     friend bool operator==(
         const PhFlatMapIterator<T, SIZE>& left, const PhFlatMapIterator<T, SIZE>& right) {
+        assert(left.map_ == right.map_);
         return left.first == right.first;
     }
 
     friend bool operator!=(
         const PhFlatMapIterator<T, SIZE>& left, const PhFlatMapIterator<T, SIZE>& right) {
+        assert(left.map_ == right.map_);
         return !(left == right);
     }
 

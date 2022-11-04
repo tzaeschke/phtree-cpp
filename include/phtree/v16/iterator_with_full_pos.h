@@ -29,7 +29,7 @@ class IteratorWithFullPos : public IteratorWithFilter<T, CONVERT> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT>::EntryT;
-    using NodeIter = EntryIteratorC<DIM, EntryT>;
+    using NodeIter = EntryIterator<DIM, EntryT>;
     friend PhTreeV16<DIM, T, CONVERT>;
 
   public:
@@ -78,6 +78,10 @@ class IteratorWithFullPos : public IteratorWithFilter<T, CONVERT> {
 
     EntryT* GetParentNodeEntry() const {
         return const_cast<EntryT*>(parent_node_);
+    }
+
+    NodeIter& GetEntryIter() const {
+        return const_cast<NodeIter&>(node_iter_);
     }
 
     const EntryT* current_node_;
