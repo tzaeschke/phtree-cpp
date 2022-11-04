@@ -149,9 +149,9 @@ class Node {
             }
         }
 
-        // add an entry
+        // split node
         if (entries_.size() >= MAX_SIZE) {
-            // TODO split
+            Split(postfix_len);
         }
 
         // search again
@@ -433,6 +433,85 @@ class Node {
         current_entry.SetNode(std::move(new_sub_node), new_postfix_len);
         return new_entry;
     }
+
+#ifdef FLEX
+    void Split(bit_width_t postfix_len) {
+        auto iter = entries_.begin();
+        hc_pos_t current_hc_pos = std::numeric_limits<hc_pos_t>::max();
+
+        // find start
+        auto start = iter;
+        while (iter != entries_.end() && iter->first != current_hc_pos) {
+            current_hc_pos = iter->first;
+            start = iter;
+            ++iter;
+        }
+
+        // find end
+        auto end = iter;
+        auto last = start;
+        while (iter != entries_.end() && iter->first == current_hc_pos) {
+            current_hc_pos = iter->first;
+            last = iter;
+            ++iter;
+            end = iter;
+        }
+
+        auto second = start++;
+        bool dummy;
+        HandleCollision(
+            start->second,                                   // EntryT& existing_entry,
+            dummy,                                    // bool& is_inserted,
+            second->second.GetKey(),                  // const KeyT& new_key,
+            postfix_len,                              // bit_width_t current_postfix_len,
+            std::move(second->second.ExtractValue())  // Args&&... args
+        );
+
+        auto current = second++;
+        while (current != end) {
+            auto* current_entry = &start->second;
+            bool is_inserted = false;
+            while (current_entry->IsNode()) {
+                current_entry = &current_entry->GetNode().Emplace(
+                    is_inserted,
+                    current->second.GetKey(),
+                    current_entry->GetNodePostfixLen(),
+                    current->second.ExtractValue());
+            }
+            // TODO we could have a nested overflow....
+            //assert(is_inserted);
+            ++current;
+        }
+
+        entries_.erase(second, last);
+
+        //        if (entry.IsNode()) {
+        //            auto postfix_len = entry.GetNodePostfixLen();
+        //            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractNode(),
+        //            postfix_len});
+        //        } else {
+        //            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractValue()});
+        //        }
+
+        //        bit_width_t max_conflicting_bits =
+        //            NumberOfDivergingBits(start->second.GetKey(), second->second.GetKey());
+        //
+        //        // Move to new node
+        //        bit_width_t new_postfix_len = max_conflicting_bits - 1;
+        //        auto new_sub_node = std::make_unique<Node>();
+        //        hc_pos_t pos_sub_1 = CalcPosInArray(start->second.GetKey(), new_postfix_len);
+        //        hc_pos_t pos_sub_2 = CalcPosInArray(second->second.GetKey(), new_postfix_len);
+        //
+        //        // Move key/value into subnode
+        //        new_sub_node->WriteEntry(pos_sub_2, second->second);
+        //        auto& new_entry = new_sub_node->WriteValue(pos_sub_1, new_key,
+        //        std::forward<Args>(args)...);
+        //
+        //        // Insert new node into local node
+        //        current_entry.SetNode(std::move(new_sub_node), new_postfix_len);
+        //        return new_entry;
+    }
+#endif
 
     /*
      * Checks whether an entry's key matches another key. For Non-node entries this simply means
