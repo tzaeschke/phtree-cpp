@@ -247,7 +247,7 @@ class Node {
                 // WARNING: (this) is deleted here, do not refer to it beyond this point.
             }
         //}
-        //return nullptr;
+        return nullptr;
     }
 
     auto& Entries() {
