@@ -223,15 +223,20 @@ class Node {
         return nullptr;
     }
 
+    // TODO rename to EraseUnchecked() or generally move checks to PhTreeV16.h
     EntryT* Erase(const EntryIterator<DIM, EntryT> hint, const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
         assert(hint != entries_.end());
         auto postfix_len = parent_entry->GetNodePostfixLen();
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        //hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         //auto it = entries_.find(hc_pos);
-        if (hint != entries_.end() && DoesEntryMatch(hint->second, key, postfix_len)) {
-            if (hint->second.IsNode()) {
-                return &hint->second;
-            }
+        // TODO technically, we do not need to check again here... -> maybe do assert() instead?
+        assert(DoesEntryMatch(hint->second, key, postfix_len));
+        //if (DoesEntryMatch(hint->second, key, postfix_len)) {
+            // TODO technically, we also know this is not a node
+            assert(hint->second.IsValue());
+            //if (hint->second.IsNode()) {
+            //    return &hint->second;
+            //}
             entries_.erase(hint);
 
             found = true;
@@ -241,8 +246,8 @@ class Node {
                 parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
                 // WARNING: (this) is deleted here, do not refer to it beyond this point.
             }
-        }
-        return nullptr;
+        //}
+        //return nullptr;
     }
 
     auto& Entries() {
