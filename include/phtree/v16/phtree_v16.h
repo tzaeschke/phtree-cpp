@@ -293,6 +293,9 @@ class PhTreeV16 {
             return 1;
         }
 
+        TODO use iterators for map-Emplace()   (requires implementation in maps)
+        TODO use iterators in multi-map
+
         bool is_inserted = false;
         auto* new_parent = iter_new.GetNodeEntry();
         new_parent->GetNode().Emplace(
