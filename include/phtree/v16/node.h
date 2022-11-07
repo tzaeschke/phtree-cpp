@@ -22,6 +22,7 @@
 #include "phtree/common/b_plus_tree_hash_map.h"
 #include "phtree/common/common.h"
 #include "phtree_v16.h"
+#include <iostream>
 #include <map>
 
 namespace improbable::phtree::v16 {
@@ -56,7 +57,6 @@ template <dimension_t DIM, typename Entry>
 
 #ifdef FLEX
 using EntryMap = std::multimap<hc_pos_t, Entry>;
-constexpr size_t MAX_SIZE = 16;
 #endif
 
 template <dimension_t DIM, typename Entry>
@@ -85,6 +85,9 @@ using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
  */
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node {
+#ifdef FLEX
+    static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(16), hc_pos_t(1) << DIM);
+#endif
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
 
@@ -150,7 +153,9 @@ class Node {
         }
 
         // split node
-        if (entries_.size() >= MAX_SIZE) {
+        // TODO std::cerr << "hhhhhh-------- " << entries_.size() << " >= " << MAX_SIZE << "  DIM=" << DIM << std::endl;
+        // TODO DIM < 32!!!
+        if (DIM <32 && entries_.size() >= MAX_SIZE) {
             Split(postfix_len);
         }
 
@@ -437,53 +442,86 @@ class Node {
 #ifdef FLEX
     void Split(bit_width_t postfix_len) {
         auto iter = entries_.begin();
+        int nIter = 0;
         hc_pos_t current_hc_pos = std::numeric_limits<hc_pos_t>::max();
 
         // find start
         auto start = iter;
+        int nStart = nIter;
         while (iter != entries_.end() && iter->first != current_hc_pos) {
             current_hc_pos = iter->first;
             start = iter;
+            nStart = nIter;
             ++iter;
+            ++nIter;
         }
 
-        // find end
+        // find "end"
         auto end = iter;
         auto last = start;
+        int nEnd = nIter;
+        int nLast = nStart;
         while (iter != entries_.end() && iter->first == current_hc_pos) {
             current_hc_pos = iter->first;
             last = iter;
+            nLast = nIter;
             ++iter;
+            ++nIter;
             end = iter;
+            nEnd = nIter;
         }
 
-        auto second = start++;
+        // insert "second" entry into "first"
+        auto second = start;
+        ++second;
+        int nSecond = nStart;
+        ++nSecond;
         bool dummy;
-        HandleCollision(
-            start->second,                                   // EntryT& existing_entry,
-            dummy,                                    // bool& is_inserted,
-            second->second.GetKey(),                  // const KeyT& new_key,
-            postfix_len,                              // bit_width_t current_postfix_len,
-            std::move(second->second.ExtractValue())  // Args&&... args
-        );
 
-        auto current = second++;
+        auto current = second;
+        int nCurrent = nSecond;
+        std::cout << "iter= " << nIter << " current= " << nCurrent << " second=" << nSecond
+                  << " start= " << nStart << " end= " << nEnd << std::endl;
         while (current != end) {
-            auto* current_entry = &start->second;
+            assert(current->first == start->first);
             bool is_inserted = false;
-            while (current_entry->IsNode()) {
-                current_entry = &current_entry->GetNode().Emplace(
-                    is_inserted,
-                    current->second.GetKey(),
-                    current_entry->GetNodePostfixLen(),
-                    current->second.ExtractValue());
+ //           std::cout << " current= " << nCurrent << "  key=" << current->second.GetKey() << std::endl;
+            HandleCollision(
+                start->second,                            // EntryT& existing_entry,
+                is_inserted,                                    // bool& is_inserted,
+                current->second.GetKey(),                  // const KeyT& new_key,
+                postfix_len,                              // bit_width_t current_postfix_len,
+                std::move(current->second.ExtractValue())  // Args&&... args
+            );
+            // If it was not inserted via collision handling (=collision with sub-node prefix)
+            // then we insert it directly into the new subnode.
+            if (!is_inserted) {
+                auto* current_entry = &start->second;
+                while (current_entry->IsNode()) {
+//                    std::cout << "  current= " << nCurrent << std::endl;
+                    current_entry = &current_entry->GetNode().Emplace(
+                        is_inserted,
+                        current->second.GetKey(),
+                        current_entry->GetNodePostfixLen(),
+                        current->second.ExtractValue());
+                }
             }
             // TODO we could have a nested overflow....
-            //assert(is_inserted);
+            // assert(is_inserted);
             ++current;
+            ++nCurrent;
         }
 
-        entries_.erase(second, last);
+//        std::cout << "Before" << std::endl;
+//        for (auto& x : entries_) {
+//            std::cout << "   e=" << x.first << " -> " << x.second.GetKey() << std::endl;
+//        }
+        entries_.erase(second, end);
+//        std::cout << "After" << std::endl;
+//        for (auto& x : entries_) {
+//            std::cout << "   e=" << x.first << " -> " << x.second.GetKey() << std::endl;
+//        }
+        assert(start->first < (++start)->first);
 
         //        if (entry.IsNode()) {
         //            auto postfix_len = entry.GetNodePostfixLen();
