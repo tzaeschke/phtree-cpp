@@ -142,6 +142,7 @@ class Node {
     EntryT& Emplace(bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
 #ifdef FLEX
+        size_t match_count = 0;
         {
             // subnode? return for further traversal
             auto iter = entries_.lower_bound(hc_pos);
@@ -153,6 +154,7 @@ class Node {
             // Does entry exist? -> return as failed insertion
             // TODO Implement as native multimap??? -> What about MAX_SIZE?
             while (iter != entries_.end() && iter->first == hc_pos) {
+                ++match_count;
                 if (iter->second.GetKey() == key) {
                     // Entry exists ...
                     return iter->second;
@@ -164,7 +166,8 @@ class Node {
         // split node if it is too large
         // TODO std::cerr << "hhhhhh-------- " << entries_.size() << " >= " << MAX_SIZE << "  DIM=" << DIM << std::endl;
         // TODO DIM < 32!!!
-        if (DIM <32 && entries_.size() >= MAX_SIZE) {
+        //if (DIM <32 && entries_.size() >= MAX_SIZE) {
+        if (match_count >= 4) {
             Split(postfix_len);
         }
 
