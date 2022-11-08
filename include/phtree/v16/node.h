@@ -57,6 +57,13 @@ template <dimension_t DIM, typename Entry>
 
 #ifdef FLEX
 using EntryMap = std::multimap<hc_pos_t, Entry>;
+#else
+ using EntryMap = typename std::conditional<
+     DIM <= 3,
+     array_map<Entry, (hc_pos_t(1) << DIM)>,
+     typename std::
+         conditional<DIM <= 8, sparse_map<Entry>, b_plus_tree_map<Entry, (hc_pos_t(1) << DIM)>>::
+             type>::type;
 #endif
 
 template <dimension_t DIM, typename Entry>
@@ -86,7 +93,7 @@ using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node {
 #ifdef FLEX
-    static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(16), hc_pos_t(1) << DIM);
+    static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(8), hc_pos_t(1) << DIM);
 #endif
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
@@ -136,12 +143,14 @@ class Node {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
 #ifdef FLEX
         {
+            // subnode? return for further traversal
             auto iter = entries_.lower_bound(hc_pos);
             if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
                 return HandleCollision(
                     iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
             }
 
+            // Does entry exist? -> return as failed insertion
             // TODO Implement as native multimap??? -> What about MAX_SIZE?
             while (iter != entries_.end() && iter->first == hc_pos) {
                 if (iter->second.GetKey() == key) {
@@ -152,7 +161,7 @@ class Node {
             }
         }
 
-        // split node
+        // split node if it is too large
         // TODO std::cerr << "hhhhhh-------- " << entries_.size() << " >= " << MAX_SIZE << "  DIM=" << DIM << std::endl;
         // TODO DIM < 32!!!
         if (DIM <32 && entries_.size() >= MAX_SIZE) {
@@ -160,8 +169,10 @@ class Node {
         }
 
         // search again
+        // TODO avoid this, we can e.g. calculate the new iter position.
         auto iter = entries_.lower_bound(hc_pos);
-        if (iter != entries_.end() && iter->second.IsNode()) {
+        // Subnode? return for further traversal
+        if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
             return HandleCollision(
                 iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
         }
@@ -324,9 +335,14 @@ class Node {
         assert(entries_.size() >= 2 || current_depth == 0);
         size_t num_entries_local = 0;
         size_t num_entries_children = 0;
+        bool prev_is_node = false;
+        hc_pos_t prev_hc_pos = std::numeric_limits<hc_pos_t>::max();
         for (auto& entry : entries_) {
             auto& child = entry.second;
             if (child.IsNode()) {
+                assert(entry.first != prev_hc_pos);
+                prev_hc_pos = entry.first;
+                prev_is_node = true;
                 auto& sub = child.GetNode();
                 // Check node consistency
                 auto sub_infix_len = child.GetNodeInfixLen(current_entry.GetNodePostfixLen());
@@ -336,6 +352,9 @@ class Node {
                 num_entries_children +=
                     sub.CheckConsistency(child, current_depth + 1 + sub_infix_len);
             } else {
+                assert(prev_is_node == false || entry.first != prev_hc_pos);
+                prev_hc_pos = entry.first;
+                prev_is_node = false;
                 ++num_entries_local;
             }
         }
@@ -458,13 +477,9 @@ class Node {
 
         // find "end"
         auto end = iter;
-        auto last = start;
         int nEnd = nIter;
-        int nLast = nStart;
         while (iter != entries_.end() && iter->first == current_hc_pos) {
             current_hc_pos = iter->first;
-            last = iter;
-            nLast = nIter;
             ++iter;
             ++nIter;
             end = iter;
@@ -480,8 +495,8 @@ class Node {
 
         auto current = second;
         int nCurrent = nSecond;
-        std::cout << "iter= " << nIter << " current= " << nCurrent << " second=" << nSecond
-                  << " start= " << nStart << " end= " << nEnd << std::endl;
+//        std::cout << "iter= " << nIter << " current= " << nCurrent << " second=" << nSecond
+//                  << " start= " << nStart << " end= " << nEnd << " size=" << entries_.size() << "  hcpos=" << start->first << std::endl;
         while (current != end) {
             assert(current->first == start->first);
             bool is_inserted = false;
@@ -521,33 +536,10 @@ class Node {
 //        for (auto& x : entries_) {
 //            std::cout << "   e=" << x.first << " -> " << x.second.GetKey() << std::endl;
 //        }
-        assert(start->first < (++start)->first);
-
-        //        if (entry.IsNode()) {
-        //            auto postfix_len = entry.GetNodePostfixLen();
-        //            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractNode(),
-        //            postfix_len});
-        //        } else {
-        //            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractValue()});
-        //        }
-
-        //        bit_width_t max_conflicting_bits =
-        //            NumberOfDivergingBits(start->second.GetKey(), second->second.GetKey());
-        //
-        //        // Move to new node
-        //        bit_width_t new_postfix_len = max_conflicting_bits - 1;
-        //        auto new_sub_node = std::make_unique<Node>();
-        //        hc_pos_t pos_sub_1 = CalcPosInArray(start->second.GetKey(), new_postfix_len);
-        //        hc_pos_t pos_sub_2 = CalcPosInArray(second->second.GetKey(), new_postfix_len);
-        //
-        //        // Move key/value into subnode
-        //        new_sub_node->WriteEntry(pos_sub_2, second->second);
-        //        auto& new_entry = new_sub_node->WriteValue(pos_sub_1, new_key,
-        //        std::forward<Args>(args)...);
-        //
-        //        // Insert new node into local node
-        //        current_entry.SetNode(std::move(new_sub_node), new_postfix_len);
-        //        return new_entry;
+        auto next = start;
+        ++next;
+        assert(next == entries_.end() || start->first < next->first);
+        //assert((start++) == entries_.end() || start->first < (++start)->first);
     }
 #endif
 

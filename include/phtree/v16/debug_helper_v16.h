@@ -138,6 +138,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
                 if (printValue) {
                     sb << "  v=" << (child.IsValue() ? "T" : "null");
                 }
+                sb << " " << child.GetKey();
                 sb << std::endl;
             }
         }
