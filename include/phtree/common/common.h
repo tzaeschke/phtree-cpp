@@ -113,6 +113,25 @@ static bool KeyEquals(
     return true;
 }
 
+template <dimension_t DIM, typename SCALAR>
+static bool KeyLess(
+        const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, bit_mask_t<SCALAR> mask) {
+    for (dimension_t i = 0; i < DIM; ++i) {
+        if (((key_a[i] ^ key_b[i]) & mask) != 0) {
+//            if ((key_a[i] & mask) < (key_b[i] & mask)) {
+//                return true;
+//            }
+//            if ((key_a[i] & mask) > (key_b[i] & mask)) {
+//                return false;
+//            }
+//            assert(false); // TODO optimize!!!
+            return  (key_a[i] & mask) < (key_b[i] & mask);
+        }
+    }
+    return false;
+}
+
+
 // ************************************************************************
 // String helpers
 // ************************************************************************

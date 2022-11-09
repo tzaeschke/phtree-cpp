@@ -63,9 +63,9 @@ struct SetEntry {
             : first{hc_pos}, second(std::forward<Args>(args)...) {}
 
 
-    bool operator==(const SetEntry<EntryT>& rhs) const noexcept {
-        return first == rhs.first && second.GetKey() == rhs.second.GetKey();
-    }
+//    bool operator==(const SetEntry<EntryT>& rhs) const noexcept {
+//        return first == rhs.first && second.GetKey() == rhs.second.GetKey();
+//    }
 };
 template <typename EntryT>
 struct equal_to_content {
@@ -75,14 +75,14 @@ struct equal_to_content {
         return (*x1) == (*x2);
     }
 };
-template <typename EntryT>
-struct less_content {
-    bool operator()(
-            const SetEntry<EntryT>& x1,
-            const SetEntry<EntryT>& x2) const {
-        return x1.first < x2.first;
-    }
-};
+//template <typename EntryT>
+//struct less_content {
+//    bool operator()(
+//            const SetEntry<EntryT>& x1,
+//            const SetEntry<EntryT>& x2) const {
+//        return x1.first < x2.first || x1.first == x2.first && x1.second.GetKey()[0] < x2.second.GetKey()[0];
+//    }
+//};
 }  // namespace phtree_multimap_d_test_filter
 
 //namespace std {
@@ -96,6 +96,22 @@ struct less_content {
 
 namespace improbable::phtree::v16 {
 
+    template <typename EntryT>
+    struct less_content {
+        bool operator()(
+                const SetEntry<EntryT>& x1,
+                const SetEntry<EntryT>& x2) const {
+            auto& e1 = x1.second;
+            auto& e2 = x2.second;
+            if (e1.IsValue() && e2.IsValue()) {
+                return x1.first < x2.first || x1.first == x2.first && x1.second.GetKey() < x2.second.GetKey();
+            }
+            using SCALAR = std::remove_reference_t<decltype(e1.GetKey()[0])>;
+            const auto mask1 = MAX_MASK<SCALAR> << (e1.IsNode() ? (e1.GetNodePostfixLen() + 1) : 0);
+            const auto mask2 = MAX_MASK<SCALAR> << (e2.IsNode() ? (e2.GetNodePostfixLen() + 1) : 0);
+            return KeyLess(e1.GetKey(), e2.GetKey(), mask1 & mask2);
+        }
+    };
 
 template <dimension_t DIM, typename Entry>
 // using EntryMap = typename std::conditional<
@@ -273,7 +289,7 @@ class Node {
         }
 
         // search again
-        // TODO avoid this, we can e.g. calculate the new iter position.
+        // TODO avoid this, we can e.g. calculate the new iter position. OR WE WE DIDN'T SPLIT!
         auto iter = entries_.lower_bound(wrap(hc_pos));
         // Subnode? return for further traversal
         if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
@@ -283,10 +299,15 @@ class Node {
         }
 
         // Does not exist
-        is_inserted = true;
-        auto entry_iter =
-                entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
-        return const_cast<EntryT&>(entry_iter->second);  // TODO why cast???
+//        is_inserted = true;
+//        auto entry_iter =
+//                entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
+//        return const_cast<EntryT&>(entry_iter->second);  // TODO why cast???
+        auto result = entries_.emplace(hc_pos, EntryT{key, std::forward<Args>(args)...});
+        if (result.second) {
+            is_inserted = true;
+        }
+        return const_cast<EntryT&>(result.first->second);
 #else
         auto emplace_result = entries_.try_emplace(hc_pos, key, std::forward<Args>(args)...);
         auto& entry = emplace_result.first->second;
@@ -301,6 +322,10 @@ class Node {
 
         static SetEntry<EntryT> wrap(hc_pos_t hc_pos) {
             return SetEntry<EntryT>{hc_pos};
+        }
+
+        static SetEntry<EntryT> wrap(hc_pos_t hc_pos, const KeyT& key) {
+            return SetEntry<EntryT>{hc_pos, key};
         }
 
         auto lower_bound(hc_pos_t hc_pos) {
@@ -321,7 +346,7 @@ class Node {
     const EntryT* Find(const KeyT& key, bit_width_t postfix_len) const {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
 #if defined(FLEX) || defined(FLEX_SET)
-        auto iter = lower_bound(hc_pos);
+        auto iter = entries_.lower_bound(wrap(hc_pos, key));
         while (iter != entries_.end() && iter->first == hc_pos) {
             if (DoesEntryMatch(iter->second, key, postfix_len)) {
                 return &iter->second;

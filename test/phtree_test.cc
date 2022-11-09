@@ -185,6 +185,8 @@ void SmokeTestBasicOps(size_t N) {
         } else {
             ASSERT_TRUE(tree.try_emplace(p, i).second);
         }
+        std::cout << "i=" << i << std::endl;
+        std::cout << PhTreeDebugHelper::ToString(tree, PhTreeDebugHelper::PrintDetail::tree) << std::endl;
         ASSERT_EQ(tree.count(p), 1);
         ASSERT_NE(tree.end(), tree.find(p));
         ASSERT_EQ(id._i, tree.find(p)->_i);
@@ -262,6 +264,7 @@ void SmokeTestBasicOps(size_t N) {
 
 TEST(PhTreeTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<1>(100);
+    abort();
     SmokeTestBasicOps<3>(10000);
     SmokeTestBasicOps<6>(10000);
     SmokeTestBasicOps<10>(10000);
