@@ -24,10 +24,12 @@
 #include "phtree_v16.h"
 #include <iostream>
 #include <map>
+#include <set>
 
 namespace improbable::phtree::v16 {
 
-#define FLEX 1
+//#define FLEX 1
+#define FLEX_SET 1
 
 /*
  * We provide different implementations of the node's internal entry set.
@@ -43,6 +45,58 @@ namespace improbable::phtree::v16 {
  * - 'b_plus_tree_map` is the least efficient for small node sizes but scales best with larger
  *   nodes and dimensionality. Remember that n_max = 2^DIM.
  */
+
+template <typename EntryT>
+struct SetEntry {
+    hc_pos_t first;
+    EntryT second;
+
+    SetEntry() : first{}, second{} {};
+
+    SetEntry(hc_pos_t hc_pos) : first{hc_pos}, second{{}} {};
+
+//    template <typename EntryT2 = EntryT>
+//    SetEntry(hc_pos_t hc_pos, EntryT2&& e) : first{hc_pos}, second{std::forward<EntryT>(e)} {};
+
+    template <typename... Args, typename EntryT2 = EntryT>
+    explicit SetEntry(hc_pos_t hc_pos, Args&&... args) noexcept
+            : first{hc_pos}, second(std::forward<Args>(args)...) {}
+
+
+    bool operator==(const SetEntry<EntryT>& rhs) const noexcept {
+        return first == rhs.first && second.GetKey() == rhs.second.GetKey();
+    }
+};
+template <typename EntryT>
+struct equal_to_content {
+    bool operator()(
+            const SetEntry<EntryT>& x1,
+            const SetEntry<EntryT>& x2) const {
+        return (*x1) == (*x2);
+    }
+};
+template <typename EntryT>
+struct less_content {
+    bool operator()(
+            const SetEntry<EntryT>& x1,
+            const SetEntry<EntryT>& x2) const {
+        return x1.first < x2.first;
+    }
+};
+}  // namespace phtree_multimap_d_test_filter
+
+//namespace std {
+//    template <>
+//    struct hash<improbable::phtree::v16::SetEntry> {
+//        size_t operator()(const phtree_multimap_d_test_filter::Id& x) const {
+//            return std::hash<int>{}(x._i);
+//        }
+//    };
+//};  // namespace std
+
+namespace improbable::phtree::v16 {
+
+
 template <dimension_t DIM, typename Entry>
 // using EntryMap = typename std::conditional<
 //     DIM <= 3,
@@ -57,6 +111,8 @@ template <dimension_t DIM, typename Entry>
 
 #ifdef FLEX
 using EntryMap = std::multimap<hc_pos_t, Entry>;
+#elif defined(FLEX_SET)
+using EntryMap = std::set<SetEntry<Entry>, less_content<Entry>>;
 #else
  using EntryMap = typename std::conditional<
      DIM <= 3,
@@ -185,6 +241,52 @@ class Node {
         auto entry_iter =
             entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
         return entry_iter->second;
+#elif defined(FLEX_SET)
+        size_t match_count = 0;
+        {
+            // subnode? return for further traversal
+            auto iter = entries_.lower_bound(wrap(hc_pos));
+            if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
+                EntryT& e = const_cast<EntryT&>(iter->second);  // TODO why cast???
+                return HandleCollision(
+                        e, is_inserted, key, postfix_len, std::forward<Args>(args)...);
+            }
+
+            // Does entry exist? -> return as failed insertion
+            // TODO Implement as native multimap??? -> What about MAX_SIZE?
+            while (iter != entries_.end() && iter->first == hc_pos) {
+                ++match_count;
+                if (iter->second.GetKey() == key) {
+                    // Entry exists ...
+                    return const_cast<EntryT&>(iter->second);  // TODO why cast???
+                }
+                ++iter;
+            }
+        }
+
+        // split node if it is too large
+        // TODO std::cerr << "hhhhhh-------- " << entries_.size() << " >= " << MAX_SIZE << "  DIM=" << DIM << std::endl;
+        // TODO DIM < 32!!!
+        //if (DIM <32 && entries_.size() >= MAX_SIZE) {
+        if (match_count >= 4) {
+            Split(postfix_len);
+        }
+
+        // search again
+        // TODO avoid this, we can e.g. calculate the new iter position.
+        auto iter = entries_.lower_bound(wrap(hc_pos));
+        // Subnode? return for further traversal
+        if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
+            EntryT& e = const_cast<EntryT&>(iter->second);  // TODO why cast???
+            return HandleCollision(
+                    e, is_inserted, key, postfix_len, std::forward<Args>(args)...);
+        }
+
+        // Does not exist
+        is_inserted = true;
+        auto entry_iter =
+                entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
+        return const_cast<EntryT&>(entry_iter->second);  // TODO why cast???
 #else
         auto emplace_result = entries_.try_emplace(hc_pos, key, std::forward<Args>(args)...);
         auto& entry = emplace_result.first->second;
@@ -197,7 +299,19 @@ class Node {
 #endif
     }
 
-    /*
+        static SetEntry<EntryT> wrap(hc_pos_t hc_pos) {
+            return SetEntry<EntryT>{hc_pos};
+        }
+
+        auto lower_bound(hc_pos_t hc_pos) {
+            return entries_.lower_bound(wrap(hc_pos));
+        }
+
+        auto lower_bound(hc_pos_t hc_pos) const {
+            return entries_.lower_bound(wrap(hc_pos));
+        }
+
+        /*
      * Returns the value (T or Node) if the entry exists and matches the key. Child nodes are
      * _not_ traversed.
      * @param key The key of the entry
@@ -206,8 +320,8 @@ class Node {
      */
     const EntryT* Find(const KeyT& key, bit_width_t postfix_len) const {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-#ifdef FLEX
-        auto iter = entries_.lower_bound(hc_pos);
+#if defined(FLEX) || defined(FLEX_SET)
+        auto iter = lower_bound(hc_pos);
         while (iter != entries_.end() && iter->first == hc_pos) {
             if (DoesEntryMatch(iter->second, key, postfix_len)) {
                 return &iter->second;
@@ -232,7 +346,7 @@ class Node {
         const KeyT& prefix, bit_width_t prefix_post_len, bit_width_t node_postfix_len) const {
         assert(prefix_post_len <= node_postfix_len);
         hc_pos_t hc_pos = CalcPosInArray(prefix, node_postfix_len);
-        const auto iter = entries_.find(hc_pos);
+        const auto iter = entries_.find(wrap(hc_pos));
         if (iter == entries_.end() || iter->second.IsValue() ||
             iter->second.GetNodePostfixLen() < prefix_post_len) {
             // We compare the infix only if it lies fully within the prefix.
@@ -260,12 +374,12 @@ class Node {
     EntryT* Erase(const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
         auto postfix_len = parent_entry->GetNodePostfixLen();
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-#ifdef FLEX
-        auto iter = entries_.lower_bound(hc_pos);
+#if defined(FLEX) || defined(FLEX_SET)
+        auto iter = entries_.lower_bound(wrap(hc_pos));
         while (iter != entries_.end() && iter->first == hc_pos) {
             if (DoesEntryMatch(iter->second, key, postfix_len)) {
                 if (iter->second.IsNode()) {
-                    return &iter->second;
+                    return & const_cast<EntryT&>(iter->second);
                 }
                 entries_.erase(iter);
 
@@ -273,7 +387,7 @@ class Node {
                 if (allow_move_into_parent && GetEntryCount() == 1) {
                     // We take the remaining entry from the current node and inserts it into the
                     // parent_entry where it replaces (and implicitly deletes) the current node.
-                    parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
+                    parent_entry->ReplaceNodeWithDataFromEntry(std::move(const_cast<EntryT&>(entries_.begin()->second)));
                     // WARNING: (this) is deleted here, do not refer to it beyond this point.
                 }
                 return nullptr;
@@ -366,16 +480,18 @@ class Node {
 
   private:
     template <typename... Args>
-    auto& WriteValue(hc_pos_t hc_pos, const KeyT& new_key, Args&&... args) {
-#ifdef FLEX
+    EntryT& WriteValue(hc_pos_t hc_pos, const KeyT& new_key, Args&&... args) {
+#if defined(FLEX)
         return entries_.emplace(hc_pos, EntryT{new_key, std::forward<Args>(args)...})->second;
+#elif defined(FLEX_SET)
+        return const_cast<EntryT&>(entries_.emplace(hc_pos, new_key, std::forward<Args>(args)...).first->second);
 #else
         return entries_.try_emplace(hc_pos, new_key, std::forward<Args>(args)...).first->second;
 #endif
     }
 
     void WriteEntry(hc_pos_t hc_pos, EntryT& entry) {
-#ifdef FLEX
+#if defined(FLEX) || defined(FLEX_SET)
         if (entry.IsNode()) {
             auto postfix_len = entry.GetNodePostfixLen();
             entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractNode(), postfix_len});
@@ -407,7 +523,7 @@ class Node {
      * an entry with the exact same key as new_key, so insertion has failed.
      */
     template <typename... Args>
-    auto& HandleCollision(
+    EntryT& HandleCollision(
         EntryT& existing_entry,
         bool& is_inserted,
         const KeyT& new_key,
@@ -442,7 +558,7 @@ class Node {
     }
 
     template <typename... Args>
-    auto& InsertSplit(
+    EntryT& InsertSplit(
         EntryT& current_entry,
         const KeyT& new_key,
         bit_width_t max_conflicting_bits,
@@ -461,7 +577,7 @@ class Node {
         return new_entry;
     }
 
-#ifdef FLEX
+#if defined(FLEX) || defined(FLEX_SET)
     void Split(bit_width_t postfix_len) {
         auto iter = entries_.begin();
         int nIter = 0;
@@ -505,11 +621,11 @@ class Node {
             bool is_inserted = false;
  //           std::cout << " current= " << nCurrent << "  key=" << current->second.GetKey() << std::endl;
             HandleCollision(
-                start->second,                            // EntryT& existing_entry,
+                const_cast<EntryT&>(start->second),                            // EntryT& existing_entry,
                 is_inserted,                                    // bool& is_inserted,
                 current->second.GetKey(),                  // const KeyT& new_key,
                 postfix_len,                              // bit_width_t current_postfix_len,
-                std::move(current->second.ExtractValue())  // Args&&... args
+                const_cast<EntryT&>(current->second).ExtractValue()  // Args&&... args
             );
             // If it was not inserted via collision handling (=collision with sub-node prefix)
             // then we insert it directly into the new subnode.
@@ -521,7 +637,7 @@ class Node {
                         is_inserted,
                         current->second.GetKey(),
                         current_entry->GetNodePostfixLen(),
-                        current->second.ExtractValue());
+                        const_cast<EntryT&>(current->second).ExtractValue());
                 }
             }
             // TODO we could have a nested overflow....

@@ -141,7 +141,7 @@ class NodeIterator {
     void Init(const KeyT& range_min, const KeyT& range_max, const EntryT& entry) {
         auto& node = entry.GetNode();
         CalcLimits(entry.GetNodePostfixLen(), range_min, range_max, entry.GetKey());
-        iter_ = node.Entries().lower_bound(mask_lower_);
+        iter_ = node.lower_bound(mask_lower_);
         entries_ = &node.Entries();
         postfix_len_ = entry.GetNodePostfixLen();
     }

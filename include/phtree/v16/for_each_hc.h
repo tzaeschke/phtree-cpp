@@ -40,6 +40,7 @@ class ForEachHC {
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = Entry<DIM, T, SCALAR>;
+    using NodeT = Node<DIM, T, SCALAR>;
 
   public:
     template <typename CB, typename F>
@@ -63,7 +64,7 @@ class ForEachHC {
         auto& entries = entry.GetNode().Entries();
         auto postfix_len = entry.GetNodePostfixLen();
         auto end = entries.end();
-        auto iter = opt_it != nullptr && *opt_it != end ? *opt_it : entries.lower_bound(mask_lower);
+        auto iter = opt_it != nullptr && *opt_it != end ? *opt_it : entries.lower_bound(NodeT::wrap(mask_lower));
         //auto iter = opt_it != nullptr ? *opt_it : entries.lower_bound(mask_lower);
         for (; iter != end && iter->first <= mask_upper; ++iter) {
             auto child_hc_pos = iter->first;
