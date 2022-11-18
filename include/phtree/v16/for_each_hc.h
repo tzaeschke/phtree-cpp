@@ -132,19 +132,17 @@ class ForEachHC {
         // query higher ||                                       NO                  YES
         //
         assert(postfix_len < MAX_BIT_WIDTH<SCALAR>);
-        bit_mask_t<SCALAR> maskHcBit = bit_mask_t<SCALAR>(1) << postfix_len;
-        bit_mask_t<SCALAR> maskVT = MAX_MASK<SCALAR> << postfix_len;
-        constexpr hc_pos_t ONE = 1;
         // to prevent problems with signed long when using 64 bit
         if (postfix_len < MAX_BIT_WIDTH<SCALAR> - 1) {
             for (dimension_t i = 0; i < DIM; ++i) {
                 lower_limit <<= 1;
-                upper_limit <<= 1;
-                SCALAR nodeBisection = (prefix[i] | maskHcBit) & maskVT;
                 //==> set to 1 if lower value should not be queried
-                lower_limit |= range_min_[i] >= nodeBisection;
+                lower_limit |= range_min_[i] >= prefix[i];
+            }
+            for (dimension_t i = 0; i < DIM; ++i) {
+                upper_limit <<= 1;
                 // Leave 0 if higher value should not be queried.
-                upper_limit |= range_max_[i] >= nodeBisection;
+                upper_limit |= range_max_[i] >= prefix[i];
             }
         } else {
             // special treatment for signed longs
@@ -153,13 +151,13 @@ class ForEachHC {
             // The hypercube assumes that a leading '0' indicates a lower value.
             // Solution: We leave HC as it is.
             for (dimension_t i = 0; i < DIM; ++i) {
-                lower_limit <<= 1;
                 upper_limit <<= 1;
-
                 // If minimum is positive, we don't need the search negative values
                 //==> set upper_limit to 0, prevent searching values starting with '1'.
                 upper_limit |= range_min_[i] < 0;
-
+            }
+            for (dimension_t i = 0; i < DIM; ++i) {
+                lower_limit <<= 1;
                 // Leave 0 if higher value should not be queried
                 // If maximum is negative, we do not need to search positive values
                 //(starting with '0').

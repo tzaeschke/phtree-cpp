@@ -125,6 +125,27 @@ class Entry {
         DestroyUnion();
     }
 
+    void SetNodeCenter() {
+        assert(union_type_ == NODE);
+        bit_mask_t<SCALAR> maskHcBit = bit_mask_t<SCALAR>(1) << postfix_len_;
+        bit_mask_t<SCALAR> maskVT = MAX_MASK<SCALAR> << postfix_len_;
+        // to prevent problems with signed long when using 64 bit
+        if (postfix_len_ < MAX_BIT_WIDTH<SCALAR> - 1) {
+            for (dimension_t i = 0; i < DIM; ++i) {
+                kd_key_[i] = (kd_key_[i] | maskHcBit) & maskVT;
+            }
+        } else {
+            // special treatment for signed longs
+            // The problem (difference) here is that a '1' at the leading bit does indicate a
+            // LOWER value, opposed to indicating a HIGHER value as in the remaining 63 bits.
+            // The hypercube assumes that a leading '0' indicates a lower value.
+            // Solution: We leave HC as it is.
+            for (dimension_t i = 0; i < DIM; ++i) {
+                kd_key_[i] = 0;
+            }
+        }
+    }
+
     [[nodiscard]] const KeyT& GetKey() const {
         return kd_key_;
     }
@@ -148,6 +169,7 @@ class Entry {
     }
 
     void SetKey(const KeyT& key) noexcept {
+        assert(union_type_ == VALUE);  // Do we have any other use?
         kd_key_ = key;
     }
 
@@ -157,6 +179,7 @@ class Entry {
         union_type_ = NODE;
         new (&node_) std::unique_ptr<NodeT>{std::move(node)};
         assert(!node);
+        SetNodeCenter();
     }
 
     [[nodiscard]] bit_width_t GetNodePostfixLen() const noexcept {
@@ -194,6 +217,9 @@ class Entry {
         union_type_ = EMPTY;
         *this = std::move(other);
         node.reset();
+        if (IsNode()) {
+            SetNodeCenter();
+        }
     }
 
   private:

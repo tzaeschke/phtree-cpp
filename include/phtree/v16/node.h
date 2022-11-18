@@ -251,6 +251,20 @@ class Node {
                 ++num_entries_local;
             }
         }
+
+        // Check node center
+        auto post_len = current_entry.GetNodePostfixLen();
+        if (post_len == MAX_BIT_WIDTH<SCALAR> - 1) {
+            for (auto d : current_entry.GetKey()) {
+                assert(d == 0);
+            }
+        } else {
+            for (auto d : current_entry.GetKey()) {
+                assert(((d >> post_len) & 0x1) == 1 && "Last bit of node center must be `1`");
+                assert(((d >> post_len) << post_len) == d && "postlen bits must all be `0`");
+            }
+        }
+
         return num_entries_local + num_entries_children;
     }
 
