@@ -126,6 +126,10 @@ class Entry {
     }
 
     void SetNodeCenter() {
+        // The node center is defined as the prefix + a '1' bit after the prefix. The remaining
+        // bits, i.e. all post_len bits must be '0'.
+        // This is required for window queries which would otherwise need to calculate the
+        // center each time they traverse a node..
         assert(union_type_ == NODE);
         bit_mask_t<SCALAR> maskHcBit = bit_mask_t<SCALAR>(1) << postfix_len_;
         bit_mask_t<SCALAR> maskVT = MAX_MASK<SCALAR> << postfix_len_;
@@ -135,11 +139,6 @@ class Entry {
                 kd_key_[i] = (kd_key_[i] | maskHcBit) & maskVT;
             }
         } else {
-            // special treatment for signed longs
-            // The problem (difference) here is that a '1' at the leading bit does indicate a
-            // LOWER value, opposed to indicating a HIGHER value as in the remaining 63 bits.
-            // The hypercube assumes that a leading '0' indicates a lower value.
-            // Solution: We leave HC as it is.
             for (dimension_t i = 0; i < DIM; ++i) {
                 kd_key_[i] = 0;
             }
