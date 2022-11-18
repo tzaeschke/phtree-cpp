@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   This works best for point datasets, and somewhat for box datasets with "include" queries.
   There is no benefit for "intersection" queries. [#88](https://github.com/tzaeschke/phtree-cpp/issues/88)
 - Improved benchmarks for insert and query to use a more compact format. [91](https://github.com/tzaeschke/phtree-cpp/pull/91)
+- Improved performance of window queries by optimizing calculation of min/max masks.
+  [#95](https://github.com/tzaeschke/phtree-cpp/pull/95)
 
 ### Removed
 - bazel version requirement file `.bazelversion`. [#89](https://github.com/tzaeschke/phtree-cpp/issues/89)

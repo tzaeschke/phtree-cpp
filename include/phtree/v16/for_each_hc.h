@@ -94,18 +94,23 @@ class ForEachHC {
         // An infix with len=0 implies that at least part of the child node overlaps with the query,
         // otherwise the bit mask checking would have returned 'false'.
         // Putting it differently, if the infix has len=0, then there is no point in validating it.
+        bool mismatch = false;
         if (entry.HasNodeInfix(parent_postfix_len)) {
             // Mask for comparing the prefix with the query boundaries.
             assert(entry.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
             SCALAR comparison_mask = MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
+//            for (dimension_t dim = 0; dim < DIM; ++dim) {
+//                SCALAR prefix = key[dim] & comparison_mask;
+//                if (prefix > range_max_[dim] || prefix < (range_min_[dim] & comparison_mask)) {
+//                    return false;
+//                }
+//            }
             for (dimension_t dim = 0; dim < DIM; ++dim) {
                 SCALAR prefix = key[dim] & comparison_mask;
-                if (prefix > range_max_[dim] || prefix < (range_min_[dim] & comparison_mask)) {
-                    return false;
-                }
+                mismatch |= (prefix > range_max_[dim] || prefix < (range_min_[dim] & comparison_mask));
             }
         }
-        return filter_.IsNodeValid(key, entry.GetNodePostfixLen() + 1);
+        return mismatch ? false : filter_.IsNodeValid(key, entry.GetNodePostfixLen() + 1);
     }
 
     void CalcLimits(
@@ -136,14 +141,10 @@ class ForEachHC {
                 lower_limit <<= 1;
                 upper_limit <<= 1;
                 SCALAR nodeBisection = (prefix[i] | maskHcBit) & maskVT;
-                if (range_min_[i] >= nodeBisection) {
-                    //==> set to 1 if lower value should not be queried
-                    lower_limit |= ONE;
-                }
-                if (range_max_[i] >= nodeBisection) {
-                    // Leave 0 if higher value should not be queried.
-                    upper_limit |= ONE;
-                }
+                //==> set to 1 if lower value should not be queried
+                lower_limit |= range_min_[i] >= nodeBisection;
+                // Leave 0 if higher value should not be queried.
+                upper_limit |= range_max_[i] >= nodeBisection;
             }
         } else {
             // special treatment for signed longs
@@ -154,18 +155,16 @@ class ForEachHC {
             for (dimension_t i = 0; i < DIM; ++i) {
                 lower_limit <<= 1;
                 upper_limit <<= 1;
-                if (range_min_[i] < 0) {
-                    // If minimum is positive, we don't need the search negative values
-                    //==> set upper_limit to 0, prevent searching values starting with '1'.
-                    upper_limit |= ONE;
-                }
-                if (range_max_[i] < 0) {
-                    // Leave 0 if higher value should not be queried
-                    // If maximum is negative, we do not need to search positive values
-                    //(starting with '0').
-                    //--> lower_limit = '1'
-                    lower_limit |= ONE;
-                }
+
+                // If minimum is positive, we don't need the search negative values
+                //==> set upper_limit to 0, prevent searching values starting with '1'.
+                upper_limit |= range_min_[i] < 0;
+
+                // Leave 0 if higher value should not be queried
+                // If maximum is negative, we do not need to search positive values
+                //(starting with '0').
+                //--> lower_limit = '1'
+                lower_limit |= range_max_[i] < 0;
             }
         }
     }

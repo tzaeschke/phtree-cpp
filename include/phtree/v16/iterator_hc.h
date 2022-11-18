@@ -221,14 +221,10 @@ class NodeIterator {
                 lower_limit <<= 1;
                 upper_limit <<= 1;
                 SCALAR nodeBisection = (prefix[i] | maskHcBit) & maskVT;
-                if (range_min[i] >= nodeBisection) {
-                    //==> set to 1 if lower value should not be queried
-                    lower_limit |= ONE;
-                }
-                if (range_max[i] >= nodeBisection) {
-                    // Leave 0 if higher value should not be queried.
-                    upper_limit |= ONE;
-                }
+                //==> set to 1 if lower value should not be queried
+                lower_limit |= range_min[i] >= nodeBisection;
+                // Leave 0 if higher value should not be queried.
+                upper_limit |= range_max[i] >= nodeBisection;
             }
         } else {
             // special treatment for signed longs
@@ -240,18 +236,16 @@ class NodeIterator {
             for (dimension_t i = 0; i < DIM; ++i) {
                 lower_limit <<= 1;
                 upper_limit <<= 1;
-                if (range_min[i] < 0) {
-                    // If minimum is positive, we don't need the search negative values
-                    //==> set upper_limit to 0, prevent searching values starting with '1'.
-                    upper_limit |= ONE;
-                }
-                if (range_max[i] < 0) {
-                    // Leave 0 if higher value should not be queried
-                    // If maximum is negative, we do not need to search positive values
-                    //(starting with '0').
-                    //--> lower_limit = '1'
-                    lower_limit |= ONE;
-                }
+
+                // If minimum is positive, we don't need the search negative values
+                //==> set upper_limit to 0, prevent searching values starting with '1'.
+                upper_limit |= range_min[i] < 0;
+
+                // Leave 0 if higher value should not be queried
+                // If maximum is negative, we do not need to search positive values
+                //(starting with '0').
+                //--> lower_limit = '1'
+                lower_limit |= range_max[i] < 0;
             }
         }
         mask_lower_ = lower_limit;
