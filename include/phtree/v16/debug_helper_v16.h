@@ -17,9 +17,9 @@
 #ifndef PHTREE_V16_DEBUG_HELPER_H
 #define PHTREE_V16_DEBUG_HELPER_H
 
+#include "node.h"
 #include "phtree/common/common.h"
 #include "phtree/common/debug_helper.h"
-#include "node.h"
 #include "phtree_v16.h"
 #include <string>
 
@@ -99,7 +99,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
         bit_width_t current_depth,
         const EntryT& entry,
         const bit_width_t parent_postfix_len,
-        bool printValue) const {
+        bool print_value) const {
         std::string ind = "*";
         for (bit_width_t i = 0; i < current_depth; ++i) {
             ind += "-";
@@ -127,15 +127,15 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
         // To clean previous postfixes.
         for (auto& it : node.Entries()) {
             const auto& child = it.second;
-            hc_pos_t hcPos = it.first;
+            auto hc_pos = it.first;
             if (child.IsNode()) {
-                sb << ind << "# " << hcPos << "  Node: " << std::endl;
-                ToStringTree(sb, current_depth + 1, child, postfix_len, printValue);
+                sb << ind << "# " << hc_pos << "  Node: " << std::endl;
+                ToStringTree(sb, current_depth + 1, child, postfix_len, print_value);
             } else {
                 // post-fix
                 sb << ind << ToBinary(child.GetKey());
-                sb << "  hcPos=" << hcPos;
-                if (printValue) {
+                sb << "  hcPos=" << hc_pos;
+                if (print_value) {
                     sb << "  v=" << (child.IsValue() ? "T" : "null");
                 }
                 sb << std::endl;
