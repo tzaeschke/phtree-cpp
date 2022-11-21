@@ -42,11 +42,11 @@ namespace improbable::phtree::v16 {
 template <dimension_t DIM, typename Entry>
 using EntryMap = typename std::conditional<
     DIM <= 3,
-    array_map<Entry, (1u << DIM)>,
+    array_map<Entry, (uint64_t(1) << DIM)>,
     typename std::conditional<
         DIM <= 8,
         sparse_map<hc_pos_dim_t<DIM>, Entry>,
-        b_plus_tree_map<Entry, (1u << DIM)>>::type>::type;
+        b_plus_tree_map<Entry, (uint64_t(1) << DIM)>>::type>::type;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = decltype(EntryMap<DIM, Entry>().begin());
