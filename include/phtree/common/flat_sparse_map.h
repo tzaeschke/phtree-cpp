@@ -30,27 +30,22 @@
  */
 namespace improbable::phtree {
 
-namespace {
-template <typename T>
-using PhSparseMapPair = std::pair<size_t, T>;
-
-using index_t = std::int32_t;
-}  // namespace
-
 /*
  * The sparse_map is a flat map implementation that uses an array of *at* *most* SIZE=2^DIM.
  * The array contains a list sorted by key.
  *
  * It has O(log n) lookup and O(n) insertion/removal time complexity, space complexity is O(n).
  */
-template <typename T>
+template <typename KeyT, typename ValueT>
 class sparse_map {
+    using Entry = std::pair<KeyT, ValueT>;
+
   public:
     explicit sparse_map() : data_{} {
         data_.reserve(4);
     }
 
-    [[nodiscard]] auto find(size_t key) {
+    [[nodiscard]] auto find(KeyT key) {
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
             return it;
@@ -58,7 +53,7 @@ class sparse_map {
         return data_.end();
     }
 
-    [[nodiscard]] auto find(size_t key) const {
+    [[nodiscard]] auto find(KeyT key) const {
         auto it = lower_bound(key);
         if (it != data_.end() && it->first == key) {
             return it;
@@ -66,16 +61,15 @@ class sparse_map {
         return data_.end();
     }
 
-    [[nodiscard]] auto lower_bound(size_t key) {
-        return std::lower_bound(
-            data_.begin(), data_.end(), key, [](PhSparseMapPair<T>& left, const size_t key) {
-                return left.first < key;
-            });
+    [[nodiscard]] auto lower_bound(KeyT key) {
+        return std::lower_bound(data_.begin(), data_.end(), key, [](Entry& left, const KeyT key) {
+            return left.first < key;
+        });
     }
 
-    [[nodiscard]] auto lower_bound(size_t key) const {
+    [[nodiscard]] auto lower_bound(KeyT key) const {
         return std::lower_bound(
-            data_.cbegin(), data_.cend(), key, [](const PhSparseMapPair<T>& left, const size_t key) {
+            data_.cbegin(), data_.cend(), key, [](const Entry& left, const KeyT key) {
                 return left.first < key;
             });
     }
@@ -110,14 +104,14 @@ class sparse_map {
         return try_emplace_base(key, std::forward<Args>(args)...);
     }
 
-    void erase(size_t key) {
+    void erase(KeyT key) {
         auto it = lower_bound(key);
         if (it != end() && it->first == key) {
             data_.erase(it);
         }
     }
 
-    void erase(const typename std::vector<PhSparseMapPair<T>>::iterator& iterator) {
+    void erase(const typename std::vector<Entry>::iterator& iterator) {
         data_.erase(iterator);
     }
 
@@ -127,7 +121,7 @@ class sparse_map {
 
   private:
     template <typename... Args>
-    auto emplace_base(size_t key, Args&&... args) {
+    auto emplace_base(KeyT key, Args&&... args) {
         auto it = lower_bound(key);
         if (it != end() && it->first == key) {
             return std::make_pair(it, false);
@@ -137,7 +131,7 @@ class sparse_map {
     }
 
     template <typename... Args>
-    auto try_emplace_base(size_t key, Args&&... args) {
+    auto try_emplace_base(KeyT key, Args&&... args) {
         auto it = lower_bound(key);
         if (it != end() && it->first == key) {
             return std::make_pair(it, false);
@@ -151,7 +145,7 @@ class sparse_map {
         }
     }
 
-    std::vector<PhSparseMapPair<T>> data_;
+    std::vector<Entry> data_;
 };
 
 }  // namespace improbable::phtree

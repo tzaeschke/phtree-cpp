@@ -33,7 +33,7 @@ namespace improbable::phtree::v16 {
  * - `array_map` is the fastest, but has O(2^DIM) space complexity. This can be very wasteful
  *   because many nodes may have only 2 entries.
  *   Also, iteration depends on some bit operations and is also O(DIM) per step if the CPU/compiler
- *   does not support CTZ (count trailing bits).
+ *   does not support CTZ (count trailing zeroes).
  * - `sparse_map` is slower, but requires only O(n) memory (n = number of entries/children).
  *   However, insertion/deletion is O(n), i.e. O(2^DIM) time complexity in the worst case.
  * - 'b_plus_tree_map` is the least efficient for small node sizes but scales best with larger
@@ -42,10 +42,11 @@ namespace improbable::phtree::v16 {
 template <dimension_t DIM, typename Entry>
 using EntryMap = typename std::conditional<
     DIM <= 3,
-    array_map<Entry, (hc_pos_t(1) << DIM)>,
-    typename std::
-        conditional<DIM <= 8, sparse_map<Entry>, b_plus_tree_map<Entry, (hc_pos_t(1) << DIM)>>::
-            type>::type;
+    array_map<Entry, (1u << DIM)>,
+    typename std::conditional<
+        DIM <= 8,
+        sparse_map<hc_pos_dim_t<DIM>, Entry>,
+        b_plus_tree_map<Entry, (1u << DIM)>>::type>::type;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = decltype(EntryMap<DIM, Entry>().begin());
@@ -75,6 +76,7 @@ template <dimension_t DIM, typename T, typename SCALAR>
 class Node {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
+    using hc_pos_t = hc_pos_64_t;
 
   public:
     Node() : entries_{} {}

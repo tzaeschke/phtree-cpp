@@ -55,7 +55,15 @@ using bit_mask_t = typename std::make_unsigned<SCALAR>::type;
 template <typename SCALAR>
 static constexpr bit_mask_t<SCALAR> MAX_MASK = std::numeric_limits<bit_mask_t<SCALAR>>::max();
 using dimension_t = size_t;  // Number of dimensions
-using hc_pos_t = uint64_t;
+// We have two types that represent hypercube addresses (HC position).
+// The hc_pos_dim_t uses a template parameter to determine how many bits are needed, this is either
+// 32bit or 64bit. This parameter is used where HC positions are stored because benchmarks show a
+// difference in performance when this is used.
+// The hc_pos_64_t type is always set to 64. It is used where computations play a role that appear
+// to prefer being in always 64bit, mainly in CalcPosInArray() and in Node.
+template<dimension_t DIM>
+using hc_pos_dim_t = std::conditional_t<(DIM < 32), uint32_t, uint64_t>;
+using hc_pos_64_t = uint64_t;
 
 // ************************************************************************
 // Basic structs and classes

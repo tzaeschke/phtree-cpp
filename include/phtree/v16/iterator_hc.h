@@ -134,6 +134,7 @@ class NodeIterator {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
     using EntriesT = EntryMap<DIM, EntryT>;
+    using hc_pos_t = hc_pos_dim_t<DIM>;
 
   public:
     NodeIterator() : iter_{}, entries_{nullptr}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}

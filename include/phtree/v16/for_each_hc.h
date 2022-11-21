@@ -40,6 +40,7 @@ class ForEachHC {
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = Entry<DIM, T, SCALAR>;
+    using hc_pos_t = hc_pos_dim_t<DIM>;
 
   public:
     template <typename CB, typename F>
@@ -64,7 +65,6 @@ class ForEachHC {
         auto postfix_len = entry.GetNodePostfixLen();
         auto end = entries.end();
         auto iter = opt_it != nullptr && *opt_it != end ? *opt_it : entries.lower_bound(mask_lower);
-        //auto iter = opt_it != nullptr ? *opt_it : entries.lower_bound(mask_lower);
         for (; iter != end && iter->first <= mask_upper; ++iter) {
             auto child_hc_pos = iter->first;
             // Use bit-mask magic to check whether we are in a valid quadrant.

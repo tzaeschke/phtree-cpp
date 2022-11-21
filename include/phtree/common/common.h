@@ -49,7 +49,7 @@ namespace improbable::phtree {
  * an array.
  */
 template <dimension_t DIM, typename SCALAR>
-static hc_pos_t CalcPosInArray(const PhPoint<DIM, SCALAR>& valSet, bit_width_t postfix_len) {
+static hc_pos_64_t CalcPosInArray(const PhPoint<DIM, SCALAR>& valSet, bit_width_t postfix_len) {
     // n=DIM,  i={0..n-1}
     // i = 0 :  |0|1|0|1|0|1|0|1|
     // i = 1 :  | 0 | 1 | 0 | 1 |
@@ -58,7 +58,7 @@ static hc_pos_t CalcPosInArray(const PhPoint<DIM, SCALAR>& valSet, bit_width_t p
     // Following formula was for inverse ordering of current ordering...
     // pos = sum (i=1..n, len/2^i) = sum (..., 2^(n-i))
     bit_mask_t<SCALAR> valMask = bit_mask_t<SCALAR>(1) << postfix_len;
-    hc_pos_t pos = 0;
+    hc_pos_64_t pos = 0;
     for (dimension_t i = 0; i < DIM; ++i) {
         pos <<= 1;
         // set pos-bit if bit is set in value
