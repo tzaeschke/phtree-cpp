@@ -129,7 +129,7 @@ class Entry {
         // The node center is defined as the prefix + a '1' bit after the prefix. The remaining
         // bits, i.e. all post_len bits must be '0'.
         // This is required for window queries which would otherwise need to calculate the
-        // center each time they traverse a node..
+        // center each time they traverse a node.
         assert(union_type_ == NODE);
         bit_mask_t<SCALAR> maskHcBit = bit_mask_t<SCALAR>(1) << postfix_len_;
         bit_mask_t<SCALAR> maskVT = MAX_MASK<SCALAR> << postfix_len_;

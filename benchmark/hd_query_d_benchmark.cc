@@ -173,6 +173,18 @@ void PhTree6D_FE(benchmark::State& state, Arguments&&...) {
 }
 
 template <typename... Arguments>
+void PhTree10D_FE(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<10, MIN_MAX_FOR_EACH> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTree20D_FE(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<20, MIN_MAX_FOR_EACH> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
 void PhTree6D_IT(benchmark::State& state, Arguments&&...) {
     IndexBenchmark<6, MIN_MAX_ITER> benchmark{state};
     benchmark.Benchmark(state);
@@ -192,6 +204,16 @@ void PhTree20D_IT(benchmark::State& state, Arguments&&...) {
 
 // index type, scenario name, data_type, num_entities, query_result_size
 BENCHMARK_CAPTURE(PhTree6D_FE, WQ, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree10D_FE, WQ, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree20D_FE, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);

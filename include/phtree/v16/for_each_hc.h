@@ -99,12 +99,6 @@ class ForEachHC {
             // Mask for comparing the prefix with the query boundaries.
             assert(entry.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
             SCALAR comparison_mask = MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
-//            for (dimension_t dim = 0; dim < DIM; ++dim) {
-//                SCALAR prefix = key[dim] & comparison_mask;
-//                if (prefix > range_max_[dim] || prefix < (range_min_[dim] & comparison_mask)) {
-//                    return false;
-//                }
-//            }
             for (dimension_t dim = 0; dim < DIM; ++dim) {
                 SCALAR prefix = key[dim] & comparison_mask;
                 mismatch |= (prefix > range_max_[dim] || prefix < (range_min_[dim] & comparison_mask));
