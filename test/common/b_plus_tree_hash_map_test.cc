@@ -144,6 +144,9 @@ void SmokeTestMap() {
             bool hasVal = test_map.find(id) != test_map.end();
             bool hasValRef = reference_map.find(id) != reference_map.end();
             ASSERT_EQ(hasVal, hasValRef);
+            auto iter_lb = test_map.lower_bound(id);
+            bool hasValLB = iter_lb != test_map.end() && iter_lb->first == id;
+            ASSERT_EQ(hasVal, hasValLB);
 
             if (!hasVal) {
                 if (key % 6 == 0) {
@@ -224,6 +227,9 @@ void SmokeTestSet() {
                 bool hasVal = test_map.find(id) != test_map.end();
                 bool hasValRef = reference_map.find(id) != reference_map.end();
                 ASSERT_EQ(hasVal, hasValRef);
+                auto iter_lb = test_map.lower_bound(id);
+                bool hasValLB = iter_lb != test_map.end() && *iter_lb == id;
+                ASSERT_EQ(hasVal, hasValLB);
 
                 if (!hasVal) {
                     if (key % 3 == 0) {
@@ -336,7 +342,7 @@ void SmokeTestWithErase(bool by_iterator) {
                 ASSERT_EQ(0u, reference_map.erase(id));
                 continue;
             }
-           if (by_iterator) {
+            if (by_iterator) {
                 auto next = it;
                 ++next;
                 auto is_last = next == test_map.end();

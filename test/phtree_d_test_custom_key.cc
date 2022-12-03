@@ -114,8 +114,6 @@ struct Id {
         return _i == rhs._i;
     }
 
-    Id& operator=(Id const& rhs) = default;
-
     int _i;
 };
 

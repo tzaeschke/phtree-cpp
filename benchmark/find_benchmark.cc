@@ -133,10 +133,13 @@ template <dimension_t DIM>
 int IndexBenchmark<DIM>::QueryWorldFind(benchmark::State&) {
     static int pos = 0;
     pos = (pos + 1) % num_entities_;
-    bool found = true;
+    bool found;
     if (pos % 2 == 0) {
-        assert(tree_.find(points_.at(pos)) != tree_.end());
+        // This should always be a match
+        found = tree_.find(points_.at(pos)) != tree_.end();
+        assert(found);
     } else {
+        // This should rarely be a match
         int x = pos % GLOBAL_MAX;
         PhPoint<DIM> p = PhPoint<DIM>({x, x, x});
         found = tree_.find(p) != tree_.end();

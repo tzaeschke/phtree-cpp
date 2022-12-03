@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_COMMON_B_PLUS_TREE_H
-#define PHTREE_COMMON_B_PLUS_TREE_H
+#ifndef PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H
+#define PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H
 
 #include "b_plus_tree_base.h"
 #include "bits.h"
@@ -26,19 +26,31 @@
 /*
  * PLEASE do not include this file directly, it is included via common.h.
  *
- * This file contains the B+tree implementation which is used in high-dimensional nodes in
+ * This file contains the B+tree multimap implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
 namespace improbable::phtree {
 using namespace ::phtree::bptree::detail;
 
 /*
- * The b_plus_tree_map is a B+tree implementation that uses a hierarchy of horizontally
+ * The b_plus_tree_multimap is a B+tree implementation that uses a hierarchy of horizontally
  * connected nodes for fast traversal through all entries.
  *
- * Behavior:
- * This is a key-value map. Keys are unique, so for every key there is at most one entry.
+ * Behavior
+ * ========
+ * This is a multimap. It behaves just like std::multimap, minus some API functions.
+ * The set/map is ordered by their key.  Entries with identical keys have no specific ordering
+ * but the order is stable with respect to insertion/removal of other entries.
  *
+ *
+ * Rationale
+ * =========
+ * This implementations is optimized for small entry count, however it should
+ * scale well with large entry counts.
+ *
+ *
+ * Internals
+ * =========
  * The individual nodes have at most M entries.
  * The tree has O(log n) lookup and O(M log n) insertion/removal time complexity,
  * space complexity is O(n).
@@ -61,64 +73,46 @@ using namespace ::phtree::bptree::detail;
  *   - There is no guarantee that siblings are on the same depth of the tree.
  * - The tree is not balanced
  *
- * TODO since this is a "map" (with 1:1 mapping of key:value), we could optimize splitting and
- *   merging by trying to reduce `dead space`
- *   (space between key1 and key2 that exceeds (key2 - key1)).
  */
-template <typename KeyT, typename ValueT, std::uint64_t COUNT_MAX>
-class b_plus_tree_map {
+template <typename KeyT, typename ValueT>
+class b_plus_tree_multimap {
     static_assert(std::is_integral<KeyT>() && "Key type must be integer");
     static_assert(std::is_unsigned<KeyT>() && "Key type must unsigned");
-
-    // COUNT_MAX indicates that a tree will never have to hold more than COUNT_MAX entries.
-    // We can use this to optimize node sizes for small trees.
-    constexpr static size_t LEAF_MAX = std::min(std::uint64_t(16), COUNT_MAX);
-    // Special case for small COUNT with smaller inner leaf or
-    // trees with a single inner leaf. '*2' is added because leaf filling is not compact.
-    constexpr static size_t INNER_MAX = std::min(std::uint64_t(16), COUNT_MAX / LEAF_MAX * 2);
-    static_assert(LEAF_MAX > 2 && LEAF_MAX < 1000);
-    static_assert(COUNT_MAX <= (16*16) || (INNER_MAX > 2 && INNER_MAX < 1000));
-    // TODO This could be improved but requires a code change to move > 1 entry when merging.
-    constexpr static size_t LEAF_MIN = 2;   // std::max((size_t)2, M_leaf >> 2);
-    constexpr static size_t INNER_MIN = 2;  // std::max((size_t)2, M_inner >> 2);
-    constexpr static size_t LEAF_INIT = std::min(size_t(2), LEAF_MAX);
-    constexpr static size_t INNER_INIT = std::min(size_t(4), INNER_MAX);
-    using LEAF_CFG = bpt_config<LEAF_MAX, LEAF_MIN, LEAF_INIT>;
-    using INNER_CFG = bpt_config<INNER_MAX, INNER_MIN, INNER_INIT>;
 
     class bpt_node_leaf;
     class bpt_iterator;
     using LeafEntryT = std::pair<KeyT, ValueT>;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT, INNER_CFG>;
+    using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT>;
     using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using LeafIteratorT = decltype(std::vector<LeafEntryT>().begin());
-    using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
+    using TreeT = b_plus_tree_multimap<KeyT, ValueT>;
 
   public:
-    explicit b_plus_tree_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
+    explicit b_plus_tree_multimap() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
-    b_plus_tree_map(const b_plus_tree_map& other) : size_{other.size_} {
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+    b_plus_tree_multimap(const b_plus_tree_multimap& other) : size_{other.size_} {
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
     }
 
-    b_plus_tree_map(b_plus_tree_map&& other) noexcept : root_{other.root_}, size_{other.size_} {
+    b_plus_tree_multimap(b_plus_tree_multimap&& other) noexcept
+    : root_{other.root_}, size_{other.size_} {
         other.root_ = nullptr;
         other.size_ = 0;
     }
 
-    b_plus_tree_map& operator=(const b_plus_tree_map& other) {
+    b_plus_tree_multimap& operator=(const b_plus_tree_multimap& other) {
         assert(this != &other);
         delete root_;
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
         size_ = other.size_;
         return *this;
     }
 
-    b_plus_tree_map& operator=(b_plus_tree_map&& other) noexcept {
+    b_plus_tree_multimap& operator=(b_plus_tree_multimap&& other) noexcept {
         delete root_;
         root_ = other.root_;
         other.root_ = nullptr;
@@ -127,23 +121,31 @@ class b_plus_tree_map {
         return *this;
     }
 
-    ~b_plus_tree_map() {
+    ~b_plus_tree_multimap() {
         delete root_;
         root_ = nullptr;
     }
 
-    [[nodiscard]] auto find(KeyT key) noexcept {
+    [[nodiscard]] auto find(const KeyT key) {
         auto leaf = lower_bound_leaf(key, root_);
         return leaf != nullptr ? leaf->find(key) : IterT{};
     }
 
-    [[nodiscard]] auto find(KeyT key) const noexcept {
-        return const_cast<b_plus_tree_map&>(*this).find(key);
+    [[nodiscard]] auto find(const KeyT key) const {
+        return const_cast<b_plus_tree_multimap&>(*this).find(key);
     }
 
-    [[nodiscard]] auto lower_bound(KeyT key) noexcept {
+    [[nodiscard]] size_t count(const KeyT key) const {
+        return const_cast<b_plus_tree_multimap&>(*this).find(key) != end();
+    }
+
+    [[nodiscard]] auto lower_bound(const KeyT key) {
         auto leaf = lower_bound_leaf(key, root_);
         return leaf != nullptr ? leaf->lower_bound_as_iter(key) : IterT{};
+    }
+
+    [[nodiscard]] auto lower_bound(const KeyT key) const {
+        return const_cast<b_plus_tree_multimap&>(*this).lower_bound(key);
     }
 
     [[nodiscard]] auto begin() noexcept {
@@ -151,7 +153,7 @@ class b_plus_tree_map {
     }
 
     [[nodiscard]] auto begin() const noexcept {
-        return IterT(root_);
+        return IterT(const_cast<NodeT*>(root_));
     }
 
     [[nodiscard]] auto cbegin() const noexcept {
@@ -167,31 +169,102 @@ class b_plus_tree_map {
     }
 
     template <typename... Args>
-    auto emplace(Args&&... args) {
-        return try_emplace(std::forward<Args>(args)...);
-    }
-
-    template <typename... Args>
-    auto try_emplace(KeyT key, Args&&... args) {
+    auto emplace(KeyT key, Args&&... args) {
         auto leaf = lower_bound_or_last_leaf(key, root_);
         return leaf->try_emplace(key, root_, size_, std::forward<Args>(args)...);
     }
 
-    void erase(KeyT key) {
-        auto leaf = lower_bound_leaf(key, root_);
-        if (leaf != nullptr) {
-            size_ -= leaf->erase_key(key, root_);
-        }
+    template <typename... Args>
+    auto try_emplace(KeyT key, Args&&... args) {
+        return emplace(key, std::forward<Args>(args)...);
     }
 
-    void erase(const IterT& iterator) {
+    template <typename... Args>
+    auto emplace_hint(const IterT& hint, KeyT key, Args&&... args) {
+        if (empty() || hint.is_end()) {
+            return emplace(key, std::forward<Args>(args)...);
+        }
+        assert(hint.node_->is_leaf());
+
+        auto node = hint.node_->as_leaf();
+
+        // The following may drop a valid hint but is easy to check.
+        if (node->data_.begin()->first > key || (node->data_.end() - 1)->first < key) {
+            return emplace(key, std::forward<Args>(args)...);
+        }
+        return node->try_emplace(key, root_, size_, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    auto try_emplace(const IterT& hint, KeyT key, Args&&... args) {
+        return emplace_hint(hint, key, std::forward<Args>(args)...);
+    }
+
+    size_t erase(const KeyT key) {
+        auto begin = lower_bound(key);
+        auto end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
+        if (begin == end) {
+            return 0;
+        }
+        auto size_before = size_;
+        erase(begin, end);
+        return size_before - size_;
+    }
+
+    auto erase(const IterT& iterator) {
         assert(iterator != end());
         --size_;
-        iterator.node_->erase_entry(iterator.iter_, root_);
+        auto result = iterator.node_->erase_entry(iterator.iter_, root_);
+        if (result.node_) {
+            return IterT(static_cast<NLeafT*>(result.node_), result.iter_);
+        }
+        return IterT();
+    }
+
+    auto erase(const IterT& begin, const IterT& end) {
+        assert(begin != this->end());
+        NLeafT* current = begin.node_;
+        auto current_begin = begin.iter_;
+        size_t end_offset;
+        if (!end.is_end()) {
+            if (begin.node_ == end.node_) {
+                // No page merge, but end_offset depends on "begin" iterator
+                end_offset = end.iter_ - begin.iter_;
+            } else {
+                // The end iterator may be invalidated by page merges!
+                end_offset = end.iter_ - end.node_->data_.begin();
+            }
+        }
+        size_t n_erased = 0;
+        while (current != end.node_ && current->next_node_ != nullptr) {
+            auto old_size = current->data_.size();
+            KeyT max_key_old = current->data_.back().first;
+            current->data_.erase(current_begin, current->data_.end());
+            n_erased += (old_size - current->data_.size());
+            auto result = current->check_merge(current->data_.end(), max_key_old, root_);
+            current = result.node_->as_leaf();
+            assert(current != nullptr);
+            current_begin = result.iter_;
+        }
+        auto old_size = current->data_.size();
+        KeyT max_key_old = current->data_.back().first;
+        auto current_end = end.is_end() ? current->data_.end() : current_begin + end_offset;
+        auto next_entry = current->data_.erase(current_begin, current_end);
+        n_erased += (old_size - current->data_.size());
+        auto result = current->check_merge(next_entry, max_key_old, root_);
+        size_ -= n_erased;
+        if (result.node_) {
+            return IterT(result.node_->as_leaf(), result.iter_);
+        }
+        return IterT();
     }
 
     [[nodiscard]] size_t size() const noexcept {
         return size_;
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return size_ == 0;
     }
 
     void _check() {
@@ -203,7 +276,7 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT, LEAF_CFG>;
+    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -212,9 +285,9 @@ class b_plus_tree_map {
         ~bpt_node_leaf() noexcept = default;
 
         [[nodiscard]] IterT find(KeyT key) noexcept {
-            auto it = this->lower_bound(key);
-            if (it != this->data_.end() && it->first == key) {
-                return IterT(this, it);
+            IterT iter_full = this->lower_bound_as_iter(key);
+            if (!iter_full.is_end() && iter_full.iter_->first == key) {
+                return iter_full;
             }
             return IterT();
         }
@@ -222,27 +295,11 @@ class b_plus_tree_map {
         template <typename... Args>
         auto try_emplace(KeyT key, NodeT*& root, size_t& entry_count, Args&&... args) {
             auto it = this->lower_bound(key);
-            if (it != this->data_.end() && it->first == key) {
-                return std::make_pair(IterT(this, it), false);
-            }
             ++entry_count;
-
             auto full_it = this->check_split_and_adjust_iterator(it, key, root);
-            auto it_result = full_it.node_->data_.emplace(
-                full_it.iter_,
-                std::piecewise_construct,
-                std::forward_as_tuple(key),
-                std::forward_as_tuple(std::forward<Args>(args)...));
-            return std::make_pair(IterT(full_it.node_, it_result), true);
-        }
-
-        bool erase_key(KeyT key, NodeT*& root) {
-            auto it = this->lower_bound(key);
-            if (it != this->data_.end() && it->first == key) {
-                this->erase_entry(it, root);
-                return true;
-            }
-            return false;
+            auto it_result =
+                full_it.node_->data_.emplace(full_it.iter_, key, std::forward<Args>(args)...);
+            return IterT(full_it.node_, it_result);
         }
 
         void _check(
@@ -251,7 +308,7 @@ class b_plus_tree_map {
 
             assert(prev_leaf == this->prev_node_);
             for (auto& e : this->data_) {
-                assert(count == 0 || e.first > known_min);
+                assert(count == 0 || e.first >= known_min);
                 assert(this->parent_ == nullptr || e.first <= known_max);
                 ++count;
                 known_min = e.first;
@@ -294,4 +351,4 @@ class b_plus_tree_map {
 };
 }  // namespace improbable::phtree
 
-#endif  // PHTREE_COMMON_B_PLUS_TREE_H
+#endif  // PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H

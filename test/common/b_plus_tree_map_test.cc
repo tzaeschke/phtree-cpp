@@ -20,13 +20,15 @@
 
 using namespace improbable::phtree;
 
+using KeyT = std::uint64_t;
+
 TEST(PhTreeBptMapTest, SmokeTest) {
     const int max_size = 200;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t, max_size> test_map;
+        b_plus_tree_map<KeyT, size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -60,7 +62,7 @@ TEST(PhTreeBptMapTest, SmokeTestWithTryEmplace) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t, max_size> test_map;
+        b_plus_tree_map<KeyT, size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -93,7 +95,7 @@ TEST(PhTreeBptMapTest, SmokeTestWithErase) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t, max_size> test_map{};
+        b_plus_tree_map<KeyT, size_t, max_size> test_map{};
         std::unordered_map<size_t, size_t> reference_map{};
         std::vector<size_t> key_list{};
         for (int j = 0; j < 2 * max_size; j++) {
@@ -142,7 +144,7 @@ TEST(PhTreeBptMapTest, SmokeTestLowerBound) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        b_plus_tree_map<size_t, max_size> test_map;
+        b_plus_tree_map<KeyT, size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);

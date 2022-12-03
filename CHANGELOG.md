@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
+
 ### Changed
 - Improved performance of window queries by executing them partially as point queries.
   This works best for point datasets, and somewhat for box datasets with "include" queries.

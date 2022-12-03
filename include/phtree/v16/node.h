@@ -40,13 +40,13 @@ namespace improbable::phtree::v16 {
  *   nodes and dimensionality. Remember that n_max = 2^DIM.
  */
 template <dimension_t DIM, typename Entry>
-using EntryMap = typename std::conditional<
+using EntryMap = typename std::conditional_t<
     DIM <= 3,
     array_map<Entry, (uint64_t(1) << DIM)>,
-    typename std::conditional<
+    typename std::conditional_t<
         DIM <= 8,
-        sparse_map<hc_pos_dim_t<DIM>, Entry>,
-        b_plus_tree_map<Entry, (uint64_t(1) << DIM)>>::type>::type;
+        sparse_map<hc_pos_dim_t<DIM>,Entry>,
+        b_plus_tree_map<std::uint64_t, Entry, (uint64_t(1) << DIM)>>>;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = decltype(EntryMap<DIM, Entry>().begin());

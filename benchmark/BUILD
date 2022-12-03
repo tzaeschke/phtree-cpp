@@ -18,15 +18,80 @@ cc_library(
 )
 
 cc_binary(
-    name = "count_mm_d_benchmark",
+    name = "bpt_insert_benchmark",
     testonly = True,
     srcs = [
-        "count_mm_d_benchmark.cc",
+        "bpt_insert_benchmark.cc",
     ],
     linkstatic = True,
     deps = [
         ":benchmark",
         "//:phtree",
+        "//include/phtree/common",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "bpt_erase_benchmark",
+    testonly = True,
+    srcs = [
+        "bpt_erase_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":benchmark",
+        "//:phtree",
+        "//include/phtree/common",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "bpt_erase_it_benchmark",
+    testonly = True,
+    srcs = [
+        "bpt_erase_it_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":benchmark",
+        "//:phtree",
+        "//include/phtree/common",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "bpt_lower_bound_benchmark",
+    testonly = True,
+    srcs = [
+        "bpt_lower_bound_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":benchmark",
+        "//:phtree",
+        "//include/phtree/common",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
+    name = "bpt_iter_benchmark",
+    testonly = True,
+    srcs = [
+        "bpt_iter_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":benchmark",
+        "//:phtree",
+        "//include/phtree/common",
         "@gbenchmark//:benchmark",
         "@spdlog",
     ],

@@ -79,6 +79,19 @@ cc_test(
 )
 
 cc_test(
+    name = "b_plus_tree_multimap_test",
+    timeout = "long",
+    srcs = [
+        "b_plus_tree_multimap_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "flat_sparse_map_test",
     timeout = "long",
     srcs = [
