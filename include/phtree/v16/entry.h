@@ -17,8 +17,8 @@
 #ifndef PHTREE_V16_ENTRY_H
 #define PHTREE_V16_ENTRY_H
 
-#include "phtree/common/common.h"
 #include "node.h"
+#include "phtree/common/common.h"
 #include <cassert>
 #include <memory>
 
@@ -50,9 +50,9 @@ class Entry {
     /*
      * Construct entry with existing node.
      */
-    Entry(const KeyT& k, std::unique_ptr<NodeT>&& node_ptr, bit_width_t postfix_len) noexcept
+    Entry(const KeyT& k, NodeT&& node, bit_width_t postfix_len) noexcept
     : kd_key_{k}
-    , node_{std::move(node_ptr)}
+    , node_{std::move(node)}
     , union_type_{NODE}
     , postfix_len_{static_cast<std::uint16_t>(postfix_len)} {}
 
@@ -162,9 +162,14 @@ class Entry {
         return const_cast<T&>(value_);
     }
 
-    [[nodiscard]] NodeT& GetNode() const {
+    [[nodiscard]] const NodeT& GetNode() const {
         assert(union_type_ == NODE);
-        return *node_;
+        return node_;
+    }
+
+    [[nodiscard]] NodeT& GetNode() {
+        assert(union_type_ == NODE);
+        return node_;
     }
 
     void SetKey(const KeyT& key) noexcept {
@@ -172,12 +177,11 @@ class Entry {
         kd_key_ = key;
     }
 
-    void SetNode(std::unique_ptr<NodeT>&& node, bit_width_t postfix_len) noexcept {
+    void SetNode(NodeT&& node, bit_width_t postfix_len) noexcept {
         postfix_len_ = static_cast<std::uint16_t>(postfix_len);
         DestroyUnion();
         union_type_ = NODE;
-        new (&node_) std::unique_ptr<NodeT>{std::move(node)};
-        assert(!node);
+        new (&node_) NodeT{std::move(node)};
         SetNodeCenter();
     }
 
@@ -201,7 +205,7 @@ class Entry {
         return std::move(value_);
     }
 
-    [[nodiscard]] std::unique_ptr<NodeT>&& ExtractNode() noexcept {
+    [[nodiscard]] NodeT&& ExtractNode() noexcept {
         assert(IsNode());
         // Moving the node somewhere else means we should remove it here:
         union_type_ = EMPTY;
@@ -215,17 +219,17 @@ class Entry {
         auto node = std::move(node_);
         union_type_ = EMPTY;
         *this = std::move(other);
-        node.reset();
         if (IsNode()) {
             SetNodeCenter();
         }
+        // The 'node' is destructed automatically at the end of this function.
     }
 
   private:
     void AssignUnion(Entry&& other) noexcept {
         union_type_ = std::move(other.union_type_);
         if (union_type_ == NODE) {
-            new (&node_) std::unique_ptr<NodeT>{std::move(other.node_)};
+            new (&node_) NodeT{std::move(other.node_)};
         } else if (union_type_ == VALUE) {
             if constexpr (std::is_move_constructible_v<ValueT>) {
                 new (&value_) ValueT{std::move(other.value_)};
@@ -241,7 +245,7 @@ class Entry {
         if (union_type_ == VALUE) {
             value_.~ValueT();
         } else if (union_type_ == NODE) {
-            node_.~unique_ptr();
+            node_.~NodeT();
         } else {
             assert(union_type_ == EMPTY);
         }
@@ -250,7 +254,7 @@ class Entry {
 
     KeyT kd_key_;
     union {
-        std::unique_ptr<NodeT> node_;
+        NodeT node_;
         ValueT value_;
     };
     std::uint16_t union_type_;

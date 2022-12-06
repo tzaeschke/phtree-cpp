@@ -72,7 +72,7 @@ class PhTreeV16 {
 
     explicit PhTreeV16(CONVERT* converter)
     : num_entries_{0}
-    , root_{{}, std::make_unique<NodeT>(), MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , root_{{}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1}
     , converter_{converter} {}
 
     PhTreeV16(const PhTreeV16& other) = delete;
@@ -190,7 +190,7 @@ class PhTreeV16 {
         }
         auto* current_entry = &root_;
         while (current_entry && current_entry->IsNode()) {
-            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+            current_entry = current_entry->GetNode().FindC(key, current_entry->GetNodePostfixLen());
         }
         return current_entry ? 1 : 0;
     }
@@ -210,7 +210,7 @@ class PhTreeV16 {
         while (current_entry && current_entry->IsNode()) {
             parent_node = current_node;
             current_node = current_entry;
-            current_entry = current_entry->GetNode().Find(key, current_entry->GetNodePostfixLen());
+            current_entry = current_entry->GetNode().FindC(key, current_entry->GetNodePostfixLen());
         }
 
         return IteratorWithParent<T, CONVERT>(current_entry, current_node, parent_node, converter_);
@@ -325,10 +325,10 @@ class PhTreeV16 {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
-        const EntryT* current_entry = &root_;           // An entry.
-        const EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
-        const EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        const EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
+        EntryT* current_entry = &root_;           // An entry.
+        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
+        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
+        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
         // Find node for removal
         while (current_entry && current_entry->IsNode()) {
             old_node_entry_parent = old_node_entry;
@@ -339,7 +339,7 @@ class PhTreeV16 {
             }
             current_entry = current_entry->GetNode().Find(old_key, postfix_len);
         }
-        const EntryT* old_entry = current_entry;  // Entry to be removed
+        EntryT* old_entry = current_entry;  // Entry to be removed
 
         // Can we stop already?
         if (old_entry == nullptr) {
@@ -382,9 +382,9 @@ class PhTreeV16 {
             return std::make_pair(iter, iter);
         }
 
-        const EntryT* new_entry = &root_;        // An entry.
-        const EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
-        const EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
+        EntryT* new_entry = &root_;        // An entry.
+        EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
+        EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
         // Find the deepest common parent node for removal and insertion
         bool is_inserted = false;
         while (new_entry && new_entry->IsNode() &&
@@ -553,7 +553,7 @@ class PhTreeV16 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT({}, std::make_unique<NodeT>(), MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT({}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*

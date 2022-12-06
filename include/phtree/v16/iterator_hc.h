@@ -133,7 +133,7 @@ template <dimension_t DIM, typename T, typename SCALAR>
 class NodeIterator {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
-    using EntriesT = EntryMap<DIM, EntryT>;
+    using EntriesT = const EntryMap<DIM, EntryT>;
     using hc_pos_t = hc_pos_dim_t<DIM>;
 
   public:

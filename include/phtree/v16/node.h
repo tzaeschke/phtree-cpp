@@ -45,7 +45,7 @@ using EntryMap = typename std::conditional_t<
     array_map<Entry, (uint64_t(1) << DIM)>,
     typename std::conditional_t<
         DIM <= 8,
-        sparse_map<hc_pos_dim_t<DIM>,Entry>,
+        sparse_map<hc_pos_dim_t<DIM>, Entry>,
         b_plus_tree_map<std::uint64_t, Entry, (uint64_t(1) << DIM)>>>;
 
 template <dimension_t DIM, typename Entry>
@@ -83,7 +83,7 @@ class Node {
 
     // Nodes should never be copied!
     Node(const Node&) = delete;
-    Node(Node&&) = delete;
+    Node(Node&&) = default;
     Node& operator=(const Node&) = delete;
     Node& operator=(Node&&) = delete;
 
@@ -138,17 +138,17 @@ class Node {
      * @param parent The parent node
      * @return The sub node or null.
      */
-    const EntryT* Find(const KeyT& key, bit_width_t postfix_len) const {
+    EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-        const auto iter = entries_.find(hc_pos);
+        auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
             return &iter->second;
         }
         return nullptr;
     }
 
-    EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
-        return const_cast<EntryT*>(static_cast<const Node*>(this)->Find(key, postfix_len));
+    const EntryT* FindC(const KeyT& key, bit_width_t postfix_len) const {
+        return const_cast<Node&>(*this).Find(key, postfix_len);
     }
 
     EntryIteratorC<DIM, EntryT> FindPrefix(
@@ -341,13 +341,13 @@ class Node {
         bit_width_t max_conflicting_bits,
         Args&&... args) {
         bit_width_t new_postfix_len = max_conflicting_bits - 1;
-        auto new_sub_node = std::make_unique<Node>();
         hc_pos_t pos_sub_1 = CalcPosInArray(new_key, new_postfix_len);
         hc_pos_t pos_sub_2 = CalcPosInArray(current_entry.GetKey(), new_postfix_len);
 
         // Move key/value into subnode
-        new_sub_node->WriteEntry(pos_sub_2, current_entry);
-        auto& new_entry = new_sub_node->WriteValue(pos_sub_1, new_key, std::forward<Args>(args)...);
+        Node new_sub_node{};
+        new_sub_node.WriteEntry(pos_sub_2, current_entry);
+        auto& new_entry = new_sub_node.WriteValue(pos_sub_1, new_key, std::forward<Args>(args)...);
 
         // Insert new node into local node
         current_entry.SetNode(std::move(new_sub_node), new_postfix_len);

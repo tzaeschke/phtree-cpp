@@ -146,6 +146,10 @@ class b_plus_tree_map {
         return leaf != nullptr ? leaf->lower_bound_as_iter(key) : IterT{};
     }
 
+    [[nodiscard]] auto lower_bound(KeyT key) const noexcept {
+        return const_cast<b_plus_tree_map&>(*this).lower_bound(key);
+    }
+
     [[nodiscard]] auto begin() noexcept {
         return IterT(root_);
     }
