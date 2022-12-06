@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2022 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,8 +98,6 @@ class flat_array_map {
     using map_pair = detail::flat_map_pair<T>;
     using iterator = detail::flat_map_iterator<T, SIZE>;
     friend iterator;
-    using bit_string_t = std::uint64_t;
-    static constexpr bit_string_t U64_ONE = bit_string_t(1);
 
   public:
     [[nodiscard]] auto find(size_t index) noexcept {
@@ -197,17 +196,17 @@ class flat_array_map {
         assert(index < SIZE);
         assert(occupied(index) != flag);
         // flip the bit
-        occupancy ^= (U64_ONE << index);
+        occupancy ^= (1ul << index);
         assert(occupied(index) == flag);
     }
 
     [[nodiscard]] bool occupied(size_t index) const {
-        return (occupancy >> index) & U64_ONE;
+        return (occupancy >> index) & 1ul;
     }
 
+    std::uint64_t occupancy = 0;
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
     std::aligned_storage_t<sizeof(map_pair), alignof(map_pair)> data_[SIZE];
-    bit_string_t occupancy = 0;
 };
 
 /*

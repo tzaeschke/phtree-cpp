@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Improved performance by eliminating memory indirection for DIM > 3. 
   This was enabled by referencing "Node" directly in "Entry" which was enabled by
-  implanting an indirection in array_map.
+  implanting an indirection in array_map. [#96](https://github.com/tzaeschke/phtree-cpp/pull/96)
 - Improved performance of window queries by executing them partially as point queries.
   This works best for point datasets, and somewhat for box datasets with "include" queries.
   There is no benefit for "intersection" queries. [#88](https://github.com/tzaeschke/phtree-cpp/issues/88)
