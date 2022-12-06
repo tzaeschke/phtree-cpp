@@ -46,8 +46,8 @@ class flat_map_iterator {
   public:
     flat_map_iterator() : first{0}, map_{nullptr} {};
 
-    explicit flat_map_iterator(size_t index, const flat_array_map<T, SIZE>& map)
-    : first{index}, map_{&map} {
+    explicit flat_map_iterator(size_t index, const flat_array_map<T, SIZE>* map)
+    : first{index}, map_{map} {
         assert(index <= SIZE);
     }
 
@@ -67,7 +67,7 @@ class flat_map_iterator {
     }
 
     auto operator++(int) {
-        flat_map_iterator it(first, *map_);
+        flat_map_iterator it(first, map_);
         ++(*this);
         return it;
     }
@@ -101,13 +101,13 @@ class flat_array_map {
 
   public:
     [[nodiscard]] auto find(size_t index) noexcept {
-        return occupied(index) ? iterator{index, *this} : end();
+        return occupied(index) ? iterator{index, this} : end();
     }
 
     [[nodiscard]] auto lower_bound(size_t index) const {
         size_t index2 = lower_bound_index(index);
         if (index2 < SIZE) {
-            return iterator{index2, *this};
+            return iterator{index2, this};
         }
         return end();
     }
@@ -116,18 +116,18 @@ class flat_array_map {
         size_t index = CountTrailingZeros(occupancy);
         // Assert index points to a valid position or outside the map if the map is empty
         assert((size() == 0 && index >= SIZE) || occupied(index));
-        return iterator{index < SIZE ? index : SIZE, *this};
+        return iterator{index < SIZE ? index : SIZE, this};
     }
 
     [[nodiscard]] auto cbegin() const {
         size_t index = CountTrailingZeros(occupancy);
         // Assert index points to a valid position or outside the map if the map is empty
         assert((size() == 0 && index >= SIZE) || occupied(index));
-        return iterator{index < SIZE ? index : SIZE, *this};
+        return iterator{index < SIZE ? index : SIZE, this};
     }
 
     [[nodiscard]] auto end() const {
-        return iterator{SIZE, *this};
+        return iterator{SIZE, this};
     }
 
     ~flat_array_map() noexcept {
