@@ -327,6 +327,9 @@ class PhTreeV16 {
      * @return  A pair, whose first element points to the possibly relocated value, and
      *          whose second element is a bool that is true if the value was actually relocated.
      */
+    // TODO: test work with old relocate_if(). It also work with std::map
+    // TODO test also FAILS with B-Plus_tree_map; but not with array_map!
+    // WITHOUT ITERATOR
     template <typename PRED>
     auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
@@ -392,6 +395,84 @@ class PhTreeV16 {
         assert(found);
         return 1;
     }
+
+    // WITH ITERATOR
+    template <typename PRED>
+    auto relocate_ifXX(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+
+        //EntryIterator<DIM, EntryT> iter = root_.GetNode().End();
+        auto iter = root_.GetNode().End();
+        EntryT* current_entry = &root_;           // An entry.
+        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
+        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
+        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
+        // Find node for removal
+        while (current_entry && current_entry->IsNode()) {
+            old_node_entry_parent = old_node_entry;
+            old_node_entry = current_entry;
+            auto postfix_len = old_node_entry->GetNodePostfixLen();
+            if (postfix_len + 1 >= n_diverging_bits) {
+                new_node_entry = old_node_entry;
+            }
+            // TODO stop earlier, we are going to have to redo this after insert....
+            bool is_found = false;
+            iter = current_entry->GetNode().FindIter(old_key, postfix_len, is_found);
+            current_entry = is_found ? &iter->second : nullptr;
+        }
+        EntryT* old_entry = current_entry;  // Entry to be removed
+
+        // Can we stop already?
+        if (old_entry == nullptr || !pred(old_entry->GetValue())) {
+            return 0;  // old_key not found!
+        }
+
+        // Are the keys equal? Or is the quadrant the same? -> same entry
+        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
+            old_entry->SetKey(new_key);
+            return 1;
+        }
+
+        // Find node for insertion
+        auto new_entry = new_node_entry;
+        bool is_found = false;
+        while (new_entry && new_entry->IsNode()) {
+            new_node_entry = new_entry;
+            iter = new_entry->GetNode().FindIter(new_key, new_entry->GetNodePostfixLen(), is_found);
+            new_entry = is_found ? &iter->second : nullptr;
+        }
+        if (is_found) {
+            return 0; // Entry exists
+        }
+        bool is_inserted = false;
+        if (new_entry == nullptr) {  // TODO use in-node pointer
+            new_entry = &new_node_entry->GetNode().Emplace(
+                iter,
+                is_inserted,
+                new_key,
+                new_node_entry->GetNodePostfixLen(),
+                std::move(old_entry->ExtractValue()));
+        }
+        if (!is_inserted) {
+            return 0;
+        }
+
+        // Erase old value. See comments in try_emplace(iterator) for details.
+        if (old_node_entry_parent == new_entry) {
+            // In this case the old_node_entry may have been invalidated by the previous
+            // insertion.
+            old_node_entry = old_node_entry_parent;
+        }
+
+        bool found = false;
+        while (old_node_entry) {
+            old_node_entry = old_node_entry->GetNode().Erase(
+                old_key, old_node_entry, old_node_entry != &root_, found);
+        }
+        assert(found);
+        return 1;
+    }
+
 
   private:
     /*

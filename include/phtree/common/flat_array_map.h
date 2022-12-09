@@ -276,6 +276,12 @@ class array_map {
         return data_->try_emplace_base(index, std::forward<Args>(args)...);
     }
 
+    template <typename... Args>
+    auto try_emplace(const iterator&, size_t index, Args&&... args) {
+        // We ignore the iterator, this is an array based collection, so access is ~O(1).
+        return data_->try_emplace_base(index, std::forward<Args>(args)...);
+    }
+
     bool erase(size_t index) {
         return data_->erase(index);
     }

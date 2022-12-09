@@ -47,9 +47,11 @@ using EntryMap = typename std::conditional_t<
         DIM <= 8,
         sparse_map<hc_pos_dim_t<DIM>, Entry>,
         b_plus_tree_map<std::uint64_t, Entry, (uint64_t(1) << DIM)>>>;
+//template <dimension_t DIM, typename Entry>
+//using EntryMap = std::map<hc_pos_dim_t<DIM>, Entry>;
 
 template <dimension_t DIM, typename Entry>
-using EntryIterator = decltype(EntryMap<DIM, Entry>().begin());
+using EntryIterator = typename std::remove_const<decltype(EntryMap<DIM, Entry>().begin())>::type;
 template <dimension_t DIM, typename Entry>
 using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
 
@@ -131,6 +133,20 @@ class Node {
         return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
     }
 
+    template <typename IterT, typename... Args>
+    EntryT& Emplace(IterT iter, bool& is_inserted, const KeyT& key,
+                    bit_width_t postfix_len, Args&&... args) {
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len); // TODO pass in -> should be known!
+        auto emplace_result = entries_.try_emplace(iter, hc_pos, key, std::forward<Args>(args)...);
+        auto& entry = emplace_result.first->second;
+        // Return if emplace succeed, i.e. there was no entry.
+        if (emplace_result.second) {
+            is_inserted = true;
+            return entry;
+        }
+        return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
+    }
+
     /*
      * Returns the value (T or Node) if the entry exists and matches the key. Child nodes are
      * _not_ traversed.
@@ -149,6 +165,21 @@ class Node {
 
     const EntryT* FindC(const KeyT& key, bit_width_t postfix_len) const {
         return const_cast<Node&>(*this).Find(key, postfix_len);
+    }
+
+    auto FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) {
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        auto iter = entries_.find(hc_pos);
+        found = (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len));
+        return iter;
+    }
+
+    auto End() {
+        return entries_.end();
+    }
+
+    auto End() const {
+        return entries_.end();
     }
 
     EntryIteratorC<DIM, EntryT> FindPrefix(
