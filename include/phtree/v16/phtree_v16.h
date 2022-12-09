@@ -368,7 +368,11 @@ class PhTreeV16 {
             new_node_entry = new_entry;
             new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
         }
+        if (new_entry != nullptr) {
+            return 0; // Entry exists!
+        }
         bool is_inserted = false;
+        // TODO remove "if"
         if (new_entry == nullptr) {  // TODO use in-node pointer
             new_entry = &new_node_entry->GetNode().Emplace(
                 is_inserted,
@@ -376,12 +380,9 @@ class PhTreeV16 {
                 new_node_entry->GetNodePostfixLen(),
                 std::move(old_entry->ExtractValue()));
         }
-        if (!is_inserted) {
-            return 0;
-        }
 
         // Erase old value. See comments in try_emplace(iterator) for details.
-        if (old_node_entry_parent == new_entry) {
+        if (old_node_entry_parent == new_node_entry) {
             // In this case the old_node_entry may have been invalidated by the previous
             // insertion.
             old_node_entry = old_node_entry_parent;
@@ -444,7 +445,11 @@ class PhTreeV16 {
         if (is_found) {
             return 0; // Entry exists
         }
+        if (new_entry != nullptr) {
+            return 0; // Entry exists!
+        }
         bool is_inserted = false;
+        // TODO remove "if"
         if (new_entry == nullptr) {  // TODO use in-node pointer
             new_entry = &new_node_entry->GetNode().Emplace(
                 iter,
@@ -453,12 +458,9 @@ class PhTreeV16 {
                 new_node_entry->GetNodePostfixLen(),
                 std::move(old_entry->ExtractValue()));
         }
-        if (!is_inserted) {
-            return 0;
-        }
 
         // Erase old value. See comments in try_emplace(iterator) for details.
-        if (old_node_entry_parent == new_entry) {
+        if (old_node_entry_parent == new_node_entry) {
             // In this case the old_node_entry may have been invalidated by the previous
             // insertion.
             old_node_entry = old_node_entry_parent;
