@@ -475,6 +475,146 @@ TEST(PhTreeBoxDTest, TestUpdateWithEmplaceHint) {
     tree.clear();
 }
 
+TEST(PhTreeBoxDTest, TestUpdateWithRelocate) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<scalar_64_t, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t d_n = 0;
+    for (int x = 0; x < 10; ++x) {
+        size_t i = 1;
+        for (auto& p : points) {
+            auto pOld = p;
+            d_n = (d_n + 1) % deltas.size();
+            scalar_64_t delta = deltas[d_n];
+            PhPointD<dim> min{pOld.min()[0] + delta, pOld.min()[1] + delta, pOld.min()[2] + delta};
+            PhPointD<dim> max{pOld.max()[0] + delta, pOld.max()[1] + delta, pOld.max()[2] + delta};
+            TestPoint<dim> pNew{min, max};
+            if (delta > 0.0 && tree.find(pNew) != tree.end()) {
+                // Skip this, there is already another entry
+                ASSERT_EQ(0, tree.relocate(pOld, pNew));
+            } else {
+                ASSERT_EQ(1, tree.relocate(pOld, pNew));
+                if (delta > 0.0) {
+                    // second time fails because value has already been moved
+                    ASSERT_EQ(0, tree.relocate(pOld, pNew));
+                }
+                ASSERT_EQ(Id(i), *tree.find(pNew));
+                p = pNew;
+            }
+            ++i;
+        }
+        PhTreeDebugHelper::CheckConsistency(tree);
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    // Check that empty tree works
+    ASSERT_EQ(0, tree.relocate(points[0], points[1]));
+    // Check that small tree works
+    tree.emplace(points[0], 1);
+    ASSERT_EQ(1, tree.relocate(points[0], points[1]));
+    ASSERT_EQ(tree.end(), tree.find(points[0]));
+    ASSERT_EQ(Id(1), *tree.find(points[1]));
+    ASSERT_EQ(1, tree.size());
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(points[0], 1);
+    tree.emplace(points[1], 2);
+    ASSERT_EQ(0, tree.relocate(points[0], points[1]));
+}
+
+TEST(PhTreeBoxDTest, TestUpdateWithRelocateCorenerCases) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    TestPoint<dim> point0{{1, 2, 3}, {2, 3, 4}};
+    TestPoint<dim> point1{{4, 5, 6}, {5, 6, 7}};
+
+    // Check that empty tree works
+    ASSERT_EQ(0, tree.relocate(point0, point1));
+    ASSERT_EQ(0, tree.size());
+
+    // Check that small tree works
+    tree.emplace(point0, 1);
+    ASSERT_EQ(1, tree.relocate(point0, point1));
+    ASSERT_EQ(tree.end(), tree.find(point0));
+    ASSERT_EQ(Id(1), *tree.find(point1));
+    ASSERT_EQ(1, tree.size());
+    tree.clear();
+
+    // check that existing destination fails
+    tree.emplace(point0, Id(0));
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+
+    // check that missing source fails
+    tree.emplace(point1, Id(1));
+    ASSERT_EQ(0u, tree.relocate(point0, point1));
+    PhTreeDebugHelper::CheckConsistency(tree);
+    tree.clear();
+}
+
+TEST(PhTreeBoxDTest, TestUpdateWithRelocateIf) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 10000;
+    std::array<scalar_64_t, 4> deltas{0, 1, 10, 100};
+    std::vector<TestPoint<dim>> points;
+    populate(tree, points, N);
+
+    size_t d_n = 0;
+    for (int x = 0; x < 10; ++x) {
+        size_t i = 1;
+        size_t done = 0;
+        auto pred = [](const Id& id) { return id._i % 2 == 0; };
+        for (auto& p : points) {
+            auto pOld = p;
+            d_n = (d_n + 1) % deltas.size();
+            scalar_64_t delta = deltas[d_n];
+            PhPointD<dim> min{pOld.min()[0] + delta, pOld.min()[1] + delta, pOld.min()[2] + delta};
+            PhPointD<dim> max{pOld.max()[0] + delta, pOld.max()[1] + delta, pOld.max()[2] + delta};
+            TestPoint<dim> pNew{min, max};
+            if ((delta > 0.0 && tree.find(pNew) != tree.end()) || (i % 2 != 0)) {
+                // Skip this, there is already another entry
+                ASSERT_EQ(0, tree.relocate_if(pOld, pNew, pred));
+            } else {
+                ASSERT_EQ(1, tree.relocate_if(pOld, pNew, pred));
+                if (delta > 0.0) {
+                    // second time fails because value has already been moved
+                    ASSERT_EQ(0, tree.relocate_if(pOld, pNew, pred));
+                }
+                ASSERT_EQ(Id(i), *tree.find(pNew));
+                p = pNew;
+                ++done;
+            }
+            ++i;
+        }
+        ASSERT_GT(done, i * 0.4);
+        ASSERT_LT(done, i * 0.6);
+        PhTreeDebugHelper::CheckConsistency(tree);
+    }
+
+    ASSERT_EQ(N, tree.size());
+    tree.clear();
+
+    // Check that empty tree works
+    auto pred = [](const Id&) { return true; };
+    ASSERT_EQ(0, tree.relocate_if(points[0], points[1], pred));
+    // Check that small tree works
+    tree.emplace(points[0], 1);
+    ASSERT_EQ(1, tree.relocate_if(points[0], points[1], pred));
+    ASSERT_EQ(tree.end(), tree.find(points[0]));
+    ASSERT_EQ(Id(1), *tree.find(points[1]));
+    ASSERT_EQ(1, tree.size());
+}
+
 TEST(PhTreeBoxDTest, TestEraseByIterator) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
