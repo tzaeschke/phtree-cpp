@@ -306,7 +306,6 @@ class Node {
         const KeyT& new_key,
         bit_width_t current_postfix_len,
         Args&&... args) {
-        assert(!is_inserted);
         // We have two entries in the same location (local pos).
         // Now we need to compare the keys, respectively the prefix of the subnode.
         // If they match, we return the entry for further traversal.
@@ -318,12 +317,13 @@ class Node {
 
         bit_width_t max_conflicting_bits = NumberOfDivergingBits(new_key, entry.GetKey());
         auto split_len = is_node ? entry.GetNodePostfixLen() + 1 : 0;
-        if (max_conflicting_bits > split_len) {
-            is_inserted = true;
-            return InsertSplit(entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
+        if (max_conflicting_bits <= split_len) {
+            // perfect match -> return existing
+            return entry;
         }
-        // perfect match -> return existing TODO?
-        return entry;
+
+        is_inserted = true;
+        return InsertSplit(entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
