@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
 
 ### Changed
-- Cleaned up HandleCollision() and key comparison functions. [#]()
+- Cleaned up HandleCollision() and key comparison functions. [#97](https://github.com/tzaeschke/phtree-cpp/pull/97)
 - Improved performance by eliminating memory indirection for DIM > 3. 
   This was enabled by referencing "Node" directly in "Entry" which was enabled by
   implanting an indirection in array_map. [#96](https://github.com/tzaeschke/phtree-cpp/pull/96)
