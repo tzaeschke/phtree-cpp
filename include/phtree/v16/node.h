@@ -301,37 +301,29 @@ class Node {
      */
     template <typename... Args>
     auto& HandleCollision(
-        EntryT& existing_entry,
+        EntryT& entry,
         bool& is_inserted,
         const KeyT& new_key,
         bit_width_t current_postfix_len,
         Args&&... args) {
         assert(!is_inserted);
         // We have two entries in the same location (local pos).
-        // Now we need to compare the keys.
-        // If they are identical, we simply return the entry for further traversal.
-        if (existing_entry.IsNode()) {
-            if (existing_entry.HasNodeInfix(current_postfix_len)) {
-                bit_width_t max_conflicting_bits =
-                    NumberOfDivergingBits(new_key, existing_entry.GetKey());
-                if (max_conflicting_bits > existing_entry.GetNodePostfixLen() + 1) {
-                    is_inserted = true;
-                    return InsertSplit(
-                        existing_entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
-                }
-            }
-            // No infix conflict, just traverse subnode
-        } else {
-            bit_width_t max_conflicting_bits =
-                NumberOfDivergingBits(new_key, existing_entry.GetKey());
-            if (max_conflicting_bits > 0) {
-                is_inserted = true;
-                return InsertSplit(
-                    existing_entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
-            }
-            // perfect match -> return existing
+        // Now we need to compare the keys, respectively the prefix of the subnode.
+        // If they match, we return the entry for further traversal.
+        bool is_node = entry.IsNode();
+        if (is_node && !entry.HasNodeInfix(current_postfix_len)) {
+            // No infix conflict (because infix has length=0), just traverse subnode
+            return entry;
         }
-        return existing_entry;
+
+        bit_width_t max_conflicting_bits = NumberOfDivergingBits(new_key, entry.GetKey());
+        auto split_len = is_node ? entry.GetNodePostfixLen() + 1 : 0;
+        if (max_conflicting_bits > split_len) {
+            is_inserted = true;
+            return InsertSplit(entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
+        }
+        // perfect match -> return existing TODO?
+        return entry;
     }
 
     template <typename... Args>
@@ -366,8 +358,7 @@ class Node {
         const EntryT& entry, const KeyT& key, const bit_width_t parent_postfix_len) const {
         if (entry.IsNode()) {
             if (entry.HasNodeInfix(parent_postfix_len)) {
-                const bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
-                return KeyEquals(entry.GetKey(), key, mask);
+                return KeyEquals(entry.GetKey(), key, entry.GetNodePostfixLen() + 1);
             }
             return true;
         }
