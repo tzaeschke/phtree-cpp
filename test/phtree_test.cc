@@ -668,6 +668,7 @@ TEST(PhTreeTest, TestUpdateWithRelocateIf) {
             TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
             if ((delta > 0.0 && tree.find(pNew) != tree.end()) || (i % 2 != 0)) {
                 // Skip this, there is already another entry
+                std::cout << "x = " << x << " i=" << i << std::endl;
                 ASSERT_EQ(0, tree.relocate_if(pOld, pNew, pred));
             } else {
                 ASSERT_EQ(1, tree.relocate_if(pOld, pNew, pred));

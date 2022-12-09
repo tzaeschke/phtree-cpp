@@ -278,7 +278,7 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+    size_t relocate_if2(const KeyT& old_key, const KeyT& new_key, PRED pred) {
         auto pair = _find_two(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -315,6 +315,85 @@ class PhTreeV16 {
         return 1;
     }
 
+    // TODO is this a memory leak problem?????
+
+    /*
+     * Relocate (move) an entry from one position to another, subject to a predicate.
+     *
+     * @param old_key
+     * @param new_key
+     * @param predicate
+     *
+     * @return  A pair, whose first element points to the possibly relocated value, and
+     *          whose second element is a bool that is true if the value was actually relocated.
+     */
+    template <typename PRED>
+    auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+
+        EntryT* current_entry = &root_;           // An entry.
+        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
+        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
+        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
+        // Find node for removal
+        while (current_entry && current_entry->IsNode()) {
+            old_node_entry_parent = old_node_entry;
+            old_node_entry = current_entry;
+            auto postfix_len = old_node_entry->GetNodePostfixLen();
+            if (postfix_len + 1 >= n_diverging_bits) {
+                new_node_entry = old_node_entry;
+            }
+            // TODO stop earlier, we are going to have to redo this after insert....
+            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
+        }
+        EntryT* old_entry = current_entry;  // Entry to be removed
+
+        // Can we stop already?
+        if (old_entry == nullptr || !pred(old_entry->GetValue())) {
+            return 0;  // old_key not found!
+        }
+
+        // Are the keys equal? Or is the quadrant the same? -> same entry
+        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
+            old_entry->SetKey(new_key);
+            return 1;
+        }
+
+        // Find node for insertion
+        auto new_entry = new_node_entry;
+        while (new_entry && new_entry->IsNode()) {
+            new_node_entry = new_entry;
+            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
+        }
+        bool is_inserted = false;
+        if (new_entry == nullptr) {  // TODO use in-node pointer
+            new_entry = &new_node_entry->GetNode().Emplace(
+                is_inserted,
+                new_key,
+                new_node_entry->GetNodePostfixLen(),
+                std::move(old_entry->ExtractValue()));
+        }
+        if (!is_inserted) {
+            return 0;
+        }
+
+        // Erase old value. See comments in try_emplace(iterator) for details.
+        if (old_node_entry_parent == new_entry) {
+            // In this case the old_node_entry may have been invalidated by the previous
+            // insertion.
+            old_node_entry = old_node_entry_parent;
+        }
+
+        bool found = false;
+        while (old_node_entry) {
+            old_node_entry = old_node_entry->GetNode().Erase(
+                old_key, old_node_entry, old_node_entry != &root_, found);
+        }
+        assert(found);
+        return 1;
+    }
+
+  private:
     /*
      * Tries to locate two entries that are 'close' to each other.
      *
@@ -366,6 +445,15 @@ class PhTreeV16 {
         return std::make_pair(iter1, iter2);
     }
 
+    // TODO what is different/required for MM:
+    //   - "old" is not always removed
+    //   - "new" may exist, but may not result in collision
+    // TODO i.e. we need three conditions:
+    //   - pred_move  (  {return is_valid(old); }  )
+    //   - pred_can_be_moved (  { return destination.emplace() == true; } )
+    //   - pred_remove_old   (  { source.erase(); return source.empty(); } )
+
+  public:
     /*
      * Tries to locate two entries that are 'close' to each other.
      *
@@ -428,6 +516,7 @@ class PhTreeV16 {
         return std::make_pair(iter1, iter2);
     }
 
+  public:
     /*
      * Iterates over all entries in the tree. The optional filter allows filtering entries and nodes
      * (=sub-trees) before returning / traversing them. By default, all entries are returned. Filter
@@ -597,6 +686,26 @@ class PhTreeV16 {
             return {&root_, root_.GetNode().Entries().end()};
         }
         EntryIteratorC<DIM, EntryT> entry_iter =
+            root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
+        while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
+               entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
+            parent = &entry_iter->second;
+            entry_iter = parent->GetNode().FindPrefix(
+                prefix, max_conflicting_bits, parent->GetNodePostfixLen());
+        }
+        return {parent, entry_iter};
+    }
+
+    std::pair<EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
+        const KeyT& key1, const KeyT& key2, bit_width_t& max_conflicting_bits) {
+        auto& prefix = key1;
+        max_conflicting_bits = NumberOfDivergingBits(key1, key2);
+        EntryT* parent = &root_;
+        if (max_conflicting_bits > root_.GetNodePostfixLen()) {
+            // Abort early if we have no shared prefix in the query
+            return {&root_, root_.GetNode().Entries().end()};
+        }
+        EntryIterator<DIM, EntryT> entry_iter =
             root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {

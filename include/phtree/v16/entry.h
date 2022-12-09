@@ -177,6 +177,11 @@ class Entry {
         kd_key_ = key;
     }
 
+    void SetValue(T&& value) noexcept {
+        assert(union_type_ == VALUE);
+        value_ = std::move(value);
+    }
+
     void SetNode(NodeT&& node, bit_width_t postfix_len) noexcept {
         postfix_len_ = static_cast<std::uint16_t>(postfix_len);
         DestroyUnion();
