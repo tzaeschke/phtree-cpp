@@ -167,10 +167,13 @@ class Node {
         return const_cast<Node&>(*this).Find(key, postfix_len);
     }
 
+    // TODO rename to lower_bound()
     auto FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-        auto iter = entries_.find(hc_pos);
-        found = (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len));
+        auto iter = entries_.lower_bound(hc_pos);
+        found =
+            (iter != entries_.end() && iter->first == hc_pos &&
+             DoesEntryMatch(iter->second, key, postfix_len));
         return iter;
     }
 

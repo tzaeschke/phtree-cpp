@@ -331,7 +331,7 @@ class PhTreeV16 {
     // TODO test also FAILS with B-Plus_tree_map; but not with array_map!
     // WITHOUT ITERATOR
     template <typename PRED>
-    auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+    auto relocate_ifX(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         EntryT* current_entry = &root_;           // An entry.
@@ -399,7 +399,7 @@ class PhTreeV16 {
 
     // WITH ITERATOR
     template <typename PRED>
-    auto relocate_ifXX(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+    auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         //EntryIterator<DIM, EntryT> iter = root_.GetNode().End();
