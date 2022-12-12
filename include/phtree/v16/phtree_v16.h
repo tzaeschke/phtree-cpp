@@ -536,7 +536,7 @@ class PhTreeV16 {
     // TODO
     //   - relocate(key, key, value) relocates 0 or 1 entries...?
     //   - relocate_if(key, key) relocates potentially many keys
-    
+
   public:
     /*
      * Tries to locate two entries that are 'close' to each other.
@@ -587,8 +587,7 @@ class PhTreeV16 {
             old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
         }
 
-        size_t result;
-
+        size_t result = 0;
         if (old_entry == nullptr) {
             // Does old_entry exist?
             // TODO undo insert BUCKET
