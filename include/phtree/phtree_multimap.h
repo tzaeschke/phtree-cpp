@@ -489,6 +489,26 @@ class PhTreeMultiMap {
      */
     template <typename PREDICATE>
     size_t relocate_if(
+        const Key& old_key, const Key& new_key, PREDICATE&& pred_fn, bool count_equals = true) {
+        auto fn = [&pred_fn](BUCKET& src, BUCKET& dst) -> size_t {
+            size_t result = 0;
+            auto iter_src = src.begin();
+            while (iter_src != src.end()) {
+                if (pred_fn(*iter_src) && dst.emplace(std::move(*iter_src)).second) {
+                    iter_src = src.erase(iter_src);
+                    ++result;
+                } else {
+                    ++iter_src;
+                }
+            }
+            return result;
+        };
+        return tree_._relocate_mm(
+            converter_.pre(old_key), converter_.pre(new_key), true, fn, pred_fn);
+    }
+
+    template <typename PREDICATE>
+    size_t relocate_if2(
         const Key& old_key, const Key& new_key, PREDICATE&& predicate, bool count_equals = true) {
         auto pair = tree_._find_or_create_two_mm(
             converter_.pre(old_key), converter_.pre(new_key), count_equals);

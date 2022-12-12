@@ -369,7 +369,7 @@ class PhTreeV16 {
             new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
         }
         if (new_entry != nullptr) {
-            return 0; // Entry exists!
+            return 0;  // Entry exists!
         }
         bool is_inserted = false;
         // TODO remove "if"
@@ -402,7 +402,7 @@ class PhTreeV16 {
     auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
-        //EntryIterator<DIM, EntryT> iter = root_.GetNode().End();
+        // EntryIterator<DIM, EntryT> iter = root_.GetNode().End();
         auto iter = root_.GetNode().End();
         EntryT* current_entry = &root_;           // An entry.
         EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
@@ -443,10 +443,10 @@ class PhTreeV16 {
             new_entry = is_found ? &iter->second : nullptr;
         }
         if (is_found) {
-            return 0; // Entry exists
+            return 0;  // Entry exists
         }
         if (new_entry != nullptr) {
-            return 0; // Entry exists!
+            return 0;  // Entry exists!
         }
         bool is_inserted = false;
         new_entry = &new_node_entry->GetNode().Emplace(
@@ -464,6 +464,7 @@ class PhTreeV16 {
         }
 
         bool found = false;
+        // TODO use in-node pointer
         while (old_node_entry) {
             old_node_entry = old_node_entry->GetNode().Erase(
                 old_key, old_node_entry, old_node_entry != &root_, found);
@@ -471,7 +472,6 @@ class PhTreeV16 {
         assert(found);
         return 1;
     }
-
 
   private:
     /*
@@ -533,6 +533,10 @@ class PhTreeV16 {
     //   - pred_can_be_moved (  { return destination.emplace() == true; } )
     //   - pred_remove_old   (  { source.erase(); return source.empty(); } )
 
+    // TODO
+    //   - relocate(key, key, value) relocates 0 or 1 entries...?
+    //   - relocate_if(key, key) relocates potentially many keys
+    
   public:
     /*
      * Tries to locate two entries that are 'close' to each other.
@@ -541,6 +545,93 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      * - CREATES the destination entry if it does not exist!
      */
+    template <typename RELOCATE, typename PREDICATE>
+    size_t _relocate_mm(
+        const KeyT& old_key,
+        const KeyT& new_key,
+        bool verify_exists,
+        RELOCATE&& relocate_fn,
+        PREDICATE&& pred_fn) {
+        using Iter = IteratorWithParent<T, CONVERT>;
+        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+
+        if (!verify_exists && n_diverging_bits == 0) {
+            return 1;  // TODO predicate...?
+        }
+
+        EntryT* new_entry = &root_;        // An entry.
+        EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
+        EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
+        // Find the deepest common parent node for removal and insertion
+        bool is_inserted = false;
+        while (new_entry && new_entry->IsNode() &&
+               new_entry->GetNodePostfixLen() + 1 >= n_diverging_bits) {
+            new_node_entry = new_entry;
+            auto postfix_len = new_entry->GetNodePostfixLen();
+            new_entry = &new_entry->GetNode().Emplace(is_inserted, new_key, postfix_len);
+        }
+        old_node_entry = new_node_entry;
+
+        // Find node for insertion of new bucket
+        while (new_entry->IsNode()) {
+            new_node_entry = new_entry;
+            new_entry =
+                &new_entry->GetNode().Emplace(is_inserted, new_key, new_entry->GetNodePostfixLen());
+        }
+        num_entries_ += is_inserted;
+        assert(new_entry != nullptr);
+
+        auto* old_entry = old_node_entry;
+        while (old_entry && old_entry->IsNode()) {
+            old_node_entry = old_entry;
+            old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
+        }
+
+        size_t result;
+
+        if (old_entry == nullptr) {
+            // Does old_entry exist?
+            // TODO undo insert BUCKET
+            result = 0;  // old_key not found or invalid!
+        } else if (n_diverging_bits == 0) {
+            // Are the keys equal?
+            for (auto it = old_entry->GetValue().begin(); it != old_entry->GetValue().end(); ++it) {
+                result += pred_fn(*it);
+            }
+        } else if (
+            old_node_entry->GetNodePostfixLen() >= n_diverging_bits &&
+            old_entry->GetValue().size() == 1) {
+            // Are we inserting in same node and same quadrant?
+            // This works only if the predicate has the same result for ALL entries. This can only
+            // be guaranteed if there is only one entry (or if we had proper TRUE/FALSE) predicates.
+            result = pred_fn(*old_entry->GetValue().begin());
+            if (result > 0) {
+                old_entry->SetKey(new_key);
+            }
+        } else {
+            // vanilla relocate
+            result = relocate_fn(old_entry->GetValue(), new_entry->GetValue());
+        }
+
+        if (old_entry != nullptr && old_entry->GetValue().empty()) {
+            bool found = false;
+            old_node_entry->GetNode().Erase(
+                old_key, old_node_entry, old_node_entry != &root_, found);
+            num_entries_ -= found;
+        } else if (new_entry->GetValue().empty()) {
+            bool found = false;
+            // new_node_entry may not be the mimmediate parent because Node::emplace() may create
+            // subbnodes.
+            while (new_node_entry != nullptr && new_node_entry->IsNode()) {
+                new_node_entry = new_node_entry->GetNode().Erase(
+                    new_key, new_node_entry, new_node_entry != &root_, found);
+            }
+            num_entries_ -= found;
+        }
+
+        return result;
+    }
+
     auto _find_or_create_two_mm(const KeyT& old_key, const KeyT& new_key, bool count_equals) {
         using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
