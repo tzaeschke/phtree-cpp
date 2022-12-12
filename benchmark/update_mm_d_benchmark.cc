@@ -166,7 +166,7 @@ typename std::enable_if<
 UpdateEntry(TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
     for (auto& update : updates) {
-        n += tree.relocate(update.old_, update.new_, update.id_);
+        n += tree.relocate(update.old_, update.new_, update.id_, false);
     }
     return n;
 }
@@ -177,7 +177,10 @@ typename std::enable_if<SCENARIO == Scenario::MM_SET_RELOCATE_IF, size_t>::type 
     size_t n = 0;
     for (auto& update : updates) {
         n += tree.relocate_if(
-            update.old_, update.new_, [&update](const payload_t& v) { return v == update.id_; });
+            update.old_,
+            update.new_,
+            [&update](const payload_t& v) { return v == update.id_; },
+            false);
     }
     return n;
 }
