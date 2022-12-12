@@ -545,17 +545,17 @@ class PhTreeV16 {
      * - returns end() if old_key does not exist;
      * - CREATES the destination entry if it does not exist!
      */
-    template <typename RELOCATE, typename PREDICATE>
+    template <typename RELOCATE, typename COUNT>
     size_t _relocate_mm(
         const KeyT& old_key,
         const KeyT& new_key,
         bool verify_exists,
         RELOCATE&& relocate_fn,
-        PREDICATE&& pred_fn) {
+        COUNT&& count_fn) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         if (!verify_exists && n_diverging_bits == 0) {
-            return 1;  // TODO predicate...?
+            return 1;  // TODO COUNT()?
         }
 
         EntryT* new_entry = &root_;        // An entry.
@@ -586,23 +586,20 @@ class PhTreeV16 {
             old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
         }
 
-        size_t result = 0;
+        size_t result;
         if (old_entry == nullptr) {
             // Does old_entry exist?
-            // TODO undo insert BUCKET
             result = 0;  // old_key not found or invalid!
         } else if (n_diverging_bits == 0) {
-            // Are the keys equal?
-            for (auto it = old_entry->GetValue().begin(); it != old_entry->GetValue().end(); ++it) {
-                result += pred_fn(*it);
-            }
+            // keys are equal ...
+            result = count_fn(old_entry->GetValue());
         } else if (
             old_node_entry->GetNodePostfixLen() >= n_diverging_bits &&
             old_entry->GetValue().size() == 1) {
             // Are we inserting in same node and same quadrant?
             // This works only if the predicate has the same result for ALL entries. This can only
             // be guaranteed if there is only one entry (or if we had proper TRUE/FALSE) predicates.
-            result = pred_fn(*old_entry->GetValue().begin());
+            result = count_fn(old_entry->GetValue());
             if (result > 0) {
                 old_entry->SetKey(new_key);
             }
@@ -618,8 +615,8 @@ class PhTreeV16 {
             num_entries_ -= found;
         } else if (new_entry->GetValue().empty()) {
             bool found = false;
-            // new_node_entry may not be the mimmediate parent because Node::emplace() may create
-            // subbnodes.
+            // new_node_entry may not be the immediate parent because Node::emplace() may create
+            // subnodes.
             while (new_node_entry != nullptr && new_node_entry->IsNode()) {
                 new_node_entry = new_node_entry->GetNode().Erase(
                     new_key, new_node_entry, new_node_entry != &root_, found);

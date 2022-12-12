@@ -92,6 +92,7 @@ class b_plus_tree_hash_set {
     using TreeT = b_plus_tree_hash_set<T, HashT, PredT>;
 
   public:
+    using value_compare = PredT;
     explicit b_plus_tree_hash_set() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
     b_plus_tree_hash_set(const b_plus_tree_hash_set& other) : size_{other.size_} {
@@ -360,6 +361,7 @@ class b_plus_tree_hash_map {
     using EntryT = std::pair<KeyT, ValueT>;
 
   public:
+    using value_compare = PredT;
     b_plus_tree_hash_map() : map_{} {};
 
     b_plus_tree_hash_map(const b_plus_tree_hash_map&) = default;
