@@ -552,7 +552,6 @@ class PhTreeV16 {
         bool verify_exists,
         RELOCATE&& relocate_fn,
         PREDICATE&& pred_fn) {
-        using Iter = IteratorWithParent<T, CONVERT>;
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         if (!verify_exists && n_diverging_bits == 0) {
