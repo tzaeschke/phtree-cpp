@@ -449,15 +449,12 @@ class PhTreeV16 {
             return 0; // Entry exists!
         }
         bool is_inserted = false;
-        // TODO remove "if"
-        if (new_entry == nullptr) {  // TODO use in-node pointer
-            new_entry = &new_node_entry->GetNode().Emplace(
-                iter,
-                is_inserted,
-                new_key,
-                new_node_entry->GetNodePostfixLen(),
-                std::move(old_entry->ExtractValue()));
-        }
+        new_entry = &new_node_entry->GetNode().Emplace(
+            iter,
+            is_inserted,
+            new_key,
+            new_node_entry->GetNodePostfixLen(),
+            std::move(old_entry->ExtractValue()));
 
         // Erase old value. See comments in try_emplace(iterator) for details.
         if (old_node_entry_parent == new_node_entry) {
