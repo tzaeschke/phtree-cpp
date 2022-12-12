@@ -77,7 +77,7 @@ class b_plus_tree_map {
     // trees with a single inner leaf. '*2' is added because leaf filling is not compact.
     constexpr static size_t INNER_MAX = std::min(std::uint64_t(16), COUNT_MAX / LEAF_MAX * 2);
     static_assert(LEAF_MAX > 2 && LEAF_MAX < 1000);
-    static_assert(COUNT_MAX <= (16*16) || (INNER_MAX > 2 && INNER_MAX < 1000));
+    static_assert(COUNT_MAX <= (16 * 16) || (INNER_MAX > 2 && INNER_MAX < 1000));
     // TODO This could be improved but requires a code change to move > 1 entry when merging.
     constexpr static size_t LEAF_MIN = 2;   // std::max((size_t)2, M_leaf >> 2);
     constexpr static size_t INNER_MIN = 2;  // std::max((size_t)2, M_inner >> 2);
@@ -176,9 +176,30 @@ class b_plus_tree_map {
     }
 
     template <typename... Args>
+    auto emplace_hint(const IterT& hint, KeyT key, Args&&... args) {
+        if (empty() || hint.is_end()) {
+            return emplace(key, std::forward<Args>(args)...);
+        }
+        assert(hint.node_->is_leaf());
+
+        auto node = hint.node_->as_leaf();
+
+        // The following may drop a valid hint but is easy to check.
+        if (node->data_.begin()->first > key || (node->data_.end() - 1)->first < key) {
+            return emplace(key, std::forward<Args>(args)...);
+        }
+        return node->try_emplace(key, root_, size_, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
     auto try_emplace(KeyT key, Args&&... args) {
         auto leaf = lower_bound_or_last_leaf(key, root_);
         return leaf->try_emplace(key, root_, size_, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    auto try_emplace(IterT iter, KeyT key, Args&&... args) {
+        return emplace_hint(iter, key, std::forward<Args>(args)...);
     }
 
     void erase(KeyT key) {
@@ -198,6 +219,10 @@ class b_plus_tree_map {
         return size_;
     }
 
+    [[nodiscard]] bool empty() const noexcept {
+        return size_ == 0;
+    }
+
     void _check() {
         size_t count = 0;
         NLeafT* prev_leaf = nullptr;
@@ -207,7 +232,8 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT, LEAF_CFG>;
+    using bpt_leaf_super =
+        bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT, LEAF_CFG>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
