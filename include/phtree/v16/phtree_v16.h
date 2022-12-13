@@ -595,7 +595,6 @@ class PhTreeV16 {
         return std::make_pair(iter1, iter2);
     }
 
-  public:
     /*
      * Iterates over all entries in the tree. The optional filter allows filtering entries and nodes
      * (=sub-trees) before returning / traversing them. By default, all entries are returned. Filter
@@ -765,26 +764,6 @@ class PhTreeV16 {
             return {&root_, root_.GetNode().Entries().end()};
         }
         EntryIteratorC<DIM, EntryT> entry_iter =
-            root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
-        while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
-               entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
-            parent = &entry_iter->second;
-            entry_iter = parent->GetNode().FindPrefix(
-                prefix, max_conflicting_bits, parent->GetNodePostfixLen());
-        }
-        return {parent, entry_iter};
-    }
-
-    std::pair<EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
-        const KeyT& key1, const KeyT& key2, bit_width_t& max_conflicting_bits) {
-        auto& prefix = key1;
-        max_conflicting_bits = NumberOfDivergingBits(key1, key2);
-        EntryT* parent = &root_;
-        if (max_conflicting_bits > root_.GetNodePostfixLen()) {
-            // Abort early if we have no shared prefix in the query
-            return {&root_, root_.GetNode().Entries().end()};
-        }
-        EntryIterator<DIM, EntryT> entry_iter =
             root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {

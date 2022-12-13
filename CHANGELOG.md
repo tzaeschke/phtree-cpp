@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
 
 ### Changed
-- Rewrote relocate(). This should be much cleaner now and slightly faster. [#98](https://github.com/tzaeschke/phtree-cpp/pull/98)
+- Rewrote relocate(). This should be much cleaner now and slightly faster. 
+  [#98](https://github.com/tzaeschke/phtree-cpp/pull/98), [#99](https://github.com/tzaeschke/phtree-cpp/pull/99)
+  
 - Cleaned up HandleCollision() and key comparison functions. [#97](https://github.com/tzaeschke/phtree-cpp/pull/97)
 - Improved performance by eliminating memory indirection for DIM > 3. 
   This was enabled by referencing "Node" directly in "Entry" which was enabled by
@@ -18,7 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved performance of window queries by executing them partially as point queries.
   This works best for point datasets, and somewhat for box datasets with "include" queries.
   There is no benefit for "intersection" queries. [#88](https://github.com/tzaeschke/phtree-cpp/issues/88)
-- Improved benchmarks for insert and query to use a more compact format. [#91](https://github.com/tzaeschke/phtree-cpp/pull/91)
+- Improved benchmarks for insert and query to use a more compact format. 
+  [#91](https://github.com/tzaeschke/phtree-cpp/pull/91)
 - Improved performance of window queries by optimizing calculation of min/max masks.
   Improved performance of queries and updates by changing bit-width of min/max masks and
   hc_pos_t. [#95](https://github.com/tzaeschke/phtree-cpp/pull/95)

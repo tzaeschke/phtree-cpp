@@ -103,21 +103,6 @@ static bit_width_t NumberOfDivergingBits(
     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
 }
 
-//template <dimension_t DIM, typename SCALAR>
-//static bit_width_t NumberOfDivergingBits2(
-//    const PhPoint<DIM, SCALAR>& v1, const PhPoint<DIM, SCALAR>& v2) {
-//    // write all differences to diff, we just check diff afterwards
-//    SCALAR diff = 0;
-//    //bit_mask_t<SCALAR> diff = 0;
-//    for (dimension_t i = 0; i < DIM; ++i) {
-//        diff |= v1[i] ^ v2[i];
-//    }
-//    bit_mask_t<SCALAR> diff2 = reinterpret_cast<bit_mask_t<SCALAR>&>(diff);
-//    assert(CountLeadingZeros(diff2) <= MAX_BIT_WIDTH<SCALAR>);
-//    return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
-//}
-
-
 template <dimension_t DIM, typename SCALAR>
 static bool KeyEquals(
     const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, bit_width_t ignore_bits) {
@@ -127,26 +112,6 @@ static bool KeyEquals(
     }
     return diff >> ignore_bits == 0;
 }
-//template <dimension_t DIM, typename SCALAR>
-//static bool KeyEquals0(
-//    const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, SCALAR mask) {
-//    for (dimension_t i = 0; i < DIM; ++i) {
-//        if (((key_a[i] ^ key_b[i]) & mask) != 0) {
-//            return false;
-//        }
-//    }
-//    return true;
-//}
-//
-//template <dimension_t DIM, typename SCALAR>
-//static bool KeyEquals1(
-//    const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, SCALAR mask) {
-//    SCALAR sum = 0;
-//    for (dimension_t i = 0; i < DIM; ++i) {
-//        sum |= (key_a[i] ^ key_b[i]);
-//    }
-//    return (sum & mask) == 0;
-//}
 
 // ************************************************************************
 // String helpers
