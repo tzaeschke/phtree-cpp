@@ -112,11 +112,6 @@ class sparse_map {
         return try_emplace_base(iter, key, std::forward<Args>(args)...);
     }
 
-    template <typename... Args>
-    auto try_emplace(iterator iter, size_t key, Args&&... args) {
-        return try_emplace_base(iter, key, std::forward<Args>(args)...);
-    }
-
     void erase(KeyT key) {
         auto it = lower_bound(key);
         if (it != end() && it->first == key) {
@@ -143,21 +138,6 @@ class sparse_map {
         }
     }
 
-    template <typename... Args>
-    auto try_emplace_base(const iterator& it, KeyT key, Args&&... args) {
-        if (it != end() && it->first == key) {
-            return std::make_pair(it, false);
-        } else {
-            auto x = data_.emplace(
-                it,
-                std::piecewise_construct,
-                std::forward_as_tuple(key),
-                std::forward_as_tuple(std::forward<Args>(args)...));
-            return std::make_pair(x, true);
-        }
-    }
-
-    // TODO merge with above
     template <typename... Args>
     auto try_emplace_base(const iterator& it, KeyT key, Args&&... args) {
         if (it != end() && it->first == key) {
