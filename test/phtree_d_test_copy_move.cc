@@ -47,11 +47,7 @@ struct IdCopyOnly {
     IdCopyOnly() = default;
     IdCopyOnly(const IdCopyOnly& other) = default;
     IdCopyOnly(IdCopyOnly&& other) = delete;
-    // IdCopyOnly& operator=(const IdCopyOnly& other) = default;
-    IdCopyOnly& operator=(const IdCopyOnly& other) {
-        _i = other._i;
-        return *this;
-    }
+    IdCopyOnly& operator=(const IdCopyOnly& other) = default;
     IdCopyOnly& operator=(IdCopyOnly&& other) = delete;
     ~IdCopyOnly() = default;
 
@@ -146,16 +142,15 @@ void SmokeTestBasicOps_QueryAndErase(TestTree<DIM, Id>& tree, std::vector<TestPo
         ASSERT_EQ(q, tree.end());
     }
 
-    // TODO enable for new relocate functions
-    //    for (size_t i = 0; i < N; i++) {
-    //        TestPoint<DIM>& p = points.at(i);
-    //        TestPoint<DIM> pOld = p;
-    //        for (dimension_t d = 0; d < DIM; ++d) {
-    //            p[d] += 10000;
-    //        }
-    //        auto r = tree.relocate(pOld, p);
-    //        ASSERT_EQ(r, 1u);
-    //    }
+    for (size_t i = 0; i < N; i++) {
+        TestPoint<DIM> &p = points.at(i);
+        TestPoint<DIM> pOld = p;
+        for (dimension_t d = 0; d < DIM; ++d) {
+            p[d] += 10000;
+        }
+        auto r = tree.relocate(pOld, p);
+        ASSERT_EQ(r, 1u);
+    }
 
     PhTreeDebugHelper::CheckConsistency(tree);
 

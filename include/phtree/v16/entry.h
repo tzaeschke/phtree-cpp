@@ -64,7 +64,9 @@ class Entry {
         const KeyT& k,
         ValueT2&& value,
         typename std::enable_if_t<!std::is_move_constructible_v<ValueT2>, int>::type = 0) noexcept
-    : kd_key_{k}, value_(value), union_type_{VALUE}, postfix_len_{0} {}
+    : kd_key_{k}, value_(value), union_type_{VALUE}, postfix_len_{0} {
+        assert(false);
+    }
 
     /*
      * Construct entry with existing T (T must be movable).
@@ -74,7 +76,9 @@ class Entry {
         const KeyT& k,
         ValueT2&& value,
         typename std::enable_if_t<std::is_move_constructible_v<ValueT2>, int>::type = 0) noexcept
-    : kd_key_{k}, value_(std::forward<ValueT2>(value)), union_type_{VALUE}, postfix_len_{0} {}
+    : kd_key_{k}, value_(std::forward<ValueT2>(value)), union_type_{VALUE}, postfix_len_{0} {
+        assert(false);
+    }
 
     /*
      * Construct entry with new T or copied T (T is not movable).
@@ -88,11 +92,14 @@ class Entry {
     /*
      * Construct entry with new T or copied T (T is not movable, using T's default constructor).
      */
-    template <
-        typename ValueT2 = ValueT,
-        typename = std::enable_if_t<!std::is_move_constructible_v<ValueT2>>>
-    explicit Entry(const KeyT& k) noexcept
-    : kd_key_{k}, value_(), union_type_{VALUE}, postfix_len_{0} {}
+//    template <
+//        typename ValueT2 = ValueT,
+//        typename = std::enable_if_t<!std::is_move_constructible_v<ValueT2>>>
+//    explicit Entry(const KeyT& k) noexcept
+//    : kd_key_{k}, value_(), union_type_{VALUE}, postfix_len_{0} {
+//        assert(false);
+//
+//    }
 
     /*
      * Construct entry with new T or moved T (T must be movable).
