@@ -199,7 +199,7 @@ class b_plus_tree_map {
 
     template <typename... Args>
     auto try_emplace(IterT iter, KeyT key, Args&&... args) {
-        return emplace_hint(iter, key, std::forward<Args>(args)...);
+        return emplace_hint(iter, key, std::forward<Args>(args)...).first;
     }
 
     void erase(KeyT key) {

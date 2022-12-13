@@ -40,6 +40,7 @@ namespace improbable::phtree::v16 {
  *   nodes and dimensionality. Remember that n_max = 2^DIM.
  */
 template <dimension_t DIM, typename Entry>
+// using EntryMap = std::map<hc_pos_dim_t<DIM>, Entry>;
 using EntryMap = typename std::conditional_t<
     DIM <= 3,
     array_map<Entry, (uint64_t(1) << DIM)>,
@@ -132,16 +133,16 @@ class Node {
     }
 
     template <typename IterT, typename... Args>
-    EntryT& Emplace(IterT iter, bool& is_inserted, const KeyT& key,
-                    bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len); // TODO pass in -> should be known!
-        auto emplace_result = entries_.try_emplace(iter, hc_pos, key, std::forward<Args>(args)...);
-        auto& entry = emplace_result.first->second;
-        // Return if emplace succeed, i.e. there was no entry.
-        if (emplace_result.second) {
+    EntryT& Emplace(
+        IterT iter, bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);  // TODO pass in -> should be known!
+        if (iter == entries_.end() || iter->first != hc_pos) {
+            auto emplace_result =
+                entries_.try_emplace(iter, hc_pos, key, std::forward<Args>(args)...);
             is_inserted = true;
-            return entry;
+            return emplace_result->second;
         }
+        auto& entry = iter->second;
         return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
     }
 

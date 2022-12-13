@@ -145,7 +145,7 @@ class flat_array_map {
     }
 
     template <typename... Args>
-    std::pair<map_pair*, bool> try_emplace_base(size_t index, Args&&... args) {
+    std::pair<map_pair*, bool> try_emplace(size_t index, Args&&... args) {
         if (!occupied(index)) {
             new (reinterpret_cast<void*>(&data_[index])) map_pair(
                 std::piecewise_construct,
@@ -268,18 +268,18 @@ class array_map {
 
     template <typename... Args>
     auto emplace(Args&&... args) {
-        return data_->try_emplace_base(std::forward<Args>(args)...);
+        return data_->try_emplace(std::forward<Args>(args)...);
     }
 
     template <typename... Args>
     auto try_emplace(size_t index, Args&&... args) {
-        return data_->try_emplace_base(index, std::forward<Args>(args)...);
+        return data_->try_emplace(index, std::forward<Args>(args)...);
     }
 
     template <typename... Args>
     auto try_emplace(const iterator&, size_t index, Args&&... args) {
         // We ignore the iterator, this is an array based collection, so access is ~O(1).
-        return data_->try_emplace_base(index, std::forward<Args>(args)...);
+        return data_->try_emplace(index, std::forward<Args>(args)...).first;
     }
 
     bool erase(size_t index) {
