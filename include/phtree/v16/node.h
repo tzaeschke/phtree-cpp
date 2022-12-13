@@ -47,11 +47,9 @@ using EntryMap = typename std::conditional_t<
         DIM <= 8,
         sparse_map<hc_pos_dim_t<DIM>, Entry>,
         b_plus_tree_map<std::uint64_t, Entry, (uint64_t(1) << DIM)>>>;
-//template <dimension_t DIM, typename Entry>
-//using EntryMap = std::map<hc_pos_dim_t<DIM>, Entry>;
 
 template <dimension_t DIM, typename Entry>
-using EntryIterator = typename std::remove_const<decltype(EntryMap<DIM, Entry>().begin())>::type;
+using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;
 template <dimension_t DIM, typename Entry>
 using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
 
@@ -167,8 +165,7 @@ class Node {
         return const_cast<Node&>(*this).Find(key, postfix_len);
     }
 
-    // TODO rename to lower_bound()
-    auto FindIter(const KeyT& key, bit_width_t postfix_len, bool& found) {
+    auto LowerBound(const KeyT& key, bit_width_t postfix_len, bool& found) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         auto iter = entries_.lower_bound(hc_pos);
         found =

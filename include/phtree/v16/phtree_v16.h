@@ -278,7 +278,7 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    size_t relocate_if2(const KeyT& old_key, const KeyT& new_key, PRED pred) {
+    [[deprecated]] size_t relocate_if2(const KeyT& old_key, const KeyT& new_key, PRED pred) {
         auto pair = _find_two(old_key, new_key);
         auto& iter_old = pair.first;
         auto& iter_new = pair.second;
@@ -315,8 +315,6 @@ class PhTreeV16 {
         return 1;
     }
 
-    // TODO is this a memory leak problem?????
-
     /*
      * Relocate (move) an entry from one position to another, subject to a predicate.
      *
@@ -327,77 +325,6 @@ class PhTreeV16 {
      * @return  A pair, whose first element points to the possibly relocated value, and
      *          whose second element is a bool that is true if the value was actually relocated.
      */
-    // TODO: test work with old relocate_if(). It also work with std::map
-    // TODO test also FAILS with B-Plus_tree_map; but not with array_map!
-    // WITHOUT ITERATOR
-    template <typename PRED>
-    auto relocate_ifX(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        EntryT* current_entry = &root_;           // An entry.
-        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
-        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
-        // Find node for removal
-        while (current_entry && current_entry->IsNode()) {
-            old_node_entry_parent = old_node_entry;
-            old_node_entry = current_entry;
-            auto postfix_len = old_node_entry->GetNodePostfixLen();
-            if (postfix_len + 1 >= n_diverging_bits) {
-                new_node_entry = old_node_entry;
-            }
-            // TODO stop earlier, we are going to have to redo this after insert....
-            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
-        }
-        EntryT* old_entry = current_entry;  // Entry to be removed
-
-        // Can we stop already?
-        if (old_entry == nullptr || !pred(old_entry->GetValue())) {
-            return 0;  // old_key not found!
-        }
-
-        // Are the keys equal? Or is the quadrant the same? -> same entry
-        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
-            old_entry->SetKey(new_key);
-            return 1;
-        }
-
-        // Find node for insertion
-        auto new_entry = new_node_entry;
-        while (new_entry && new_entry->IsNode()) {
-            new_node_entry = new_entry;
-            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
-        }
-        if (new_entry != nullptr) {
-            return 0;  // Entry exists!
-        }
-        bool is_inserted = false;
-        // TODO remove "if"
-        if (new_entry == nullptr) {  // TODO use in-node pointer
-            new_entry = &new_node_entry->GetNode().Emplace(
-                is_inserted,
-                new_key,
-                new_node_entry->GetNodePostfixLen(),
-                std::move(old_entry->ExtractValue()));
-        }
-
-        // Erase old value. See comments in try_emplace(iterator) for details.
-        if (old_node_entry_parent == new_node_entry) {
-            // In this case the old_node_entry may have been invalidated by the previous
-            // insertion.
-            old_node_entry = old_node_entry_parent;
-        }
-
-        bool found = false;
-        while (old_node_entry) {
-            old_node_entry = old_node_entry->GetNode().Erase(
-                old_key, old_node_entry, old_node_entry != &root_, found);
-        }
-        assert(found);
-        return 1;
-    }
-
-    // WITH ITERATOR
     template <typename PRED>
     auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
@@ -418,7 +345,7 @@ class PhTreeV16 {
             }
             // TODO stop earlier, we are going to have to redo this after insert....
             bool is_found = false;
-            iter = current_entry->GetNode().FindIter(old_key, postfix_len, is_found);
+            iter = current_entry->GetNode().LowerBound(old_key, postfix_len, is_found);
             current_entry = is_found ? &iter->second : nullptr;
         }
         EntryT* old_entry = current_entry;  // Entry to be removed
@@ -439,14 +366,12 @@ class PhTreeV16 {
         bool is_found = false;
         while (new_entry && new_entry->IsNode()) {
             new_node_entry = new_entry;
-            iter = new_entry->GetNode().FindIter(new_key, new_entry->GetNodePostfixLen(), is_found);
+            iter =
+                new_entry->GetNode().LowerBound(new_key, new_entry->GetNodePostfixLen(), is_found);
             new_entry = is_found ? &iter->second : nullptr;
         }
         if (is_found) {
             return 0;  // Entry exists
-        }
-        if (new_entry != nullptr) {
-            return 0;  // Entry exists!
         }
         bool is_inserted = false;
         new_entry = &new_node_entry->GetNode().Emplace(
@@ -463,13 +388,13 @@ class PhTreeV16 {
             old_node_entry = old_node_entry_parent;
         }
 
-        bool found = false;
-        // TODO use in-node pointer
+        is_found = false;
+        // TODO use in-node iterator if possible
         while (old_node_entry) {
             old_node_entry = old_node_entry->GetNode().Erase(
-                old_key, old_node_entry, old_node_entry != &root_, found);
+                old_key, old_node_entry, old_node_entry != &root_, is_found);
         }
-        assert(found);
+        assert(is_found);
         return 1;
     }
 
@@ -525,18 +450,6 @@ class PhTreeV16 {
         return std::make_pair(iter1, iter2);
     }
 
-    // TODO what is different/required for MM:
-    //   - "old" is not always removed
-    //   - "new" may exist, but may not result in collision
-    // TODO i.e. we need three conditions:
-    //   - pred_move  (  {return is_valid(old); }  )
-    //   - pred_can_be_moved (  { return destination.emplace() == true; } )
-    //   - pred_remove_old   (  { source.erase(); return source.empty(); } )
-
-    // TODO
-    //   - relocate(key, key, value) relocates 0 or 1 entries...?
-    //   - relocate_if(key, key) relocates potentially many keys
-
   public:
     /*
      * Tries to locate two entries that are 'close' to each other.
@@ -555,7 +468,7 @@ class PhTreeV16 {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         if (!verify_exists && n_diverging_bits == 0) {
-            return 1;  // TODO COUNT()?
+            return 1;  // We omit calling because that would require looking up the entry...
         }
 
         EntryT* new_entry = &root_;        // An entry.
