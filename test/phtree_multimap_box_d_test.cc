@@ -499,41 +499,6 @@ TEST(PhTreeMMBoxDTest, TestUpdateWithEmplaceHint) {
     tree.clear();
 }
 
-// TEST(PhTreeMMDTest, TestUpdateWithRelocate) {
-//     const dimension_t dim = 3;
-//     TestTree<dim, Id> tree;
-//     size_t N = 10000;
-//     std::array<double, 4> deltas{0, 0.1, 1, 10};
-//     std::vector<TestPoint<dim>> points;
-//     populate(tree, points, N);
-//
-//     for (auto delta : deltas) {
-//         size_t i = 0;
-//         for (auto& p : points) {
-//             auto pOld = p;
-//             TestPoint<dim> pNew;
-//             if (relocate_to_existing_coordinate) {
-//                 pNew = delta > 0.0 ? points[(i + 17) % N] : pOld;
-//             } else {
-//                 pNew = {pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
-//             }
-//             PhPointD<dim> min{pOld.min()[0] + delta, pOld.min()[1] + delta, pOld.min()[2] +
-//             delta}; PhPointD<dim> max{pOld.max()[0] + delta, pOld.max()[1] + delta, pOld.max()[2]
-//             + delta}; TestPoint<dim> pNew{min, max}; ASSERT_EQ(1, tree.relocate(pOld, pNew,
-//             Id(i))); if (delta > 0.0) {
-//                 // second time fails because value has already been moved
-//                 ASSERT_EQ(0, tree.relocate(pOld, pNew, Id(i)));
-//             }
-//             ASSERT_EQ(Id(i), *tree.find(pNew, Id(i)));
-//             p = pNew;
-//             ++i;
-//         }
-//     }
-//
-//     ASSERT_EQ(N, tree.size());
-//     tree.clear();
-// }
-
 void TestUpdateWithRelocate(bool relocate_to_existing_coordinate) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
@@ -575,15 +540,15 @@ void TestUpdateWithRelocate(bool relocate_to_existing_coordinate) {
     tree.clear();
 }
 
-TEST(PhTreeMMDTest, TestUpdateWithRelocateDelta) {
+TEST(PhTreeMMBoxDTest, TestUpdateWithRelocateDelta) {
     TestUpdateWithRelocate(false);
 }
 
-TEST(PhTreeMMDTest, TestUpdateWithRelocateToExisting) {
+TEST(PhTreeMMBoxDTest, TestUpdateWithRelocateToExisting) {
     TestUpdateWithRelocate(true);
 }
 
-TEST(PhTreeMMDTest, TestUpdateWithRelocateCornerCases) {
+TEST(PhTreeMMBoxDTest, TestUpdateWithRelocateCornerCases) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     TestPoint<dim> point0{{1, 2, 3}, {2, 3, 4}};
@@ -703,7 +668,7 @@ struct FilterEvenId {
     }
 };
 
-TEST(PhTreeMMDTest, TestExtentFilter) {
+TEST(PhTreeMMBoxDTest, TestExtentFilter) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -720,7 +685,7 @@ TEST(PhTreeMMDTest, TestExtentFilter) {
     ASSERT_EQ(N, num_e * 2);
 }
 
-TEST(PhTreeMMDTest, TestExtentForEachFilter) {
+TEST(PhTreeMMBoxDTest, TestExtentForEachFilter) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 10000;
@@ -764,7 +729,7 @@ TEST(PhTreeMMBoxDTest, TestRangeBasedForLoop) {
     ASSERT_EQ(N, num_e2);
 }
 
-TEST(PhTreeMMDTest, TestEstimateCountIntersect) {
+TEST(PhTreeMMBoxDTest, TestEstimateCountIntersect) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
@@ -792,7 +757,7 @@ TEST(PhTreeMMDTest, TestEstimateCountIntersect) {
     ASSERT_EQ(N, n_all);
 }
 
-TEST(PhTreeMMDTest, TestEstimateCountInclude) {
+TEST(PhTreeMMBoxDTest, TestEstimateCountInclude) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
     size_t N = 1000;
