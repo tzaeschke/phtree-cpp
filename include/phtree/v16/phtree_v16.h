@@ -26,7 +26,6 @@
 #include "iterator_knn_hs.h"
 #include "iterator_with_parent.h"
 #include "node.h"
-#include <iostream>
 
 namespace improbable::phtree::v16 {
 
