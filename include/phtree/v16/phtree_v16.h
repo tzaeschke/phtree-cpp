@@ -453,263 +453,20 @@ class PhTreeV16 {
 
   public:
     /*
-     * Tries to locate two entries that are 'close' to each other.
+     * This function is used (internally) by the PH-tree multimap.
      *
-     * Special behavior:
-     * - returns end() if old_key does not exist;
-     * - CREATES the destination entry if it does not exist!
+     * Relocate (move) an entry from one position to another, subject to a predicate.
+     *
+     * @param old_key
+     * @param new_key
+     * @param verify_exists. If true, verifies that the keys exists, even if the keys are identical.
+     *              If false, identical keys simply return '1', even if the keys don´t actually
+     *              exist. This avoid searching the tree.
+     * @param RELOCATE  A function that handles relocation between buckets.
+     * @param COUNT     A function that veifies relocation in the same bucket, e.g. for identical
+     *              keys, or if the whole bucket is relocated.
+     * @return  The number of relocated entries.
      */
-    template <typename RELOCATE, typename COUNT>
-    size_t _relocate_mm1(
-        const KeyT& old_key,
-        const KeyT& new_key,
-        bool verify_exists,
-        RELOCATE&& relocate_fn,
-        COUNT&& count_fn) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        if (!verify_exists && n_diverging_bits == 0) {
-            return 1;  // We omit calling because that would require looking up the entry...
-        }
-
-        EntryT* new_entry = &root_;        // An entry.
-        EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
-        EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
-        // Find the deepest common parent node for removal and insertion
-        bool is_inserted = false;
-        while (new_entry && new_entry->IsNode() &&
-               new_entry->GetNodePostfixLen() + 1 >= n_diverging_bits) {
-            new_node_entry = new_entry;
-            auto postfix_len = new_entry->GetNodePostfixLen();
-            new_entry = &new_entry->GetNode().Emplace(is_inserted, new_key, postfix_len);
-        }
-        old_node_entry = new_node_entry;
-
-        // Find node for insertion of new bucket
-        while (new_entry->IsNode()) {
-            new_node_entry = new_entry;
-            new_entry =
-                &new_entry->GetNode().Emplace(is_inserted, new_key, new_entry->GetNodePostfixLen());
-        }
-        num_entries_ += is_inserted;
-        assert(new_entry != nullptr);
-
-        auto* old_entry = old_node_entry;
-        while (old_entry && old_entry->IsNode()) {
-            old_node_entry = old_entry;
-            old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
-        }
-
-        size_t result;
-        if (old_entry == nullptr) {
-            // Does old_entry exist?
-            result = 0;  // old_key not found or invalid!
-        } else if (n_diverging_bits == 0) {
-            // keys are equal ...
-            result = count_fn(old_entry->GetValue());
-        } else if (
-            old_node_entry->GetNodePostfixLen() >= n_diverging_bits &&
-            old_entry->GetValue().size() == 1) {
-            // Are we inserting in same node and same quadrant?
-            // This works only if the predicate has the same result for ALL entries. This can only
-            // be guaranteed if there is only one entry (or if we had proper TRUE/FALSE) predicates.
-            result = count_fn(old_entry->GetValue());
-            if (result > 0) {
-                old_entry->SetKey(new_key);
-            }
-        } else {
-            // vanilla relocate
-            result = relocate_fn(old_entry->GetValue(), new_entry->GetValue());
-        }
-
-        if (old_entry != nullptr && old_entry->GetValue().empty()) {
-            bool found = false;
-            old_node_entry->GetNode().Erase(
-                old_key, old_node_entry, old_node_entry != &root_, found);
-            num_entries_ -= found;
-        } else if (new_entry->GetValue().empty()) {
-            bool found = false;
-            // new_node_entry may not be the immediate parent because Node::emplace() may create
-            // subnodes.
-            while (new_node_entry != nullptr && new_node_entry->IsNode()) {
-                new_node_entry = new_node_entry->GetNode().Erase(
-                    new_key, new_node_entry, new_node_entry != &root_, found);
-            }
-            num_entries_ -= found;
-        }
-
-        return result;
-    }
-
-    template <typename RELOCATE, typename COUNT>
-    size_t _relocate_mm3(
-        const KeyT& old_key,
-        const KeyT& new_key,
-        bool verify_exists,
-        RELOCATE&& relocate_fn,
-        COUNT&& count_fn) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        if (!verify_exists && n_diverging_bits == 0) {
-            return 1;  // We omit calling because that would require looking up the entry...
-        }
-
-        auto iter = root_.GetNode().End();
-        EntryT* new_entry = &root_;        // An entry.
-        EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
-        EntryT* new_node_entry = nullptr;  // Node that will contain  new entry
-        // Find the deepest common parent node for removal and insertion
-        bool is_inserted = false;
-        while (new_entry && new_entry->IsNode()) {
-            new_node_entry = new_entry;
-            auto postfix_len = new_entry->GetNodePostfixLen();
-            if (postfix_len + 1 >= n_diverging_bits) {
-                old_node_entry = new_node_entry;
-            }
-            new_entry = new_entry->GetNode().Find(new_key, postfix_len);
-            // We could instead use the following, this may be faster for sparse_map/b_plus_map
-            // but is very slow for array_map (even with '-mbmi2'
-//            bool is_found = false;
-//            iter = new_entry->GetNode().LowerBound(new_key, postfix_len, is_found);
-//            new_entry = is_found ? &iter->second : nullptr;
-        }
-        //old_node_entry = new_node_entry;
-
-        if (new_entry != nullptr && n_diverging_bits == 0) {
-            // keys are equal ...
-            return count_fn(new_entry->GetValue());
-        }
-
-        // Are we inserting in same node and same quadrant?
-        // This works only if the predicate has the same result for ALL entries. This can only
-        // be guaranteed if there is only one entry (or if we had proper TRUE/FALSE) predicates.
-        if (new_entry != nullptr &&
-            new_node_entry->GetNodePostfixLen() >= n_diverging_bits &&
-            new_entry->GetValue().size() == 1) {
-            // Technically this should be: (old_entry->GetValue().size() == 1), but that's the same.
-            auto result = count_fn(new_entry->GetValue());
-            if (result > 0) {
-                new_entry->SetKey(new_key);
-            }
-            return result;
-        }
-
-        // Find node for insertion of new bucket
-        if (new_entry == nullptr) {
-            new_entry = &new_node_entry->GetNode().Emplace(
-                is_inserted, new_key, new_node_entry->GetNodePostfixLen());
-            num_entries_ += is_inserted;
-            assert(new_entry != nullptr);
-        }
-
-        auto* old_entry = old_node_entry;
-        while (old_entry && old_entry->IsNode()) {
-            old_node_entry = old_entry;
-            old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
-        }
-
-        size_t result;
-        if (old_entry == nullptr) {
-            // Does old_entry exist?
-            result = 0;  // old_key not found or invalid!
-        } else if (n_diverging_bits == 0) {
-            // keys are equal ...
-            result = count_fn(old_entry->GetValue());
-//        } else if (
-//            old_node_entry->GetNodePostfixLen() >= n_diverging_bits &&
-//            old_entry->GetValue().size() == 1) {
-//            // Are we inserting in same node and same quadrant?
-//            // This works only if the predicate has the same result for ALL entries. This can only
-//            // be guaranteed if there is only one entry (or if we had proper TRUE/FALSE) predicates.
-//            result = count_fn(old_entry->GetValue());
-//            if (result > 0) {
-//                old_entry->SetKey(new_key);
-//            }
-        } else {
-            // vanilla relocate
-            result = relocate_fn(old_entry->GetValue(), new_entry->GetValue());
-        }
-
-        if (old_entry != nullptr && old_entry->GetValue().empty()) {
-            bool found = false;
-            old_node_entry->GetNode().Erase(
-                old_key, old_node_entry, old_node_entry != &root_, found);
-            num_entries_ -= found;
-        } else if (new_entry->GetValue().empty()) {
-            bool found = false;
-            // new_node_entry may not be the immediate parent because Node::emplace() may create
-            // subnodes.
-            while (new_node_entry != nullptr && new_node_entry->IsNode()) {
-                new_node_entry = new_node_entry->GetNode().Erase(
-                    new_key, new_node_entry, new_node_entry != &root_, found);
-            }
-            num_entries_ -= found;
-        }
-
-        return result;
-    }
-
-    inline static ulong N{0};
-    inline static ulong X1{0};
-    inline static ulong X2{0};
-    inline static ulong X3{0};
-    inline static ulong X4{0};
-    inline static ulong X5{0};
-    inline static ulong X6{0};
-    inline static ulong X7{0};
-    inline static ulong PREV_SIZE{0};
-
-    inline static ulong IBOTH{0};
-    inline static ulong INEW{0};
-    inline static ulong IOLD{0};
-    inline static ulong ICLEAN{0};
-
-    inline static ulong I1{0};
-    inline static ulong I2{0};
-    inline static ulong I3{0};
-    inline static ulong I4{0};
-    inline static ulong I5{0};
-    inline static ulong I6{0};
-
-    void print() {
-        if (num_entries_ >= PREV_SIZE * 10 || num_entries_*4 < PREV_SIZE) {
-//            std::cout << "S=" << num_entries_ << "  N=" << N << "  X=" << X1 << "  " << X2 << "  "
-//                      << X3 << "  " << X4 << "  " << X5 << "  " << X6 << "  " << X7 << "  "
-//                      << std::endl;
-//            std::cout << " both/n/o/c=" << IBOTH << " " << INEW << "  " << IOLD << "  " << ICLEAN
-//                      << " I=" << I1 << "  " << I2 << "  " << I3 << "  " << I4 << "  " << I5 << "  "
-//                      << std::endl;
-            PREV_SIZE = num_entries_;
-            N = 0;
-            X1 = 0;
-            X2 = 0;
-            X3 = 0;
-            X4 = 0;
-            X5 = 0;
-            X6 = 0;
-            X7 = 0;
-            IBOTH = 0;
-            ICLEAN = 0;
-            INEW = 0;
-            IOLD = 0;
-            I1 = 0;
-            I2 = 0;
-            I3 = 0;
-            I4 = 0;
-            I5 = 0;
-        }
-
-        ++N;
-        if (N % 200000 == 0 && num_entries_ > 200000) {
-            auto tot = I1 + I2 + I3 + I4 + I5;
-            std::cout << "N=" << N << "  X=" << X1 << "  " << X2 << "  " << X3 << "  " << X4 << "  "
-                      << X5 << "  " << X6 << "  " << X7 << "  " << std::endl;
-            std::cout << " both/n/o/c=" << IBOTH << " " << INEW << "  " << IOLD << "  " << ICLEAN
-                      << " I=" << I1 << "  " << I2 << "  " << I3 << "  " << I4 << "  " << I5
-                      << "  = " << tot << std::endl;
-        }
-    }
-
     template <typename RELOCATE, typename COUNT>
     size_t _relocate_mm(
         const KeyT& old_key,
@@ -720,25 +477,19 @@ class PhTreeV16 {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
         if (!verify_exists && n_diverging_bits == 0) {
-            return 1;  // We omit calling because that would require looking up the entry...
+            return 1;  // We omit calling COUNT because that would require looking up the entry...
         }
 
-        EntryT* current_entry = &root_;           // An entry.
-        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
-        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
+        EntryT* current_entry = &root_;    // An entry.
+        EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
+        EntryT* new_node_entry = nullptr;  // Node that will contain the new entry
         // Find node or entry for removal
         while (current_entry && current_entry->IsNode()) {
-            old_node_entry_parent = old_node_entry;
             old_node_entry = current_entry;
             auto postfix_len = old_node_entry->GetNodePostfixLen();
             if (postfix_len + 1 >= n_diverging_bits) {
                 new_node_entry = old_node_entry;
             }
-            // TODO stop earlier, we are going to have to redo this after insert....
-//            bool is_found = false;
-//            iter = current_entry->GetNode().LowerBound(old_key, postfix_len, is_found);
-//            current_entry = is_found ? &iter->second : nullptr;
             current_entry = current_entry->GetNode().Find(old_key, postfix_len);
         }
         EntryT* old_entry = current_entry;  // Entry to be removed
@@ -763,43 +514,33 @@ class PhTreeV16 {
             }
         }
 
-        bool same_node = old_node_entry == new_node_entry;
-
         // Find node for insertion
         auto new_entry = new_node_entry;
+        bool same_node = old_node_entry == new_node_entry;
         bool is_inserted = false;
         while (new_entry && new_entry->IsNode()) {
-            //is_found = false;  // TODO fix for non-MM?!?!
             new_node_entry = new_entry;
             is_inserted = false;
             new_entry =
                 &new_entry->GetNode().Emplace(is_inserted, new_key, new_entry->GetNodePostfixLen());
             num_entries_ += is_inserted;
         }
-        if (is_inserted) {
-            // adjust old_entry if necessary
-            if (same_node) {
-                old_entry = old_node_entry;
-                while (old_entry && old_entry->IsNode()) {
-                    ++I3;
-                    ++IOLD;
-                    old_node_entry = old_entry;
-                    old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
-                }
+
+        // Adjust old_entry if necessary, it may have been invalidated by emplace() in the same node
+        if (is_inserted && same_node) {
+            old_entry = old_node_entry;
+            while (old_entry && old_entry->IsNode()) {
+                old_node_entry = old_entry;
+                old_entry = old_entry->GetNode().Find(old_key, old_entry->GetNodePostfixLen());
             }
         }
 
-        // vanilla relocate
+        // relocate
         auto result = relocate_fn(old_entry->GetValue(), new_entry->GetValue());
 
-        // Erase old value. See comments in try_emplace(iterator) for details.
-        if (old_node_entry_parent == new_node_entry) {
-            // In this case the old_node_entry may have been invalidated by the previous
-            // insertion.
-            old_node_entry = old_node_entry_parent;
+        if (result == 0) {
+            clean_up(new_key, new_entry, new_node_entry);
         }
-
-        clean_up(new_key, new_entry, new_node_entry);
         clean_up(old_key, old_entry, old_node_entry);
         return result;
     }
@@ -807,11 +548,9 @@ class PhTreeV16 {
   private:
     void clean_up(const KeyT& key, EntryT* entry, EntryT* node_entry) {
         // It may happen that node_entry is not the immediate parent, but that is okay!
-        // TODO use iterators?
         if (entry != nullptr && entry->GetValue().empty()) {
-            bool found = false;  // TODO fix in non-MM
+            bool found = false;
             while (node_entry != nullptr && node_entry->IsNode()) {
-                ++ICLEAN;
                 found = false;
                 node_entry =
                     node_entry->GetNode().Erase(key, node_entry, node_entry != &root_, found);
