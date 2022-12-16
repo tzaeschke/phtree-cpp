@@ -330,8 +330,6 @@ class PhTreeV16 {
     auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
 
-        // EntryIterator<DIM, EntryT> iter = root_.GetNode().End();
-        auto iter = root_.GetNode().End();
         EntryT* current_entry = &root_;           // An entry.
         EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
         EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
@@ -345,9 +343,7 @@ class PhTreeV16 {
                 new_node_entry = old_node_entry;
             }
             // TODO stop earlier, we are going to have to redo this after insert....
-            bool is_found = false;
-            iter = current_entry->GetNode().LowerBound(old_key, postfix_len, is_found);
-            current_entry = is_found ? &iter->second : nullptr;
+            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
         }
         EntryT* old_entry = current_entry;  // Entry to be removed
 
@@ -364,19 +360,15 @@ class PhTreeV16 {
 
         // Find node for insertion
         auto new_entry = new_node_entry;
-        bool is_found = false;
         while (new_entry && new_entry->IsNode()) {
             new_node_entry = new_entry;
-            iter =
-                new_entry->GetNode().LowerBound(new_key, new_entry->GetNodePostfixLen(), is_found);
-            new_entry = is_found ? &iter->second : nullptr;
+            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
         }
-        if (is_found) {
+        if (new_entry != nullptr) {
             return 0;  // Entry exists
         }
         bool is_inserted = false;
         new_entry = &new_node_entry->GetNode().Emplace(
-            iter,
             is_inserted,
             new_key,
             new_node_entry->GetNodePostfixLen(),
@@ -389,7 +381,7 @@ class PhTreeV16 {
             old_node_entry = old_node_entry_parent;
         }
 
-        is_found = false;
+        bool is_found = false;
         // TODO use in-node iterator if possible
         while (old_node_entry) {
             old_node_entry = old_node_entry->GetNode().Erase(
