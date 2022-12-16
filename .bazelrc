@@ -26,6 +26,8 @@ build:ci --announce_rc
 
 #build:linux --copt="-O1"
 #build:linux --copt="-march=skylake"
+#build:linux --copt="-march=haswell"
+#build:linux --copt="-march=native"
 build:linux --copt="-fvisibility=hidden"
 build:linux --copt="-fno-omit-frame-pointer"  # for friendlier stack traces
 build:linux --copt="-Wno-error"
@@ -34,6 +36,8 @@ build:linux --copt="-Wextra"
 build:linux --copt="-Werror=return-type"
 build:linux --copt="-Werror=switch"
 build:linux --copt="-mavx"
+# Enable CLZ (count leading zeros). This is equivalent to "-march=haswell"
+build:linux --copt="-mbmi2"
 build:linux --copt="-Wsequence-point"
 build:linux --copt="-Wsign-compare"
 build:linux --cxxopt="-std=c++17"
