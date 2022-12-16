@@ -79,9 +79,11 @@ if (MSVC)
 else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
     if (PHTREE_BUILD_BENCHMARKS)
-        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx -pthread")
+        # Enable vectorization and TZCNT/CTZ
+        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx -mbmi2 -pthread")
     else ()
-        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx")
+        # Enable vectorization and TZCNT/CTZ
+        set(CMAKE_CXX_FLAGS_RELEASE "-O3 -mavx -mbmi2 ")
     endif ()
     if (PHTREE_CODE_COVERAGE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage") # -Wa,-mbig-obj")

@@ -476,9 +476,12 @@ heavily on the actual dataset, usage patterns, hardware, ... .
 
 There are numerous ways to improve performance. The following list gives an overview over the possibilities.
 
-1) **Use `for_each` instead of iterators**. This should improve performance of queries by 10%-20%.
+1) **Use `-O3 -mavx, -mbmi2` compiler flags**. Ensure that vectorization and count trailing zeros (CTZ/TZCNT) are 
+   enabled. 
 
-2) **Use `relocate()` / `relocate_if()` if possible**. When updating the position of an entry, the naive way is 
+2) **Use `for_each` instead of iterators**. This should improve performance of queries by 10%-20%.
+
+3) **Use `relocate()` / `relocate_if()` if possible**. When updating the position of an entry, the naive way is 
    to use `erase()` / `emplace()`. With `relocate` / `relocate_if()`, insertion can avoid a lot of duplicate 
    navigation in the tree if the new coordinate is close to the old coordinate.
    ```c++
@@ -490,19 +493,19 @@ There are numerous ways to improve performance. The following list gives an over
    relocate(old_position, new_position, value);
    ```
 
-3) **Store pointers instead of large data objects**. For example, use `PhTree<3, MyLargeClass*>` instead of
+4) **Store pointers instead of large data objects**. For example, use `PhTree<3, MyLargeClass*>` instead of
    `PhTree<3, MyLargeClass>` if `MyLargeClass` is large.
     * This prevents the PH-Tree from storing the values inside the tree. This should improve cache-locality and thus
       performance when operating on the tree.
     * Using pointers is also useful if construction/destruction of values is expensive. The reason is that the tree has
       to construct and destruct objects internally. This may be avoidable but is currently still happening.
 
-4) **Use non-box query shapes**. Depending on the use case it may be more suitable to use a custom filter for queries.
+5) **Use non-box query shapes**. Depending on the use case it may be more suitable to use a custom filter for queries.
    For example:
 
    `tree.for_each(callback, FilterSphere(center, radius, tree.converter()));`
 
-5) **Use a different data converter**. The default converter of the PH-Tree results in a reasonably fast index. Its
+6) **Use a different data converter**. The default converter of the PH-Tree results in a reasonably fast index. Its
    biggest advantage is that it provides lossless conversion from floating point coordinates to PH-Tree coordinates
    (integers) and back to floating point coordinates.
     * The `ConverterMultiply` is a lossy converter but it tends to improve performance by 10% or more. This is not
@@ -511,16 +514,16 @@ There are numerous ways to improve performance. The following list gives an over
 
       `PhTreeD<DIM, T, ConverterMultiply<3, 100 * 1000, 1>>()`
 
-6) **Use custom key types**. By default, the PH-Tree accepts only coordinates in the form of its own key types, such
+7) **Use custom key types**. By default, the PH-Tree accepts only coordinates in the form of its own key types, such
    as `PhPointD`, `PhBoxF` or similar. To avoid conversion from custom types to PH-Tree key types, custom classes can
    often be adapted to be accepted directly by the PH-Tree without conversion. This requires implementing a custom
    converter as described in the section about [Custom Key Types](#custom-key-types).
 
-7) Advanced: **Adapt internal Node representation**. Depending on the dimensionality `DIM`, the PH-Tree uses internally
-   in
-   `Nodes` different container types to hold entries. By default, it uses an array for `DIM<=3`, a vector for `DIM<=8`
-   and an ordered map for `DIM>8`. Adapting these thresholds can have strong effects on performance as well as memory
-   usage. One example: Changing the threshold to use vector for `DIM==3` reduced performance of the `update_d` benchmark
+8) Advanced: **Adapt internal Node representation**. Depending on the dimensionality `DIM`, the PH-Tree uses 
+   internally in `Nodes` different container types to hold entries. 
+   By default, it uses an array for `DIM<=3`, a vector for `DIM<=8` and an ordered map for `DIM>8`. 
+   Adapting these thresholds can have strong effects on performance as well as memory usage. 
+   One example: Changing the threshold to use vector for `DIM==3` reduced performance of the `update_d` benchmark
    by 40%-50% but improved performance of `query_d` by 15%-20%. The threshold is currently hardcoded.     
    The effects are not always easy to predict but here are some guidelines:
     * "array" is the fastest solution for insert/update/remove type operations. Query performance is "ok". Memory
@@ -547,9 +550,10 @@ PH-Tree can be built with [Bazel](https://bazel.build) (primary build system) or
 All code is written in C++ targeting the C++17 standard. 
 The code has been verified to compile on Linux with Clang 11 and GCC 9, and on Windows with Visual Studio 2019
 (except benchmarks, which don't work with VS).
-The PH-tree makes use of vectorization, so suggested compilation options for clang/gcc are:
+The PH-tree makes use of vectorization and CountTrailingZeros/CTZ/TZCNT, so suggested compilation options for 
+clang/gcc are:
 ```
--O3 -mavx
+-O3 -mavx -mbmi2
 ```
 
 
