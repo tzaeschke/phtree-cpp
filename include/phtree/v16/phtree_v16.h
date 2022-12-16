@@ -353,7 +353,10 @@ class PhTreeV16 {
         }
 
         // Are the keys equal? Or is the quadrant the same? -> same entry
-        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
+        if (n_diverging_bits == 0) {
+            return 1;
+        }
+        if (old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
             old_entry->SetKey(new_key);
             return 1;
         }
@@ -382,7 +385,6 @@ class PhTreeV16 {
         }
 
         bool is_found = false;
-        // TODO use in-node iterator if possible
         while (old_node_entry) {
             old_node_entry = old_node_entry->GetNode().Erase(
                 old_key, old_node_entry, old_node_entry != &root_, is_found);
