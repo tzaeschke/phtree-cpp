@@ -67,7 +67,7 @@ class IndexBenchmark {
     const size_t num_entities_;
     const double avg_query_result_size_;
 
-    constexpr double query_endge_length() {
+    constexpr double query_edge_length() {
         return GLOBAL_MAX * pow(avg_query_result_size_ / (double)num_entities_, 1. / (double)DIM);
     };
 
@@ -165,11 +165,13 @@ void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Qu
 
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::CreateQuery(Query& query) {
-    double radius = query_endge_length() * 0.5;
+    double length = query_edge_length();
+    // shift to ensure query lies within boundary
+    double shift = (GLOBAL_MAX - (double)length) / GLOBAL_MAX;
     for (dimension_t d = 0; d < DIM; ++d) {
-        auto s = cube_distribution_(random_engine_);
-        query.box.min()[d] = s - radius;
-        query.box.max()[d] = s + radius;
+        auto s = shift * cube_distribution_(random_engine_);
+        query.box.min()[d] = s;
+        query.box.max()[d] = s + length;
     }
 }
 

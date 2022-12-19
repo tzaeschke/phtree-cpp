@@ -35,18 +35,17 @@ enum QueryType {
 /*
  * Benchmark for looking up entries by their key.
  */
-template <dimension_t DIM>
+template <dimension_t DIM, QueryType QUERY_TYPE>
 class IndexBenchmark {
   public:
-    IndexBenchmark(
-        benchmark::State& state, TestGenerator data_type, int num_entities, QueryType query_type);
+    IndexBenchmark(benchmark::State& state, double dummy);
 
     void Benchmark(benchmark::State& state);
 
   private:
     void SetupWorld(benchmark::State& state);
-    int QueryWorldCount(benchmark::State& state);
-    int QueryWorldFind(benchmark::State& state);
+    int QueryWorldCount();
+    int QueryWorldFind();
 
     const TestGenerator data_type_;
     const size_t num_entities_;
@@ -58,34 +57,33 @@ class IndexBenchmark {
     std::vector<PhPoint<DIM>> points_;
 };
 
-template <dimension_t DIM>
-IndexBenchmark<DIM>::IndexBenchmark(
-    benchmark::State& state, TestGenerator data_type, int num_entities, QueryType query_type)
-: data_type_{data_type}
-, num_entities_(num_entities)
-, query_type_(query_type)
+template <dimension_t DIM, QueryType QUERY_TYPE>
+IndexBenchmark<DIM, QUERY_TYPE>::IndexBenchmark(benchmark::State& state, double)
+: data_type_{static_cast<TestGenerator>(state.range(1))}
+, num_entities_(state.range(0))
+, query_type_(QUERY_TYPE)
 , random_engine_{1}
 , cube_distribution_{0, GLOBAL_MAX}
-, points_(num_entities) {
+, points_(state.range(0)) {
     logging::SetupDefaultLogging();
     SetupWorld(state);
 }
 
-template <dimension_t DIM>
-void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
+template <dimension_t DIM, QueryType QUERY_TYPE>
+void IndexBenchmark<DIM, QUERY_TYPE>::Benchmark(benchmark::State& state) {
     int num_inner = 0;
     int num_found = 0;
     switch (query_type_) {
     case COUNT: {
         for (auto _ : state) {
-            num_found += QueryWorldCount(state);
+            num_found += QueryWorldCount();
             ++num_inner;
         }
         break;
     }
     case FIND: {
         for (auto _ : state) {
-            num_found += QueryWorldFind(state);
+            num_found += QueryWorldFind();
             ++num_inner;
         }
         break;
@@ -98,8 +96,8 @@ void IndexBenchmark<DIM>::Benchmark(benchmark::State& state) {
     state.counters["avg_result_count"] += num_found;
 }
 
-template <dimension_t DIM>
-void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
+template <dimension_t DIM, QueryType QUERY_TYPE>
+void IndexBenchmark<DIM, QUERY_TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("Setting up world with {} entities and {} dimensions.", num_entities_, DIM);
     CreatePointData<DIM>(points_, data_type_, num_entities_, 0, GLOBAL_MAX);
     for (size_t i = 0; i < num_entities_; ++i) {
@@ -110,27 +108,27 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
     state.counters["query_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["result_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["avg_result_count"] = benchmark::Counter(0, benchmark::Counter::kAvgIterations);
-
     logging::info("World setup complete.");
 }
 
-template <dimension_t DIM>
-int IndexBenchmark<DIM>::QueryWorldCount(benchmark::State&) {
+template <dimension_t DIM, QueryType QUERY_TYPE>
+int IndexBenchmark<DIM, QUERY_TYPE>::QueryWorldCount() {
     static int pos = 0;
     pos = (pos + 1) % num_entities_;
-    bool found = true;
+    bool found;
     if (pos % 2 == 0) {
-        assert(tree_.find(points_.at(pos)) != tree_.end());
+        found = tree_.count(points_.at(pos));
+        assert(found);
     } else {
         int x = pos % GLOBAL_MAX;
         PhPoint<DIM> p = PhPoint<DIM>({x, x, x});
-        found = tree_.find(p) != tree_.end();
+        found = tree_.count(p);
     }
     return found;
 }
 
-template <dimension_t DIM>
-int IndexBenchmark<DIM>::QueryWorldFind(benchmark::State&) {
+template <dimension_t DIM, QueryType QUERY_TYPE>
+int IndexBenchmark<DIM, QUERY_TYPE>::QueryWorldFind() {
     static int pos = 0;
     pos = (pos + 1) % num_entities_;
     bool found;
@@ -150,61 +148,26 @@ int IndexBenchmark<DIM>::QueryWorldFind(benchmark::State&) {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3> benchmark{state, arguments...};
+void PhTree3DCount(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, QueryType::COUNT> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTree3DFind(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, QueryType::FIND> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_generator, num_entities, function_to_call
-// PhTree 3D CUBE
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CU_1K, TestGenerator::CUBE, 1000, COUNT)
+BENCHMARK_CAPTURE(PhTree3DCount, COUNT, 0.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CU_10K, TestGenerator::CUBE, 10000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CU_100K, TestGenerator::CUBE, 100000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CU_1M, TestGenerator::CUBE, 1000000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CU_1K, TestGenerator::CUBE, 1000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CU_10K, TestGenerator::CUBE, 10000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CU_100K, TestGenerator::CUBE, 100000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CU_1M, TestGenerator::CUBE, 1000000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-// index type, scenario name, data_generator, num_entities, function_to_call
-// PhTree 3D CLUSTER
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CL_1K, TestGenerator::CLUSTER, 1000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CL_10K, TestGenerator::CLUSTER, 10000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CL_100K, TestGenerator::CLUSTER, 100000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, COUNT_CL_1M, TestGenerator::CLUSTER, 1000000, COUNT)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CL_1K, TestGenerator::CLUSTER, 1000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CL_10K, TestGenerator::CLUSTER, 10000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CL_100K, TestGenerator::CLUSTER, 100000, FIND)
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(PhTree3D, FIND_CL_1M, TestGenerator::CLUSTER, 1000000, FIND)
+BENCHMARK_CAPTURE(PhTree3DFind, FIND, 0.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();
