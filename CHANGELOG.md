@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
 
 ### Changed
+- Clean up array_map. [#107](https://github.com/tzaeschke/phtree-cpp/issues/107),
 - Fixed compatibility with bazel 6.0.0. [#109](https://github.com/tzaeschke/phtree-cpp/issues/109),
 - Added missing compiler flag for TZCNT/CTZ (count trailing zeros). This should be much faster on haswell or later CPUs.
   [#103](https://github.com/tzaeschke/phtree-cpp/issues/103),
