@@ -41,8 +41,6 @@ using BucketType = std::set<payload_t>;
 
 struct Query {
     QueryBox box{};
-    TestPoint center{};
-    double radius{};
 };
 
 template <Scenario SCENARIO, dimension_t DIM>
@@ -73,7 +71,7 @@ class IndexBenchmark {
     const size_t num_entities_;
     const double avg_query_result_size_;
 
-    constexpr double query_endge_length() {
+    constexpr double query_edge_length() {
         return GLOBAL_MAX * pow(avg_query_result_size_ / (double)num_entities_, 1. / (double)DIM);
     };
 
@@ -131,53 +129,41 @@ void InsertEntry(
     tree.emplace(point, data);
 }
 
-int CheckPosition(const payload_t& entity, const TestPoint& center, double radius) {
-    const auto& point = entity;
-    bool dx = abs(center[0] - point[0]) <= radius;
-    bool dy = abs(center[1] - point[1]) <= radius;
-    bool dz = abs(center[2] - point[2]) <= radius;
-    return dx && dy && dz ? 1 : -100000000;
-}
-
 struct CounterTreeWithMap {
     void operator()(const PhPointD<3>&, const BucketType& value) {
         for (auto& x : value) {
-            // n_ += (x.entity_id_ >= 0);
-            n_ += CheckPosition(x, center_, radius_);
+            (void)x;
+            ++n_;
         }
     }
-    const TestPoint& center_;
-    double radius_;
     size_t n_;
 };
 
 struct CounterMultiMap {
-    void operator()(const PhPointD<3>&, const payload_t& value) {
-        n_ += CheckPosition(value, center_, radius_);
+    void operator()(const PhPointD<3>&, const payload_t&) {
+        ++n_;
     }
-    const TestPoint& center_;
-    double radius_;
     size_t n_;
 };
 
 template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<SCENARIO == Scenario::TREE_WITH_MAP, size_t>::type CountEntries(
     TestMap<Scenario::TREE_WITH_MAP, DIM>& tree, const Query& query) {
-    CounterTreeWithMap counter{query.center, query.radius, 0};
+    CounterTreeWithMap counter{0};
     tree.for_each(query.box, counter);
     return counter.n_;
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
 size_t CountEntries(TestMap<Scenario::MULTI_MAP, DIM>& tree, const Query& query) {
-    CounterMultiMap counter{query.center, query.radius, 0};
+    CounterMultiMap counter{0};
     tree.for_each(query.box, counter);
     return counter.n_;
 }
 
 template <dimension_t DIM, Scenario SCENARIO>
 size_t CountEntries(TestMap<Scenario::MULTI_MAP_STD, DIM>& tree, const Query& query) {
-    CounterMultiMap counter{query.center, query.radius, 0};
+    CounterMultiMap counter{0};
     tree.for_each(query.box, counter);
     return counter.n_;
 }
@@ -208,23 +194,17 @@ void IndexBenchmark<DIM, SCENARIO>::QueryWorld(benchmark::State& state, const Qu
 
 template <dimension_t DIM, Scenario SCENARIO>
 void IndexBenchmark<DIM, SCENARIO>::CreateQuery(Query& query) {
-    double radius = query_endge_length() * 0.5;
+    double length = query_edge_length();
+    // shift to ensure query lies within boundary
+    double shift = (GLOBAL_MAX - (double)length) / GLOBAL_MAX;
     for (dimension_t d = 0; d < DIM; ++d) {
-        auto x = cube_distribution_(random_engine_);
-        query.box.min()[d] = x - radius;
-        query.box.max()[d] = x + radius;
-        query.center[d] = x;
+        auto x = shift * cube_distribution_(random_engine_);
+        query.box.min()[d] = x;
+        query.box.max()[d] = x + length;
     }
-    query.radius = radius;
 }
 
 }  // namespace
-
-template <typename... Arguments>
-void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, Scenario::TREE_WITH_MAP> benchmark{state, arguments...};
-    benchmark.Benchmark(state);
-}
 
 template <typename... Arguments>
 void PhTreeMultiMap3D(benchmark::State& state, Arguments&&... arguments) {
@@ -238,13 +218,13 @@ void PhTreeMultiMapStd3D(benchmark::State& state, Arguments&&... arguments) {
     benchmark.Benchmark(state);
 }
 
-// index type, scenario name, data_type, num_entities, avg_query_result_size
-// PhTree
-BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
-    ->RangeMultiplier(10)
-    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-    ->Unit(benchmark::kMillisecond);
+template <typename... Arguments>
+void PhTree3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::TREE_WITH_MAP> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
 
+// index type, scenario name, data_type, num_entities, avg_query_result_size
 // PhTreeMultiMap
 BENCHMARK_CAPTURE(PhTreeMultiMap3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
@@ -253,6 +233,12 @@ BENCHMARK_CAPTURE(PhTreeMultiMap3D, WQ_100, 100.0)
 
 // PhTreeMultiMap
 BENCHMARK_CAPTURE(PhTreeMultiMapStd3D, WQ_100, 100.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTree with manual BUCKET management
+BENCHMARK_CAPTURE(PhTree3D, WQ_100, 100.0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

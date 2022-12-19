@@ -101,29 +101,19 @@ class flat_array_map {
 
   public:
     [[nodiscard]] auto find(size_t index) noexcept {
-        return occupied(index) ? iterator{index, this} : end();
+        return iterator{occupied(index) ? index : SIZE, this};
     }
 
     [[nodiscard]] auto lower_bound(size_t index) const {
-        size_t index2 = lower_bound_index(index);
-        if (index2 < SIZE) {
-            return iterator{index2, this};
-        }
-        return end();
+          return iterator{lower_bound_index(index), this};
     }
 
     [[nodiscard]] auto begin() const {
-        size_t index = CountTrailingZeros(occupancy);
-        // Assert index points to a valid position or outside the map if the map is empty
-        assert((size() == 0 && index >= SIZE) || occupied(index));
-        return iterator{index < SIZE ? index : SIZE, this};
+          return iterator{lower_bound_index(0), this};
     }
 
     [[nodiscard]] auto cbegin() const {
-        size_t index = CountTrailingZeros(occupancy);
-        // Assert index points to a valid position or outside the map if the map is empty
-        assert((size() == 0 && index >= SIZE) || occupied(index));
-        return iterator{index < SIZE ? index : SIZE, this};
+          return iterator{lower_bound_index(0), this};
     }
 
     [[nodiscard]] auto end() const {
@@ -151,7 +141,7 @@ class flat_array_map {
                 std::piecewise_construct,
                 std::forward_as_tuple(index),
                 std::forward_as_tuple(std::forward<Args>(args)...));
-            occupied(index, true);
+            occupy(index);
             return {&data(index), true};
         }
         return {&data(index), false};
@@ -160,7 +150,7 @@ class flat_array_map {
     bool erase(size_t index) {
         if (occupied(index)) {
             data(index).~pair();
-            occupied(index, false);
+            unoccupy(index);
             return true;
         }
         return false;
@@ -191,17 +181,22 @@ class flat_array_map {
         return std::min(SIZE, index + num_zeros);
     }
 
-    void occupied(size_t index, bool flag) {
-        (void)flag;
+    void occupy(size_t index) {
         assert(index < SIZE);
-        assert(occupied(index) != flag);
+        assert(!occupied(index));
         // flip the bit
         occupancy ^= (1ul << index);
-        assert(occupied(index) == flag);
+    }
+
+    void unoccupy(size_t index) {
+        assert(index < SIZE);
+        assert(occupied(index));
+        // flip the bit
+        occupancy ^= (1ul << index);
     }
 
     [[nodiscard]] bool occupied(size_t index) const {
-        return (occupancy >> index) & 1ul;
+        return (occupancy >> index) & 1;
     }
 
     std::uint64_t occupancy = 0;
