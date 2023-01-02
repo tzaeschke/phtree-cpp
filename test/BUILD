@@ -105,6 +105,19 @@ cc_test(
 )
 
 cc_test(
+    name = "phtree_grid_index_d",
+    timeout = "long",
+    srcs = [
+        "phtree_grid_d_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "phtree_d_test",
     timeout = "long",
     srcs = [
