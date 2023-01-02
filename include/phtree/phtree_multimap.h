@@ -84,6 +84,10 @@ class IteratorBase {
         return left.current_value_ptr_ != right.current_value_ptr_;
     }
 
+    bool __is_end() {
+        return current_value_ptr_ == nullptr;
+    }
+
   protected:
     void SetFinished() noexcept {
         current_value_ptr_ = nullptr;
@@ -730,7 +734,7 @@ class PhTreeMultiMap {
         return converter_;
     }
 
-  private:
+  public:
     // This is used by PhTreeDebugHelper
     const auto& GetInternalTree() const {
         return tree_;
@@ -745,6 +749,7 @@ class PhTreeMultiMap {
         assert(n == size_);
     }
 
+  private:
     template <typename OUTER_ITER>
     auto CreateIteratorFind(OUTER_ITER&& outer_iter, const T& value) const {
         auto bucket_iter =
