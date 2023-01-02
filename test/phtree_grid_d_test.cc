@@ -1251,7 +1251,8 @@ TEST(PhTreeMMDTest, TestMoveAssign) {
 
     TestTree<3, Id> tree{};
     // TODO!?!?!
- //   tree = std::move(tree1);
+   // tree = std::move(tree1);
+    FAIL();
     test_tree(tree);
     tree.~PhTreeGridIndex();
 }
