@@ -48,77 +48,6 @@ namespace improbable::phtree {
 
 namespace {
 
-// template <int64_t NUMERATOR, int64_t DENOMINATOR>
-// class ScalarConverterMultiply2 {
-//     static_assert(std::is_same<scalar_64_t, std::int64_t>());
-//     static_assert(NUMERATOR != 0);
-//     static_assert(DENOMINATOR != 0);
-//     static constexpr double MULTIPLY = NUMERATOR / (double)DENOMINATOR;
-//     static constexpr double DIVIDE = DENOMINATOR / (double)NUMERATOR;
-//
-//   public:
-//     static scalar_64_t pre(double value) {
-//         return static_cast<scalar_64_t>(value * MULTIPLY);
-//     }
-//
-//     static double post(scalar_64_t value) {
-//         return value * DIVIDE;
-//     }
-//
-//     static scalar_32_t pre(float value) {
-//         return  static_cast<scalar_32_t>(value * MULTIPLY);
-//     }
-//
-//     static float post(scalar_32_t value) {
-//         return value * DIVIDE;
-//     }
-// };
-//
-//
-// template <
-//     dimension_t DIM,
-//     typename SCALAR_EXTERNAL,
-//     typename SCALAR_INTERNAL,
-//     typename CONVERT = ScalarConverterMultiply2<1, 2>>
-// class SimplePointConverter2 : public ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL> {
-//     using BASE = ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL>;
-//
-//   public:
-//     using Point = typename BASE::KeyExternal;
-//     using PointInternal = typename BASE::KeyInternal;
-//     using QueryBox = typename BASE::QueryBoxExternal;
-//
-//     static_assert(std::is_same<Point, PhPoint<DIM, SCALAR_EXTERNAL>>::value);
-//     static_assert(std::is_same<PointInternal, PhPoint<DIM, SCALAR_INTERNAL>>::value);
-//
-//   public:
-//     explicit SimplePointConverter2(const CONVERT converter = CONVERT()) : converter_{converter}
-//     {};
-//
-//     PointInternal pre(const Point& point) const {
-//         PointInternal out;
-//         for (dimension_t i = 0; i < DIM; ++i) {
-//             out[i] = converter_.pre(point[i]);
-//         }
-//         return out;
-//     }
-//
-//     Point post(const PointInternal& point) const {
-//         Point out;
-//         for (dimension_t i = 0; i < DIM; ++i) {
-//             out[i] = converter_.post(point[i]);
-//         }
-//         return out;
-//     }
-//
-//     PhBox<DIM, SCALAR_INTERNAL> pre_query(const QueryBox& query_box) const {
-//         return {pre(query_box.min()), pre(query_box.max())};
-//     }
-//
-//   private:
-//     CONVERT converter_;
-// };
-
 template <dimension_t DIM, typename SCALAR_EXTERNAL, typename SCALAR_INTERNAL>
 class ConverterGridIndex : public ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL> {
     using BASE = ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL>;
@@ -134,6 +63,12 @@ class ConverterGridIndex : public ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALA
   public:
     explicit ConverterGridIndex(double cell_edge_length)
     : post_{cell_edge_length}, pre_{1. / cell_edge_length} {}
+
+    ConverterGridIndex(const ConverterGridIndex& other) = default;
+    ConverterGridIndex& operator=(const ConverterGridIndex& other) = default;
+    ConverterGridIndex(ConverterGridIndex&& other) noexcept = default;
+    ConverterGridIndex& operator=(ConverterGridIndex&& other) noexcept = default;
+    ~ConverterGridIndex() noexcept = default;
 
     [[nodiscard]] PointInternal pre(const Point& point) const {
         PointInternal p{};
@@ -305,7 +240,8 @@ namespace improbable::phtree {
 template <
     dimension_t DIM,
     typename T,
-    typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>,
+    // typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>,
+    typename CONVERTER = ConverterGridIndex<DIM, double, scalar_64_t>,
     typename BUCKET = b_plus_tree_hash_set<T>,
     bool POINT_KEYS = true,
     typename DEFAULT_QUERY_TYPE = QueryPoint>
@@ -331,10 +267,9 @@ class PhTreeGridIndex {
     using QueryBox = typename CONVERTER::QueryBoxExternal;
     using EntryT = PhTreeGridIndexEntry<Key, T>;
 
-    explicit PhTreeGridIndex(double cell_edge_length = 100)
-    : tree_{CONVERTER{cell_edge_length}}, converter_{cell_edge_length} {}
+    explicit PhTreeGridIndex(double cell_edge_length = 100) : tree_{CONVERTER{cell_edge_length}} {}
 
-    explicit PhTreeGridIndex(CONVERTER converter) : tree_{converter_}, converter_{converter} {}
+    explicit PhTreeGridIndex(CONVERTER converter) : tree_{converter} {}
 
     PhTreeGridIndex(const PhTreeGridIndex& other) = delete;
     PhTreeGridIndex& operator=(const PhTreeGridIndex& other) = delete;
@@ -435,12 +370,12 @@ class PhTreeGridIndex {
     template <typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     size_t estimate_count(QueryBox query_box, QUERY_TYPE query_type = QUERY_TYPE()) const {
         return tree_.estimate_count(query_box, query_type);
-//        // TODO... use box filter
-//        size_t n = 0;
-//        auto counter_lambda = [&](const Key&, const EntryT& bucket) { ++n; };
-//        // auto filter = [&](const Key&, const BUCKET& bucket) { n += bucket.size(); };
-//        tree_.for_each(query_box, counter_lambda, FilterNoOp{}, query_type);
-//        return n;
+        //        // TODO... use box filter
+        //        size_t n = 0;
+        //        auto counter_lambda = [&](const Key&, const EntryT& bucket) { ++n; };
+        //        // auto filter = [&](const Key&, const BUCKET& bucket) { n += bucket.size(); };
+        //        tree_.for_each(query_box, counter_lambda, FilterNoOp{}, query_type);
+        //        return n;
     }
 
     /*
@@ -451,8 +386,8 @@ class PhTreeGridIndex {
      * to {@code end()} if no value was found
      */
     auto find(const Key& key) const {
-        auto filter = [&key](const Key& key2) noexcept { return key == key2; };
-        return CreateIterator(tree_.find(key), filter);
+        auto filter = [key = key](const Key& key2) noexcept { return key == key2; };
+        return CreateIterator(tree_.find(key), std::move(filter));
     }
 
     /*
@@ -464,8 +399,8 @@ class PhTreeGridIndex {
      * or to {@code end()} if the key/value pair was found
      */
     auto find(const Key& key, const T& value) const {
-        auto filter = [&key](const Key& key2) noexcept { return key == key2; };
-        return CreateIterator(tree_.find(key, create(key, value)), filter);
+        auto filter = [key = key](const Key& key2) noexcept { return key == key2; };
+        return CreateIterator(tree_.find(key, create(key, value)), std::move(filter));
     }
 
     /*
@@ -523,7 +458,17 @@ class PhTreeGridIndex {
         // TODO document verify_exists,
         // TODO do we need to check coordinates? Document this!!
         // TODO update old/new key? With verify=false we can ignore updating the key!!
-        return tree_.relocate(old_key, new_key, create(old_key, value), verify_exists);
+        // return tree_.relocate(old_key, new_key, create(old_key, value), verify_exists);
+
+        auto update_fn = [&value, &old_key, &new_key](const EntryT& e) -> size_t {
+            if (e.second == value && e.first == old_key) {
+                const_cast<Key&>(e.first) = new_key;
+                return true;
+            }
+            return false;
+        };
+        return tree_.relocate_if(old_key, new_key, std::move(update_fn), true);
+
         //        auto fn = [&value](BUCKET& src, BUCKET& dst) -> size_t {
         //            auto it = src.find(value);
         //            if (it != src.end() && dst.emplace(std::move(*it)).second) {
@@ -536,47 +481,6 @@ class PhTreeGridIndex {
         //        src.end(); }; return tree_._relocate_mm(
         //            converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn,
         //            count_fn);
-    }
-
-    template <typename T2>
-    [[deprecated]] size_t relocate2(
-        const Key& old_key, const Key& new_key, T2&& value, bool count_equals = false) {
-        // TODO document verify_exists,
-        // TODO do we need to check coordinates? Document this!!
-        return tree_.relocate2(old_key, new_key, std::forward<T2>(value), count_equals);
-        //        auto pair = tree_._find_or_create_two_mm(
-        //            converter_.pre(old_key), converter_.pre(new_key), count_equals);
-        //        auto& iter_old = pair.first;
-        //        auto& iter_new = pair.second;
-        //
-        //        if (iter_old.IsEnd()) {
-        //            return 0;
-        //        }
-        //        auto iter_old_value = iter_old->find(value);
-        //        if (iter_old_value == iter_old->end()) {
-        //            if (iter_new->empty()) {
-        //                tree_.erase(iter_new);
-        //            }
-        //            return 0;
-        //        }
-        //
-        //        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        //        if (iter_old == iter_new) {
-        //            assert(old_key == new_key);
-        //            return 1;
-        //        }
-        //
-        //        assert(iter_old_value != iter_old->end());
-        //        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
-        //            return 0;
-        //        }
-        //
-        //        iter_old->erase(iter_old_value);
-        //        if (iter_old->empty()) {
-        //            [[maybe_unused]] auto found = tree_.erase(iter_old);
-        //            assert(found);
-        //        }
-        //        return 1;
     }
 
     /*
@@ -641,51 +545,6 @@ class PhTreeGridIndex {
         //            count_fn);
     }
 
-    template <typename PREDICATE>
-    [[deprecated]] size_t relocate_if2(
-        const Key& old_key, const Key& new_key, PREDICATE&& predicate, bool count_equals = false) {
-        // TODO document verify_exists,
-        // TODO do we need to check coordinates? Document this!!
-        return tree_.relocate_if2(
-            old_key, new_key, std::forward<PREDICATE>(predicate), count_equals);
-
-        //        auto pair = tree_._find_or_create_two_mm(
-        //            converter_.pre(old_key), converter_.pre(new_key), count_equals);
-        //        auto& iter_old = pair.first;
-        //        auto& iter_new = pair.second;
-        //
-        //        if (iter_old.IsEnd()) {
-        //            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
-        //            return 0;
-        //        }
-        //
-        //        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        //        if (iter_old == iter_new) {
-        //            assert(old_key == new_key);
-        //            return 1;
-        //        }
-        //
-        //        size_t n = 0;
-        //        auto it = iter_old->begin();
-        //        while (it != iter_old->end()) {
-        //            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
-        //                it = iter_old->erase(it);
-        //                ++n;
-        //            } else {
-        //                ++it;
-        //            }
-        //        }
-        //
-        //        if (iter_old->empty()) {
-        //            [[maybe_unused]] auto found = tree_.erase(iter_old);
-        //            assert(found);
-        //        } else if (iter_new->empty()) {
-        //            [[maybe_unused]] auto found = tree_.erase(iter_new);
-        //            assert(found);
-        //        }
-        //        return n;
-    }
-
     /*
      * Relocates all values from one coordinate to another.
      * Returns an iterator pointing to the relocated data (or end(), if the relocation failed).
@@ -711,7 +570,7 @@ class PhTreeGridIndex {
         tree_.for_each(
             NoOpCallback{},
             WrapCallbackFilter<CALLBACK, FILTER>{
-                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
+                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter()});
     }
 
     /*
@@ -740,7 +599,7 @@ class PhTreeGridIndex {
         tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
             query_box,
             {},
-            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_},
+            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter()},
             query_type);
     }
 
@@ -771,9 +630,9 @@ class PhTreeGridIndex {
         const QueryBox& query_box,
         FILTER&& filter = FILTER(),
         QUERY_TYPE&& query_type = QUERY_TYPE()) const {
-        auto key_filter = [&query_box](const Key& key) noexcept {
-            auto min = query_box.min();
-            auto max = query_box.max();
+        auto key_filter = [query_box = query_box](const Key& key) noexcept {
+            auto& min = query_box.min();
+            auto& max = query_box.max();
             for (dimension_t d = 0; d < DIM; ++d) {
                 if (key[d] < min[d] || key[d] > max[d]) {
                     return false;
@@ -784,7 +643,7 @@ class PhTreeGridIndex {
         return CreateIterator(
             tree_.begin_query(
                 query_box, WrapFilter<FILTER>(std::forward<FILTER>(filter)), query_type),
-            key_filter);
+            std::move(key_filter));
     }
 
     /*
@@ -853,7 +712,7 @@ class PhTreeGridIndex {
      * @return the converter associated with this tree.
      */
     [[nodiscard]] const CONVERTER& converter() const {
-        return converter_;
+        return tree_.converter();
     }
 
   private:
@@ -952,24 +811,18 @@ class PhTreeGridIndex {
 
         template <typename ValueT>
         [[nodiscard]] inline bool IsBucketEntryValid(
-            const KeyInternal&, const ValueT& entry) const noexcept {
-            //                auto internal_key = converter_.pre(entry.first);
-            //                if (filter_.IsEntryValid(internal_key, bucket)) {
-            //                    auto key = converter_.post(internal_key);
-            //                    for (auto& entry : bucket) {
-            // TODO can we skip bucket-validity?
-            //                        if (filter_.IsBucketEntryValid(internal_key, entry)) {
-            callback_(entry.first, entry.second);
-            //                        }
-            //                    }
-            //                }
+            const KeyInternal& internal_key, const ValueT& entry) const noexcept {
+             if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
+                callback_(entry.first, entry.second);
+                return true;
+            }
             // Return false. We already called the callback.
             return false;
         }
 
         [[nodiscard]] inline bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
             // TODO document this?!? We cannot check the nodes.....
-            // TODO disable filters alltogether?
+            // TODO disable filters all together?
             return true;
             // return filter_.IsNodeValid(prefix, bits_to_ignore);
         }
@@ -981,7 +834,6 @@ class PhTreeGridIndex {
     };
 
     PhTreeMultiMap<DIM, EntryT, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE> tree_;
-    CONVERTER converter_;  // TODO?
 };
 
 /**
@@ -994,7 +846,8 @@ template <
     dimension_t DIM,
     typename T,
     typename CONVERTER = ConverterGridIndex<DIM, double, scalar_64_t>,
-    typename BUCKET = b_plus_tree_hash_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
+    // TODO !!!!!!!!!!!!!!!!11
+    typename BUCKET = std::unordered_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
 using PhTreeGridIndexD = PhTreeGridIndex<DIM, T, CONVERTER, BUCKET>;
 
 template <
