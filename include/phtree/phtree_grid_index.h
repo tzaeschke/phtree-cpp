@@ -595,11 +595,13 @@ class PhTreeGridIndex {
         CALLBACK&& callback,
         FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        // TODO filter
-        tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
+        tree_.template for_each<NoOpCallback, WrapCallbackFilterQuery<CALLBACK, FILTER>>(
             query_box,
             {},
-            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter()},
+            {std::forward<CALLBACK>(callback),
+             std::forward<FILTER>(filter),
+             converter(),
+             query_box},
             query_type);
     }
 
@@ -812,7 +814,7 @@ class PhTreeGridIndex {
         template <typename ValueT>
         [[nodiscard]] inline bool IsBucketEntryValid(
             const KeyInternal& internal_key, const ValueT& entry) const noexcept {
-             if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
+            if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
                 callback_(entry.first, entry.second);
                 return true;
             }
@@ -831,6 +833,60 @@ class PhTreeGridIndex {
         CALLBACK callback_;
         FILTER filter_;
         const CONVERTER& converter_;
+    };
+
+    template <typename CALLBACK, typename FILTER>
+    class WrapCallbackFilterQuery {
+      public:
+        /*
+         * We always have two iterators, one that traverses the PH-Tree and returns 'buckets', the
+         * other iterator traverses the returned buckets.
+         * The wrapper ensures that the callback is called for every entry in a bucket..
+         */
+        template <typename CB, typename F>
+        WrapCallbackFilterQuery(
+            CB&& callback, F&& filter, const CONVERTER& converter, const QueryBox& query)
+        : callback_{std::forward<CB>(callback)}
+        , filter_{std::forward<F>(filter)}
+        , converter_{converter}
+        , query_{query} {}
+
+        [[nodiscard]] inline bool IsEntryValid(const KeyInternal&, const BUCKET&) {
+            return true;
+        }
+
+        template <typename ValueT>
+        [[nodiscard]] inline bool IsBucketEntryValid(
+            const KeyInternal& internal_key, const ValueT& entry) const noexcept {
+            auto& min = query_.min();
+            auto& max = query_.max();
+            auto& key = entry.first;
+            for (dimension_t d = 0; d < DIM; ++d) {
+                if (key[d] < min[d] || key[d] > max[d]) {
+                    return false;
+                }
+            }
+
+            if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
+                callback_(entry.first, entry.second);
+                return true;
+            }
+            // Return false. We already called the callback.
+            return false;
+        }
+
+        [[nodiscard]] inline bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
+            // TODO document this?!? We cannot check the nodes.....
+            // TODO disable filters all together?
+            return true;
+            // return filter_.IsNodeValid(prefix, bits_to_ignore);
+        }
+
+      private:
+        CALLBACK callback_;
+        FILTER filter_;
+        const CONVERTER& converter_;
+        QueryBox query_;
     };
 
     PhTreeMultiMap<DIM, EntryT, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE> tree_;

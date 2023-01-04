@@ -898,6 +898,9 @@ TEST(PhTreeMMDTest, TestWindowForEachQueryManyMoving) {
         struct Counter {
             void operator()(const TestPoint<dim>&, const Id& t) {
                 ++n_;
+                if (referenceResult.count(t._i) != 1) {
+                    FAIL();
+                }
                 ASSERT_EQ(referenceResult.count(t._i), 1);
             }
             std::set<size_t>& referenceResult;
@@ -1141,6 +1144,8 @@ TEST(PhTreeMMDTest, SmokeTestPointInfinity) {
     ++q_window;
     s.emplace(q_window->_i);
     ++q_window;
+    FAIL();
+    // TODO this fails because of integer overflow in the converter
     s.emplace(q_window->_i);
     ++q_window;
 //    ASSERT_EQ(1, q_window->_i);
