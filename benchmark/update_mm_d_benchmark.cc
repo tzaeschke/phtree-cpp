@@ -16,6 +16,7 @@
 #include "benchmark_util.h"
 #include "logging.h"
 #include "phtree/phtree.h"
+#include "phtree/phtree_grid_index.h"
 #include "phtree/phtree_multimap.h"
 #include <benchmark/benchmark.h>
 #include <random>
@@ -34,7 +35,13 @@ std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
 
 const double GLOBAL_MAX = 10000;
 
-enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE, MM_SET_RELOCATE_IF };
+enum Scenario {
+    ERASE_EMPLACE,
+    MM_BPT_RELOCATE,
+    GI_BPT_RELOCATE,
+    MM_SET_RELOCATE,
+    MM_SET_RELOCATE_IF
+};
 
 using payload_t = scalar_64_t;
 
@@ -53,7 +60,10 @@ using TestMap = typename std::conditional_t<
     typename std::conditional_t<
         SCENARIO == MM_BPT_RELOCATE,
         PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, b_plus_tree_hash_set<payload_t>>,
-        PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
+        typename std::conditional_t<
+            SCENARIO == GI_BPT_RELOCATE,
+            PhTreeGridIndexD<DIM, payload_t>,
+            PhTreeMultiMapD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
@@ -130,6 +140,12 @@ void InsertEntry(
 
 template <dimension_t DIM>
 void InsertEntry(
+    TestMap<Scenario::GI_BPT_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
+    tree.emplace(point, data);
+}
+
+template <dimension_t DIM>
+void InsertEntry(
     TestMap<Scenario::MM_SET_RELOCATE, DIM>& tree, const PointType<DIM>& point, payload_t data) {
     tree.emplace(point, data);
 }
@@ -161,7 +177,8 @@ typename std::enable_if<SCENARIO == Scenario::ERASE_EMPLACE, size_t>::type Updat
 
 template <dimension_t DIM, Scenario SCENARIO>
 typename std::enable_if<
-    SCENARIO == Scenario::MM_BPT_RELOCATE || SCENARIO == Scenario::MM_SET_RELOCATE,
+    SCENARIO == Scenario::MM_BPT_RELOCATE || SCENARIO == Scenario::MM_SET_RELOCATE ||
+        SCENARIO == Scenario::GI_BPT_RELOCATE,
     size_t>::type
 UpdateEntry(TestMap<SCENARIO, DIM>& tree, std::vector<UpdateOp<DIM>>& updates) {
     size_t n = 0;
@@ -247,6 +264,12 @@ void PhTreeMMRelocateBpt3D(benchmark::State& state, Arguments&&... arguments) {
 }
 
 template <typename... Arguments>
+void PhTreeGIRelocateBpt3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::GI_BPT_RELOCATE> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
 void PhTreeMMRelocateStdSet3D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, Scenario::MM_SET_RELOCATE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
@@ -267,6 +290,11 @@ BENCHMARK_CAPTURE(PhTreeMMRelocateIfStdSet3D, UPDATE_1000, UPDATES_PER_ROUND)
 
 // PhTreeMultiMap with b_plus_tree_hash_map
 BENCHMARK_CAPTURE(PhTreeMMRelocateBpt3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTreeGIRelocateBpt3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

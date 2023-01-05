@@ -267,6 +267,10 @@ class PhTreeGridIndex {
     using QueryBox = typename CONVERTER::QueryBoxExternal;
     using EntryT = PhTreeGridIndexEntry<Key, T>;
 
+  private:
+    using BUCKET_Internal = b_plus_tree_hash_set<EntryT>;
+
+  public:
     explicit PhTreeGridIndex(double cell_edge_length = 100) : tree_{CONVERTER{cell_edge_length}} {}
 
     explicit PhTreeGridIndex(CONVERTER converter) : tree_{converter} {}
@@ -798,6 +802,14 @@ class PhTreeGridIndex {
 
         [[nodiscard]] inline bool IsEntryValid(
             const KeyInternal& internal_key, const BUCKET& bucket) {
+            // TODO???
+            //   We can roughly filter the bucket by key, but we need to traverse all
+            //   entries anyway to get the correct key.
+            //   Problem: we cannot easily map the type of the internal bucket to the external
+            //   bucket because of the different Entry type.
+            //   However we can simply forward the modified bucket type, it is easy to use,
+            //   even if it does not comply with normal signature....
+
             //            if (filter_.IsEntryValid(internal_key, bucket)) {
             //                auto key = converter_.post(internal_key);
             //                for (auto& entry : bucket) {
@@ -851,7 +863,7 @@ class PhTreeGridIndex {
         , converter_{converter}
         , query_{query} {}
 
-        [[nodiscard]] inline bool IsEntryValid(const KeyInternal&, const BUCKET&) {
+        [[nodiscard]] inline bool IsEntryValid(const KeyInternal&, const BUCKET_Internal&) {
             return true;
         }
 
@@ -889,7 +901,7 @@ class PhTreeGridIndex {
         QueryBox query_;
     };
 
-    PhTreeMultiMap<DIM, EntryT, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE> tree_;
+    PhTreeMultiMap<DIM, EntryT, CONVERTER, BUCKET_Internal, POINT_KEYS, DEFAULT_QUERY_TYPE> tree_;
 };
 
 /**
@@ -903,7 +915,7 @@ template <
     typename T,
     typename CONVERTER = ConverterGridIndex<DIM, double, scalar_64_t>,
     // TODO !!!!!!!!!!!!!!!!11
-    typename BUCKET = std::unordered_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
+    typename BUCKET = b_plus_tree_hash_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
 using PhTreeGridIndexD = PhTreeGridIndex<DIM, T, CONVERTER, BUCKET>;
 
 template <
