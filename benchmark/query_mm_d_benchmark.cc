@@ -37,7 +37,7 @@ enum Scenario { TREE_WITH_MAP, MULTI_MAP, MULTI_MAP_STD, GRID_INDEX };
 
 using TestPoint = PhPointD<3>;
 using QueryBox = PhBoxD<3>;
-//using payload_t = TestPoint; // TODO!?!?
+// using payload_t = TestPoint; // TODO!?!?
 using payload_t = size_t;
 using BucketType = std::set<payload_t>;
 
@@ -63,6 +63,21 @@ using TestMap = typename std::conditional_t<
                 payload_t,
                 CONVERTER<SCENARIO, DIM>,
                 std::unordered_set<payload_t>>>>>;
+
+template <dimension_t DIM, Scenario SCENARIO>
+TestMap<SCENARIO, DIM> CreateTree(
+    size_t n, typename std::enable_if_t<SCENARIO == Scenario::GRID_INDEX>* dummy = 0) {
+    (void)dummy;
+    auto edge_len = GLOBAL_MAX * pow(10. / (double)n, 1. / (double)DIM);
+    return TestMap<SCENARIO, DIM>(edge_len);
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
+TestMap<SCENARIO, DIM> CreateTree(
+    size_t, typename std::enable_if_t<SCENARIO != Scenario::GRID_INDEX>* dummy = 0) {
+    (void)dummy;
+    return TestMap<SCENARIO, DIM>();
+}
 
 template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
@@ -95,7 +110,7 @@ IndexBenchmark<DIM, SCENARIO>::IndexBenchmark(benchmark::State& state, double av
 : data_type_{static_cast<TestGenerator>(state.range(1))}
 , num_entities_(state.range(0))
 , avg_query_result_size_(avg_query_result_size)
-, tree_{}
+, tree_{CreateTree<DIM, SCENARIO>(num_entities_)}
 , random_engine_{1}
 , cube_distribution_{0, GLOBAL_MAX}
 , points_(state.range(0)) {
@@ -196,7 +211,7 @@ void IndexBenchmark<DIM, SCENARIO>::SetupWorld(benchmark::State& state) {
     // create data with about 10% duplicate coordinates
     CreatePointData<DIM>(points_, data_type_, num_entities_, 0, GLOBAL_MAX, 0.1);
     for (size_t i = 0; i < num_entities_; ++i) {
-        InsertEntry(tree_, points_[i], i);//points_[i]);
+        InsertEntry(tree_, points_[i], i);  // points_[i]);
     }
 
     state.counters["query_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);

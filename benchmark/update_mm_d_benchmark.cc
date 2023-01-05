@@ -73,6 +73,21 @@ struct UpdateOp {
 };
 
 template <dimension_t DIM, Scenario SCENARIO>
+TestMap<SCENARIO, DIM> CreateTree(
+    size_t n, typename std::enable_if_t<SCENARIO == Scenario::GI_BPT_RELOCATE>* dummy = 0) {
+    (void)dummy;
+    auto edge_len = GLOBAL_MAX * pow(10. / (double)n, 1. / (double)DIM);
+    return TestMap<SCENARIO, DIM>(edge_len);
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
+TestMap<SCENARIO, DIM> CreateTree(
+    size_t, typename std::enable_if_t<SCENARIO != Scenario::GI_BPT_RELOCATE>* dummy = 0) {
+    (void)dummy;
+    return TestMap<SCENARIO, DIM>();
+}
+
+template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
   public:
     explicit IndexBenchmark(
@@ -106,6 +121,7 @@ IndexBenchmark<DIM, SCENARIO>::IndexBenchmark(
 , num_entities_(state.range(0))
 , updates_per_round_(updates_per_round)
 , move_distance_(std::move(move_distance))
+, tree_{CreateTree<DIM, SCENARIO>(num_entities_)}
 , points_(num_entities_)
 , updates_(updates_per_round)
 , random_engine_{0}
