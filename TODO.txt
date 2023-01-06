@@ -8,7 +8,12 @@ Ideas that didn't work
      Counting showed that PQ would go 3-5 nodes deep (100K:3, 10M: 5) but that had no effect.
      Lesson: Look at WQ initialization, it may be too expensive. Why is WQ traversal so slow???
 
-
+#XX Grid-index: This works reasonably well but needs more testing:
+    - as one can expect, update() works less well on highly clustered data, but for_each() works 2x-3x better!
+    - It appears to work better for large N, but that is probably heavily dependent on the chosen grid size.
+    - TODO KNN Requires a distance function API that has "Entry" as parameter
+    Lesson: Overall GOOD!
+    -> Look further into this!
 
 Fix const-ness
 ==============

@@ -15,25 +15,28 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_PHTREE_MULTIMAP_H
-#define PHTREE_PHTREE_MULTIMAP_H
+#ifndef PHTREE_PHTREE_GRID_INDEX_H
+#define PHTREE_PHTREE_GRID_INDEX_H
 
 #include "common/b_plus_tree_hash_map.h"
 #include "common/common.h"
-#include "v16/phtree_v16.h"
+#include "phtree_multimap.h"
 #include <unordered_set>
 
 namespace improbable::phtree {
 
 /*
- * PH-Tree multi-map main class.
+ * PH-Tree grid-index main class.
  *
- * The PhTreeMultiMap is a wrapper around a normal PH-Tree (single value per key). The wrapper uses
- * collections to store more than one value per key.
- * By default, this multi-map is backed by std::unordered_set<T>.
+ * The PhTreeGridIndex is a wrapper around a normal PH-tree multi-map.
+ * The grid-index has much faster relocate() operations: In case of small movements the
+ * cost is O(1) (basically O(0)!). The tree can see whether an entry would stay in the same bin,
+ * if it does, the tree is not traversed, the cost of the operation is mainly comparing the old
+ * and new key plus some maths.
+ *
+ * Internally, the grid index just rounds the coordinates to a configurable grid. That's it.
  *
  * The API follows mostly the std::unordered_multimap, exceptions are pointed out.
- *
  * Differences to PhTree
  * - This is a multi-map and hence follows the std::unordered_multimap rather than std::map
  * - erase() returns an iterator instead of a pairs {iterator, bool)
@@ -45,6 +48,53 @@ namespace improbable::phtree {
 
 namespace {
 
+template <dimension_t DIM, typename SCALAR_EXTERNAL, typename SCALAR_INTERNAL>
+class ConverterGridIndex : public ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL> {
+    using BASE = ConverterPointBase<DIM, SCALAR_EXTERNAL, SCALAR_INTERNAL>;
+
+  public:
+    using Point = typename BASE::KeyExternal;
+    using PointInternal = typename BASE::KeyInternal;
+    using QueryBox = typename BASE::QueryBoxExternal;
+    using QueryBoxInternal = typename BASE::QueryBoxInternal;
+    using ScalarExternal = typename BASE::ScalarExternal;
+    using ScalarInternal = typename BASE::ScalarInternal;
+
+  public:
+    explicit ConverterGridIndex(double cell_edge_length)
+    : post_{cell_edge_length}, pre_{1. / cell_edge_length} {}
+
+    ConverterGridIndex(const ConverterGridIndex& other) = default;
+    ConverterGridIndex& operator=(const ConverterGridIndex& other) = default;
+    ConverterGridIndex(ConverterGridIndex&& other) noexcept = default;
+    ConverterGridIndex& operator=(ConverterGridIndex&& other) noexcept = default;
+    ~ConverterGridIndex() noexcept = default;
+
+    [[nodiscard]] PointInternal pre(const Point& point) const {
+        PointInternal p{};
+        for (dimension_t d = 0; d < DIM; ++d) {
+            p[d] = static_cast<ScalarInternal>(point[d] * pre_);
+        }
+        return p;
+    }
+
+    [[nodiscard]] Point post(const PointInternal& in) const {
+        Point p{};
+        for (dimension_t d = 0; d < DIM; ++d) {
+            p[d] = static_cast<ScalarExternal>(in[d] * post_);
+        }
+        return p;
+    }
+
+    [[nodiscard]] QueryBoxInternal pre_query(const QueryBox& box) const {
+        return {pre(box.min()), pre(box.max())};
+    }
+
+  private:
+    const double post_;
+    const double pre_;
+};
+
 /*
  * Base class for the internal PH-Tree multi-map iterators.
  *
@@ -53,16 +103,14 @@ namespace {
  * to provide them for the ==/!= operators, which would then make it impossible to compare
  * the generic end() iterator with any specialized iterator.
  */
+// TODO merge with "Normal" ?!?!?
 template <typename PHTREE>
-class IteratorBase {
+class IteratorBaseGI {
     friend PHTREE;
     using T = typename PHTREE::ValueType;
 
-  protected:
-    using BucketIterType = typename PHTREE::BucketIterType;
-
   public:
-    explicit IteratorBase() noexcept : current_value_ptr_{nullptr} {}
+    explicit IteratorBaseGI() noexcept : current_value_ptr_{nullptr} {}
 
     T& operator*() const noexcept {
         assert(current_value_ptr_);
@@ -75,17 +123,13 @@ class IteratorBase {
     }
 
     friend bool operator==(
-        const IteratorBase<PHTREE>& left, const IteratorBase<PHTREE>& right) noexcept {
+        const IteratorBaseGI<PHTREE>& left, const IteratorBaseGI<PHTREE>& right) noexcept {
         return left.current_value_ptr_ == right.current_value_ptr_;
     }
 
     friend bool operator!=(
-        const IteratorBase<PHTREE>& left, const IteratorBase<PHTREE>& right) noexcept {
+        const IteratorBaseGI<PHTREE>& left, const IteratorBaseGI<PHTREE>& right) noexcept {
         return left.current_value_ptr_ != right.current_value_ptr_;
-    }
-
-    bool __is_end() {
-        return current_value_ptr_ == nullptr;
     }
 
   protected:
@@ -101,30 +145,29 @@ class IteratorBase {
     const T* current_value_ptr_;
 };
 
-template <typename ITERATOR_PH, typename PHTREE>
-class IteratorNormal : public IteratorBase<PHTREE> {
+template <typename ITERATOR_PH, typename PHTREE, typename FILTER>
+class IteratorNormalGI : public IteratorBaseGI<PHTREE> {
     friend PHTREE;
-    using BucketIterType = typename IteratorBase<PHTREE>::BucketIterType;
 
   public:
-    explicit IteratorNormal() noexcept : IteratorBase<PHTREE>(), iter_ph_{}, iter_bucket_{} {}
+    explicit IteratorNormalGI() noexcept : IteratorBaseGI<PHTREE>(), iter_ph_{} {}
 
-    template <typename ITER_PH, typename BucketIterType>
-    IteratorNormal(ITER_PH&& iter_ph, BucketIterType&& iter_bucket) noexcept
-    : IteratorBase<PHTREE>()
+    template <typename ITER_PH, typename FILT>
+    IteratorNormalGI(ITER_PH&& iter_ph, FILT&& filter) noexcept
+    : IteratorBaseGI<PHTREE>()
     , iter_ph_{std::forward<ITER_PH>(iter_ph)}
-    , iter_bucket_{std::forward<BucketIterType>(iter_bucket)} {
+    , filter_{std::forward<FILT>(filter)} {
         FindNextElement();
     }
 
-    IteratorNormal& operator++() noexcept {
-        ++iter_bucket_;
+    IteratorNormalGI& operator++() noexcept {
+        ++iter_ph_;
         FindNextElement();
         return *this;
     }
 
-    IteratorNormal operator++(int) noexcept {
-        IteratorNormal iterator(*this);
+    IteratorNormalGI operator++(int) noexcept {
+        IteratorNormalGI iterator(this->iter_ph_, filter_);  // TODO ... ?
         ++(*this);
         return iterator;
     }
@@ -137,46 +180,37 @@ class IteratorNormal : public IteratorBase<PHTREE> {
     }
 
   protected:
-    auto& GetIteratorOfBucket() const noexcept {
-        return iter_bucket_;
-    }
-
     auto& GetIteratorOfPhTree() const noexcept {
         return iter_ph_;
     }
 
   private:
     void FindNextElement() {
-        while (!iter_ph_.IsEnd()) {
-            while (iter_bucket_ != iter_ph_->end()) {
-                // We filter only entries here, nodes are filtered elsewhere
-                if (iter_ph_.__Filter().IsBucketEntryValid(
-                        iter_ph_.GetEntry()->GetKey(), *iter_bucket_)) {
-                    this->SetCurrentValue(&(*iter_bucket_));
-                    return;
-                }
-                ++iter_bucket_;
+        while (!iter_ph_.__is_end()) {
+            // We filter only entries here, nodes are filtered elsewhere
+            auto& entry = *iter_ph_;
+            // TODO filter
+            if (filter_(entry.first)) {
+                this->SetCurrentValue(&(entry.second));
+                return;
             }
             ++iter_ph_;
-            if (!iter_ph_.IsEnd()) {
-                iter_bucket_ = iter_ph_->begin();
-            }
         }
         // finished
         this->SetFinished();
     }
 
     ITERATOR_PH iter_ph_;
-    BucketIterType iter_bucket_;
+    FILTER filter_;
 };
 
-template <typename ITERATOR_PH, typename PHTREE>
-class IteratorKnn : public IteratorNormal<ITERATOR_PH, PHTREE> {
+template <typename ITERATOR_PH, typename PHTREE, typename FILTER>
+class IteratorKnnGI : public IteratorNormalGI<ITERATOR_PH, PHTREE, FILTER> {
   public:
-    template <typename ITER_PH, typename BucketIterType>
-    IteratorKnn(ITER_PH&& iter_ph, BucketIterType&& iter_bucket) noexcept
-    : IteratorNormal<ITER_PH, PHTREE>(
-          std::forward<ITER_PH>(iter_ph), std::forward<BucketIterType>(iter_bucket)) {}
+    template <typename ITER_PH, typename FILT>
+    IteratorKnnGI(ITER_PH&& iter_ph, FILT&& filter) noexcept
+    : IteratorNormalGI<ITER_PH, PHTREE, FILTER>(
+          std::forward<ITER_PH>(iter_ph), std::forward<FILT>(filter)) {}
 
     [[nodiscard]] double distance() const noexcept {
         return this->GetIteratorOfPhTree().distance();
@@ -185,39 +219,67 @@ class IteratorKnn : public IteratorNormal<ITERATOR_PH, PHTREE> {
 
 }  // namespace
 
+template <typename Key, typename T>
+using PhTreeGridIndexEntry = std::pair<Key, T>;
+}  // namespace improbable::phtree
+
+namespace std {
+// template <>
+template <typename Key, typename T>
+struct hash<typename improbable::phtree::PhTreeGridIndexEntry<Key, T>> {
+    size_t operator()(const typename improbable::phtree::PhTreeGridIndexEntry<Key, T>& x) const {
+        return std::hash<T>{}(x.second);
+    }
+};
+};  // namespace std
+
+namespace improbable::phtree {
 /*
  * The PhTreeMultiMap class.
  */
 template <
     dimension_t DIM,
     typename T,
-    typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>,
+    // typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>,
+    typename CONVERTER = ConverterGridIndex<DIM, double, scalar_64_t>,
     typename BUCKET = b_plus_tree_hash_set<T>,
     bool POINT_KEYS = true,
     typename DEFAULT_QUERY_TYPE = QueryPoint>
-class PhTreeMultiMap {
+class PhTreeGridIndex {
     using KeyInternal = typename CONVERTER::KeyInternal;
     using Key = typename CONVERTER::KeyExternal;
     static constexpr dimension_t DimInternal = CONVERTER::DimInternal;
-    using PHTREE = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>;
+    using PHTREE = PhTreeGridIndex<DIM, T, CONVERTER, BUCKET, POINT_KEYS, DEFAULT_QUERY_TYPE>;
     using ValueType = T;
-    using BucketIterType = decltype(std::declval<BUCKET>().begin());
-    using EndType = decltype(std::declval<v16::PhTreeV16<DimInternal, BUCKET, CONVERTER>>().end());
+    using EndType = decltype(std::declval<PhTreeMultiMap<
+                                 DIM,
+                                 PhTreeGridIndexEntry<Key, T>,
+                                 CONVERTER,
+                                 BUCKET,
+                                 POINT_KEYS,
+                                 DEFAULT_QUERY_TYPE>>()
+                                 .end());
 
     friend PhTreeDebugHelper;
-    friend IteratorBase<PHTREE>;
+    friend IteratorBaseGI<PHTREE>;
 
   public:
     using QueryBox = typename CONVERTER::QueryBoxExternal;
+    using EntryT = PhTreeGridIndexEntry<Key, T>;
 
-    explicit PhTreeMultiMap(CONVERTER converter = CONVERTER())
-    : tree_{&converter_}, converter_{converter}, size_{0} {}
+  private:
+    using BUCKET_Internal = b_plus_tree_hash_set<EntryT>;
 
-    PhTreeMultiMap(const PhTreeMultiMap& other) = delete;
-    PhTreeMultiMap& operator=(const PhTreeMultiMap& other) = delete;
-    PhTreeMultiMap(PhTreeMultiMap&& other) noexcept = default;
-    PhTreeMultiMap& operator=(PhTreeMultiMap&& other) noexcept = default;
-    ~PhTreeMultiMap() noexcept = default;
+  public:
+    explicit PhTreeGridIndex(double cell_edge_length = 100) : tree_{CONVERTER{cell_edge_length}} {}
+
+    explicit PhTreeGridIndex(CONVERTER converter) : tree_{converter} {}
+
+    PhTreeGridIndex(const PhTreeGridIndex& other) = delete;
+    PhTreeGridIndex& operator=(const PhTreeGridIndex& other) = delete;
+    PhTreeGridIndex(PhTreeGridIndex&& other) noexcept = default;
+    PhTreeGridIndex& operator=(PhTreeGridIndex&& other) noexcept = default;
+    ~PhTreeGridIndex() noexcept = default;
 
     /*
      *  Attempts to build and insert a key and a value into the tree.
@@ -235,10 +297,8 @@ class PhTreeMultiMap {
      */
     template <typename... Args>
     std::pair<T&, bool> emplace(const Key& key, Args&&... args) {
-        auto& outer_iter = tree_.try_emplace(converter_.pre(key)).first;
-        auto bucket_iter = outer_iter.emplace(std::forward<Args>(args)...);
-        size_ += bucket_iter.second ? 1 : 0;
-        return {const_cast<T&>(*bucket_iter.first), bucket_iter.second};
+        auto result = tree_.try_emplace(key, EntryT{key, std::forward<Args>(args)...});
+        return {const_cast<T&>(result.first.second), result.second};
     }
 
     /*
@@ -258,22 +318,9 @@ class PhTreeMultiMap {
      */
     template <typename ITERATOR, typename... Args>
     std::pair<T&, bool> emplace_hint(const ITERATOR& iterator, const Key& key, Args&&... args) {
-        auto result_ph = tree_.try_emplace(iterator.GetIteratorOfPhTree(), converter_.pre(key));
-        auto& bucket = result_ph.first;
-        if (result_ph.second) {
-            // new bucket
-            auto result = bucket.emplace(std::forward<Args>(args)...);
-            size_ += result.second;
-            return {const_cast<T&>(*result.first), result.second};
-        } else {
-            // existing bucket -> we can use emplace_hint with iterator
-            size_t old_size = bucket.size();
-            auto result =
-                bucket.emplace_hint(iterator.GetIteratorOfBucket(), std::forward<Args>(args)...);
-            bool success = old_size < bucket.size();
-            size_ += success;
-            return {const_cast<T&>(*result), success};
-        }
+        auto result = tree_.emplace_hint(
+            iterator.GetIteratorOfPhTree(), key, EntryT{key, std::forward<Args>(args)...});
+        return {const_cast<T&>(result.first.second), result.second};
     }
 
     /*
@@ -307,11 +354,13 @@ class PhTreeMultiMap {
      * @return '1', if a value is associated with the provided key, otherwise '0'.
      */
     size_t count(const Key& key) const {
-        auto iter = tree_.find(converter_.pre(key));
-        if (iter != tree_.end()) {
-            return iter->size();
+        auto iter = tree_.find(key);
+        size_t n = 0;
+        while (iter != tree_.end()) {
+            n += (key == iter->first);
+            ++iter;
         }
-        return 0;
+        return n;
     }
 
     /*
@@ -324,10 +373,13 @@ class PhTreeMultiMap {
      */
     template <typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     size_t estimate_count(QueryBox query_box, QUERY_TYPE query_type = QUERY_TYPE()) const {
-        size_t n = 0;
-        auto counter_lambda = [&](const Key&, const BUCKET& bucket) { n += bucket.size(); };
-        tree_.for_each(query_type(converter_.pre_query(query_box)), counter_lambda);
-        return n;
+        return tree_.estimate_count(query_box, query_type);
+        //        // TODO... use box filter
+        //        size_t n = 0;
+        //        auto counter_lambda = [&](const Key&, const EntryT& bucket) { ++n; };
+        //        // auto filter = [&](const Key&, const BUCKET& bucket) { n += bucket.size(); };
+        //        tree_.for_each(query_box, counter_lambda, FilterNoOp{}, query_type);
+        //        return n;
     }
 
     /*
@@ -338,7 +390,8 @@ class PhTreeMultiMap {
      * to {@code end()} if no value was found
      */
     auto find(const Key& key) const {
-        return CreateIterator(tree_.find(converter_.pre(key)));
+        auto filter = [key = key](const Key& key2) noexcept { return key == key2; };
+        return CreateIterator(tree_.find(key), std::move(filter));
     }
 
     /*
@@ -350,7 +403,8 @@ class PhTreeMultiMap {
      * or to {@code end()} if the key/value pair was found
      */
     auto find(const Key& key, const T& value) const {
-        return CreateIteratorFind(tree_.find(converter_.pre(key)), value);
+        auto filter = [key = key](const Key& key2) noexcept { return key == key2; };
+        return CreateIterator(tree_.find(key, create(key, value)), std::move(filter));
     }
 
     /*
@@ -359,17 +413,7 @@ class PhTreeMultiMap {
      * @return '1' if the key/value pair was found, otherwise '0'.
      */
     size_t erase(const Key& key, const T& value) {
-        auto iter_outer = tree_.find(converter_.pre(key));
-        if (iter_outer != tree_.end()) {
-            auto& bucket = *iter_outer;
-            auto result = bucket.erase(value);
-            if (bucket.empty()) {
-                tree_.erase(iter_outer);
-            }
-            size_ -= result;
-            return result;
-        }
-        return 0;
+        return tree_.erase(key, create(key, value));
     }
 
     /*
@@ -382,22 +426,7 @@ class PhTreeMultiMap {
      */
     template <typename ITERATOR>
     size_t erase(const ITERATOR& iterator) {
-        static_assert(
-            std::is_convertible_v<ITERATOR*, IteratorBase<PHTREE>*>,
-            "erase(iterator) requires an iterator argument. For erasing by key please use "
-            "erase(key, value).");
-        if (iterator != end()) {
-            auto& bucket = const_cast<BUCKET&>(*iterator.GetIteratorOfPhTree());
-            size_t old_size = bucket.size();
-            bucket.erase(iterator.GetIteratorOfBucket());
-            bool success = bucket.size() < old_size;
-            if (bucket.empty()) {
-                success &= tree_.erase(iterator.GetIteratorOfPhTree()) > 0;
-            }
-            size_ -= success;
-            return success;
-        }
-        return 0;
+        return tree_.erase(iterator.GetIteratorOfPhTree());
     }
 
     /*
@@ -428,56 +457,34 @@ class PhTreeMultiMap {
      * @return '1' if a value was found and reinserted, otherwise '0'.
      */
     template <typename T2>
-    size_t relocate(const Key& old_key, const Key& new_key, T2&& value, bool verify_exists = true) {
-        auto fn = [&value](BUCKET& src, BUCKET& dst) -> size_t {
-            auto it = src.find(value);
-            if (it != src.end() && dst.emplace(std::move(*it)).second) {
-                src.erase(it);
-                return 1;
+    size_t relocate(
+        const Key& old_key, const Key& new_key, T2&& value, bool verify_exists = false) {
+        // TODO document verify_exists,
+        // TODO do we need to check coordinates? Document this!!
+        // TODO update old/new key? With verify=false we can ignore updating the key!!
+        // return tree_.relocate(old_key, new_key, create(old_key, value), verify_exists);
+
+        auto update_fn = [&value, &old_key, &new_key](const EntryT& e) -> size_t {
+            if (e.second == value && e.first == old_key) {
+                const_cast<Key&>(e.first) = new_key;
+                return true;
             }
-            return 0;
+            return false;
         };
-        auto count_fn = [&value](BUCKET& src) -> size_t { return src.find(value) != src.end(); };
-        return tree_._relocate_mm(
-            converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn, count_fn);
-    }
+        return tree_.relocate_if(old_key, new_key, std::move(update_fn), true);
 
-    template <typename T2>
-    [[deprecated]] size_t relocate2(
-        const Key& old_key, const Key& new_key, T2&& value, bool count_equals = true) {
-        auto pair = tree_._find_or_create_two_mm(
-            converter_.pre(old_key), converter_.pre(new_key), count_equals);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd()) {
-            return 0;
-        }
-        auto iter_old_value = iter_old->find(value);
-        if (iter_old_value == iter_old->end()) {
-            if (iter_new->empty()) {
-                tree_.erase(iter_new);
-            }
-            return 0;
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            assert(old_key == new_key);
-            return 1;
-        }
-
-        assert(iter_old_value != iter_old->end());
-        if (!iter_new->emplace(std::move(*iter_old_value)).second) {
-            return 0;
-        }
-
-        iter_old->erase(iter_old_value);
-        if (iter_old->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_old);
-            assert(found);
-        }
-        return 1;
+        //        auto fn = [&value](BUCKET& src, BUCKET& dst) -> size_t {
+        //            auto it = src.find(value);
+        //            if (it != src.end() && dst.emplace(std::move(*it)).second) {
+        //                src.erase(it);
+        //                return 1;
+        //            }
+        //            return 0;
+        //        };
+        //        auto count_fn = [&value](BUCKET& src) -> size_t { return src.find(value) !=
+        //        src.end(); }; return tree_._relocate_mm(
+        //            converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn,
+        //            count_fn);
     }
 
     /*
@@ -509,73 +516,37 @@ class PhTreeMultiMap {
      */
     template <typename PREDICATE>
     size_t relocate_if(
-        const Key& old_key, const Key& new_key, PREDICATE&& pred_fn, bool verify_exists = true) {
-        auto fn = [&pred_fn](BUCKET& src, BUCKET& dst) -> size_t {
-            size_t result = 0;
-            auto iter_src = src.begin();
-            while (iter_src != src.end()) {
-                if (pred_fn(*iter_src) && dst.emplace(std::move(*iter_src)).second) {
-                    iter_src = src.erase(iter_src);
-                    ++result;
-                } else {
-                    ++iter_src;
-                }
-            }
-            return result;
-        };
-        auto count_fn = [&pred_fn](BUCKET& src) -> size_t {
-            size_t result = 0;
-            auto iter_src = src.begin();
-            while (iter_src != src.end()) {
-                if (pred_fn(*iter_src)) {
-                    ++result;
-                }
-                ++iter_src;
-            }
-            return result;
-        };
-        return tree_._relocate_mm(
-            converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn, count_fn);
-    }
-
-    template <typename PREDICATE>
-    [[deprecated]] size_t relocate_if2(
-        const Key& old_key, const Key& new_key, PREDICATE&& predicate, bool count_equals = true) {
-        auto pair = tree_._find_or_create_two_mm(
-            converter_.pre(old_key), converter_.pre(new_key), count_equals);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd()) {
-            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
-            return 0;
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            assert(old_key == new_key);
-            return 1;
-        }
-
-        size_t n = 0;
-        auto it = iter_old->begin();
-        while (it != iter_old->end()) {
-            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
-                it = iter_old->erase(it);
-                ++n;
-            } else {
-                ++it;
-            }
-        }
-
-        if (iter_old->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_old);
-            assert(found);
-        } else if (iter_new->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_new);
-            assert(found);
-        }
-        return n;
+        const Key& old_key, const Key& new_key, PREDICATE&& pred_fn, bool verify_exists = false) {
+        // TODO document verify_exists,
+        // TODO do we need to check coordinates? Document this!!
+        return tree_.relocate_if(old_key, new_key, std::forward<PREDICATE>(pred_fn), verify_exists);
+        //        auto fn = [&pred_fn](BUCKET& src, BUCKET& dst) -> size_t {
+        //            size_t result = 0;
+        //            auto iter_src = src.begin();
+        //            while (iter_src != src.end()) {
+        //                if (pred_fn(*iter_src) && dst.emplace(std::move(*iter_src)).second) {
+        //                    iter_src = src.erase(iter_src);
+        //                    ++result;
+        //                } else {
+        //                    ++iter_src;
+        //                }
+        //            }
+        //            return result;
+        //        };
+        //        auto count_fn = [&pred_fn](BUCKET& src) -> size_t {
+        //            size_t result = 0;
+        //            auto iter_src = src.begin();
+        //            while (iter_src != src.end()) {
+        //                if (pred_fn(*iter_src)) {
+        //                    ++result;
+        //                }
+        //                ++iter_src;
+        //            }
+        //            return result;
+        //        };
+        //        return tree_._relocate_mm(
+        //            converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn,
+        //            count_fn);
     }
 
     /*
@@ -603,7 +574,7 @@ class PhTreeMultiMap {
         tree_.for_each(
             NoOpCallback{},
             WrapCallbackFilter<CALLBACK, FILTER>{
-                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
+                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter()});
     }
 
     /*
@@ -628,10 +599,14 @@ class PhTreeMultiMap {
         CALLBACK&& callback,
         FILTER&& filter = FILTER(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
-            query_type(converter_.pre_query(query_box)),
+        tree_.template for_each<NoOpCallback, WrapCallbackFilterQuery<CALLBACK, FILTER>>(
+            query_box,
             {},
-            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
+            {std::forward<CALLBACK>(callback),
+             std::forward<FILTER>(filter),
+             converter(),
+             query_box},
+            query_type);
     }
 
     /*
@@ -643,7 +618,7 @@ class PhTreeMultiMap {
      */
     template <typename FILTER = FilterNoOp>
     auto begin(FILTER&& filter = FILTER()) const {
-        return CreateIterator(tree_.begin(std::forward<FILTER>(filter)));
+        return CreateIterator(tree_.begin(WrapFilter<FILTER>(std::forward<FILTER>(filter))));
     }
 
     /*
@@ -661,8 +636,20 @@ class PhTreeMultiMap {
         const QueryBox& query_box,
         FILTER&& filter = FILTER(),
         QUERY_TYPE&& query_type = QUERY_TYPE()) const {
-        return CreateIterator(tree_.begin_query(
-            query_type(converter_.pre_query(query_box)), std::forward<FILTER>(filter)));
+        auto key_filter = [query_box = query_box](const Key& key) noexcept {
+            auto& min = query_box.min();
+            auto& max = query_box.max();
+            for (dimension_t d = 0; d < DIM; ++d) {
+                if (key[d] < min[d] || key[d] > max[d]) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        return CreateIterator(
+            tree_.begin_query(
+                query_box, WrapFilter<FILTER>(std::forward<FILTER>(filter)), query_type),
+            std::move(key_filter));
     }
 
     /*
@@ -691,18 +678,19 @@ class PhTreeMultiMap {
         FILTER&& filter = FILTER()) const {
         // We use pre() instead of pre_query() here because, strictly speaking, we want to
         // find the nearest neighbors of a (fictional) key, which may as well be a box.
+        // TODO filter
         return CreateIteratorKnn(tree_.begin_knn_query(
             min_results,
-            converter_.pre(center),
+            center,
             std::forward<DISTANCE>(distance_function),
-            std::forward<FILTER>(filter)));
+            WrapFilter<FILTER>(std::forward<FILTER>(filter))));
     }
 
     /*
      * @return An iterator representing the tree's 'end'.
      */
     auto end() const {
-        return IteratorNormal<EndType, PHTREE>{};
+        return IteratorNormalGI<EndType, PHTREE, NoOpFilterGI>{};
     }
 
     /*
@@ -710,14 +698,13 @@ class PhTreeMultiMap {
      */
     void clear() {
         tree_.clear();
-        size_ = 0;
     }
 
     /*
      * @return the number of entries (key/value pairs) in the tree.
      */
     [[nodiscard]] size_t size() const {
-        return size_;
+        return tree_.size();
     }
 
     /*
@@ -731,48 +718,69 @@ class PhTreeMultiMap {
      * @return the converter associated with this tree.
      */
     [[nodiscard]] const CONVERTER& converter() const {
-        return converter_;
-    }
-
-  public:
-    // This is used by PhTreeDebugHelper
-    const auto& GetInternalTree() const {
-        return tree_;
-    }
-
-    void CheckConsistencyExternal() const {
-        size_t n = 0;
-        for (const auto& bucket : tree_) {
-            assert(!bucket.empty());
-            n += bucket.size();
-        }
-        assert(n == size_);
+        return tree_.converter();
     }
 
   private:
-    template <typename OUTER_ITER>
-    auto CreateIteratorFind(OUTER_ITER&& outer_iter, const T& value) const {
-        auto bucket_iter =
-            outer_iter == tree_.end() ? BucketIterType{} : outer_iter.second().find(value);
-        return IteratorNormal<OUTER_ITER, PHTREE>(
-            std::forward<OUTER_ITER>(outer_iter), std::move(bucket_iter));
+    // This is used by PhTreeDebugHelper
+    const auto& GetInternalTree() const {
+        return tree_.GetInternalTree();
     }
 
-    template <typename OUTER_ITER>
-    auto CreateIterator(OUTER_ITER&& outer_iter) const {
-        auto bucket_iter =
-            outer_iter == tree_.end() ? BucketIterType{} : outer_iter.second().begin();
-        return IteratorNormal<OUTER_ITER, PHTREE>(
-            std::forward<OUTER_ITER>(outer_iter), std::move(bucket_iter));
+    void CheckConsistencyExternal() const {
+        tree_.CheckConsistencyExternal();
     }
 
-    template <typename OUTER_ITER>
-    auto CreateIteratorKnn(OUTER_ITER&& outer_iter) const {
-        auto bucket_iter =
-            outer_iter == tree_.end() ? BucketIterType{} : outer_iter.second().begin();
-        return IteratorKnn<OUTER_ITER, PHTREE>(
-            std::forward<OUTER_ITER>(outer_iter), std::move(bucket_iter));
+    template <typename... Args>
+    EntryT create(const Key& key, Args&&... args) const {
+        return std::make_pair(key, std::forward<Args>(args)...);
     }
+
+    struct NoOpCallback {
+        constexpr void operator()(const Key&, const EntryT&) const noexcept {}
+    };
+
+    struct NoOpFilterGI {
+        constexpr bool operator()(const Key&) const noexcept {
+            return true;
+        }
+    };
+
+    template <typename OUTER_ITER, typename KEY_FILTER = NoOpFilterGI>
+    auto CreateIterator(OUTER_ITER&& outer_iter, KEY_FILTER&& filter = KEY_FILTER()) const {
+        return IteratorNormalGI<OUTER_ITER, PHTREE, KEY_FILTER>(
+            std::forward<OUTER_ITER>(outer_iter), std::forward<KEY_FILTER>(filter));
+    }
+
+    template <typename OUTER_ITER, typename KEY_FILTER = NoOpFilterGI>
+    auto CreateIteratorKnn(OUTER_ITER&& outer_iter, KEY_FILTER&& filter = KEY_FILTER()) const {
+        return IteratorKnnGI<OUTER_ITER, PHTREE, KEY_FILTER>(
+            std::forward<OUTER_ITER>(outer_iter), std::forward<KEY_FILTER>(filter));
+    }
+
+    template <typename FILTER>
+    class WrapFilter {
+      public:
+        template <typename F>
+        WrapFilter(F&& filter) : filter_{std::forward<F>(filter)} {}
+
+        template <typename BucketT>
+        [[nodiscard]] constexpr bool IsEntryValid(const KeyInternal&, const BucketT& e) const {
+            return true;  // filter_.IsEntryValid(e.first, e.second);
+        }
+        [[nodiscard]] constexpr bool IsNodeValid(const KeyInternal&, int) const {
+            // TODO? Remove filter methods for grid ?!?!
+            return true;
+        }
+        [[nodiscard]] constexpr bool IsBucketEntryValid(
+            const KeyInternal& k, const EntryT& e) const {
+            // TODO avoid using key-internal
+            return filter_.IsBucketEntryValid(k, e.second);
+        }
+
+      private:
+        FILTER filter_;
+    };
 
     /*
      * This wrapper wraps the Filter and Callback such that the callback is called for every
@@ -794,20 +802,43 @@ class PhTreeMultiMap {
 
         [[nodiscard]] inline bool IsEntryValid(
             const KeyInternal& internal_key, const BUCKET& bucket) {
-            if (filter_.IsEntryValid(internal_key, bucket)) {
-                auto key = converter_.post(internal_key);
-                for (auto& entry : bucket) {
-                    if (filter_.IsBucketEntryValid(internal_key, entry)) {
-                        callback_(key, entry);
-                    }
-                }
+            // TODO???
+            //   We can roughly filter the bucket by key, but we need to traverse all
+            //   entries anyway to get the correct key.
+            //   Problem: we cannot easily map the type of the internal bucket to the external
+            //   bucket because of the different Entry type.
+            //   However we can simply forward the modified bucket type, it is easy to use,
+            //   even if it does not comply with normal signature....
+
+            //            if (filter_.IsEntryValid(internal_key, bucket)) {
+            //                auto key = converter_.post(internal_key);
+            //                for (auto& entry : bucket) {
+            //                    if (filter_.IsBucketEntryValid(internal_key, entry)) {
+            //                        callback_(key, entry);
+            //                    }
+            //                }
+            //            }
+            //            // Return false. We already called the callback.
+            //            return false;
+            return true;
+        }
+
+        template <typename ValueT>
+        [[nodiscard]] inline bool IsBucketEntryValid(
+            const KeyInternal& internal_key, const ValueT& entry) const noexcept {
+            if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
+                callback_(entry.first, entry.second);
+                return true;
             }
             // Return false. We already called the callback.
             return false;
         }
 
         [[nodiscard]] inline bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
-            return filter_.IsNodeValid(prefix, bits_to_ignore);
+            // TODO document this?!? We cannot check the nodes.....
+            // TODO disable filters all together?
+            return true;
+            // return filter_.IsNodeValid(prefix, bits_to_ignore);
         }
 
       private:
@@ -816,13 +847,61 @@ class PhTreeMultiMap {
         const CONVERTER& converter_;
     };
 
-    struct NoOpCallback {
-        constexpr void operator()(const Key&, const BUCKET&) const noexcept {}
+    template <typename CALLBACK, typename FILTER>
+    class WrapCallbackFilterQuery {
+      public:
+        /*
+         * We always have two iterators, one that traverses the PH-Tree and returns 'buckets', the
+         * other iterator traverses the returned buckets.
+         * The wrapper ensures that the callback is called for every entry in a bucket..
+         */
+        template <typename CB, typename F>
+        WrapCallbackFilterQuery(
+            CB&& callback, F&& filter, const CONVERTER& converter, const QueryBox& query)
+        : callback_{std::forward<CB>(callback)}
+        , filter_{std::forward<F>(filter)}
+        , converter_{converter}
+        , query_{query} {}
+
+        [[nodiscard]] inline bool IsEntryValid(const KeyInternal&, const BUCKET_Internal&) {
+            return true;
+        }
+
+        template <typename ValueT>
+        [[nodiscard]] inline bool IsBucketEntryValid(
+            const KeyInternal& internal_key, const ValueT& entry) const noexcept {
+            auto& min = query_.min();
+            auto& max = query_.max();
+            auto& key = entry.first;
+            for (dimension_t d = 0; d < DIM; ++d) {
+                if (key[d] < min[d] || key[d] > max[d]) {
+                    return false;
+                }
+            }
+
+            if (filter_.IsBucketEntryValid(internal_key, entry.second)) {
+                callback_(entry.first, entry.second);
+                return true;
+            }
+            // Return false. We already called the callback.
+            return false;
+        }
+
+        [[nodiscard]] inline bool IsNodeValid(const KeyInternal& prefix, int bits_to_ignore) {
+            // TODO document this?!? We cannot check the nodes.....
+            // TODO disable filters all together?
+            return true;
+            // return filter_.IsNodeValid(prefix, bits_to_ignore);
+        }
+
+      private:
+        CALLBACK callback_;
+        FILTER filter_;
+        const CONVERTER& converter_;
+        QueryBox query_;
     };
 
-    v16::PhTreeV16<DimInternal, BUCKET, CONVERTER> tree_;
-    CONVERTER converter_;
-    size_t size_;
+    PhTreeMultiMap<DIM, EntryT, CONVERTER, BUCKET_Internal, POINT_KEYS, DEFAULT_QUERY_TYPE> tree_;
 };
 
 /**
@@ -834,16 +913,17 @@ class PhTreeMultiMap {
 template <
     dimension_t DIM,
     typename T,
-    typename CONVERTER = ConverterIEEE<DIM>,
-    typename BUCKET = b_plus_tree_hash_set<T>>
-using PhTreeMultiMapD = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
+    typename CONVERTER = ConverterGridIndex<DIM, double, scalar_64_t>,
+    // TODO !!!!!!!!!!!!!!!!11
+    typename BUCKET = b_plus_tree_hash_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
+using PhTreeGridIndexD = PhTreeGridIndex<DIM, T, CONVERTER, BUCKET>;
 
 template <
     dimension_t DIM,
     typename T,
     typename CONVERTER_BOX,
-    typename BUCKET = b_plus_tree_hash_set<T>>
-using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
+    typename BUCKET = b_plus_tree_hash_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
+using PhTreeGridIndexBox = PhTreeGridIndex<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
 
 /**
  * A PH-Tree multi-map that uses (axis aligned) boxes as keys.
@@ -855,9 +935,9 @@ template <
     dimension_t DIM,
     typename T,
     typename CONVERTER_BOX = ConverterBoxIEEE<DIM>,
-    typename BUCKET = b_plus_tree_hash_set<T>>
-using PhTreeMultiMapBoxD = PhTreeMultiMapBox<DIM, T, CONVERTER_BOX, BUCKET>;
+    typename BUCKET = b_plus_tree_hash_set<PhTreeGridIndexEntry<PhPointD<DIM>, T>>>
+using PhTreeGridIndexBoxD = PhTreeGridIndexBox<DIM, T, CONVERTER_BOX, BUCKET>;
 
 }  // namespace improbable::phtree
 
-#endif  // PHTREE_PHTREE_MULTIMAP_H
+#endif  // PHTREE_PHTREE_GRID_INDEX_H

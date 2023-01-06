@@ -82,6 +82,7 @@ cc_library(
         "include/phtree/distance.h",
         "include/phtree/filter.h",
         "include/phtree/phtree.h",
+        "include/phtree/phtree_grid_index.h",
         "include/phtree/phtree_multimap.h",
     ],
     includes = [
