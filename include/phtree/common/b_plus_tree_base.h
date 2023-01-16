@@ -283,6 +283,13 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
             next_data.insert(
                 next_data.begin(), std::make_move_iterator(start), std::make_move_iterator(end));
             data.erase(start, end);
+            if constexpr (std::is_same_v<ThisT, NInnerT>) {
+                auto it = next_data.begin();
+                for (size_t i = 0; i < move_amount; ++i) {
+                    it->second->parent_ = this->next_node_;
+                    ++it;
+                }
+            }
             this->parent_->update_key(old_key, data.back().first, this);
             return true;
         }
@@ -396,10 +403,8 @@ class bpt_node_inner
         assert(key1_old >= key1_new && it != dest->data_.end());
         it->first = key1_new;
 
-        // TODO necessary for multimap???
-        if (dest == this && this->next_node_ != nullptr &&
-            this->next_node_->data_.front().first <= key1_new) {
-            assert(false && "Please report this to the developers!");
+        if (dest == this && this->next_node_ != nullptr) {
+            assert(this->next_node_->data_.front().first >= key1_new);
         }
         ++it;
         // key_1_old is the max_key of child2

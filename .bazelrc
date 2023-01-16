@@ -111,3 +111,10 @@ build:msan --linkopt="-fsanitize=memory"
 test:msan --run_under=//tools/runners/sanitizers/msan
 
 build:lint --define linting_only=true
+
+build:fuzz --action_env=CC=clang
+build:fuzz --action_env=CXX=clang++
+build:fuzz --config=base-sanitizer
+build:fuzz --copt="-g"
+build:fuzz --copt="-fsanitize=fuzzer"
+build:fuzz --linkopt="-fsanitize=fuzzer"
