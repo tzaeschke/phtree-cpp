@@ -18,9 +18,6 @@ build --enable_runfiles --build_runfile_links
 # above
 test --test_output=errors
 
-build --action_env=CC=clang
-build --action_env=CXX=clang++
-
 build:release --compilation_mode=opt
 build:release --host_compilation_mode=opt
 

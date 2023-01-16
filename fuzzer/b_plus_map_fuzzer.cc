@@ -1,3 +1,18 @@
+/*
+* Copyright 2023 Tilmann Zäschke
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 #include <assert.h>
 #include <cstddef>
@@ -7,24 +22,7 @@
 
 #include <map>
 
-#include "include/phtree/common/b_plus_tree_multimap.h"
-
-/*
- *   clang++ -g -std=c++17 -fsanitize=fuzzer include/phtree/common/BPT_MM_Fuzzer.cpp
- *   ./a.out
- *   ./a.out -artifact_prefix=/home/franky/tmp/fuzz/artifacts/
- *
- *   ./a.out -artifact_prefix=/home/franky/tmp/fuzz/artifacts/  -minimize_crash=1 -runs=10000
- *   /home/franky/tmp/fuzz/artifacts/crash-75171a275e017e3b18b3a9094203b521097a4f49
- *
- *   ./a.out -artifact_prefix=/home/franky/tmp/fuzz/artifacts/
- *   /home/franky/tmp/fuzz/artifacts/crash-75171a275e017e3b18b3a9094203b521097a4f49
- *
- *   ./a.out -artifact_prefix=/home/franky/tmp/fuzz/artifacts/
- *   /home/franky/tmp/fuzz/artifacts/minimized-from-185ecf42f208c2a7736a98ba0403f31868bcb681
- *
- *   rm -rf /home/franky/tmp/fuzz/artifacts/*
- */
+#include "include/phtree/common/b_plus_tree_map.h"
 
 static volatile int Sink;
 
@@ -40,16 +38,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
     assert(Data);
 
     if (PRINT) {
-        std::cout << "TEST(PhTreeBptMulitmapTest, FuzzTest1) {" << std::endl;
+        std::cout << "TEST(PhTreeBptMapTest, FuzzTest1) {" << std::endl;
         std::cout << "    using Key = std::uint8_t;" << std::endl;
         std::cout << "    using Value = std::uint8_t;" << std::endl;
-        std::cout << "    b_plus_tree_multimap<Key, Value> tree{};" << std::endl;
+        std::cout << "    b_plus_tree_map<Key, Value, 256> tree{};" << std::endl;
     }
 
     auto scopeguard = []() { std::cout << "};" << std::endl; };
 
-    improbable::phtree::b_plus_tree_multimap<Key, Value> tree;
-    std::multimap<Key, Value> map;
+    improbable::phtree::b_plus_tree_map<Key, Value, 256> tree;
+    std::map<Key, Value> map;
 
     size_t pos = 0;
 
@@ -75,7 +73,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
         }
         case 2: {
             if (PRINT)
-                std::cout << "    auto it = find.find(" << (int)key << ");" << std::endl;
+                std::cout << "    auto it = tree.find(" << (int)key << ");" << std::endl;
             auto it = tree.find(key);
             if (it != tree.end()) {
                 if (PRINT)
@@ -90,10 +88,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
         }
         case 3: {
             if (PRINT)
-                std::cout << "    auto it = find.lower_bound(" << (int)key << ");" << std::endl;
+                std::cout << "    auto it = tree.lower_bound(" << (int)key << ");" << std::endl;
             auto it = tree.lower_bound(key);
             if (PRINT)
-                std::cout << "    tree.emplace_hint(it" << (int)key << ", " << (int)value << ");" << std::endl;
+                std::cout << "    tree.emplace_hint(it, " << (int)key << ", " << (int)value << ");"
+                          << std::endl;
             tree.emplace_hint(it, key, value);
             auto it2 = map.lower_bound(key);
             map.emplace_hint(it2, key, value);
