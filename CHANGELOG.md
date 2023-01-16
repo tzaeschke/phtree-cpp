@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
+- Added some fuzz tests. Not that these require manual compilation, see [fuzzer/README.md](fuzzer/README.md).
+  [#114](https://github.com/tzaeschke/phtree-cpp/pull/114)
 
 ### Changed
 - Clean up array_map. [#107](https://github.com/tzaeschke/phtree-cpp/issues/107),

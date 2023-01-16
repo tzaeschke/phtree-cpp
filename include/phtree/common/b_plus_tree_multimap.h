@@ -225,7 +225,7 @@ class b_plus_tree_multimap {
         assert(begin != this->end());
         NLeafT* current = begin.node_;
         auto current_begin = begin.iter_;
-        size_t end_offset;
+        size_t end_offset = 0;
         if (!end.is_end()) {
             if (begin.node_ == end.node_) {
                 // No page merge, but end_offset depends on "begin" iterator
