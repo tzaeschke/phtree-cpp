@@ -30,7 +30,7 @@
 using namespace improbable::phtree;
 
 
-constexpr bool PRINT = true;
+constexpr bool PRINT = !true;
 
 void print() {}
 
