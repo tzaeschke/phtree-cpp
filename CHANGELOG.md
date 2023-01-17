@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [#98](https://github.com/tzaeschke/phtree-cpp/pull/98), 
   [#99](https://github.com/tzaeschke/phtree-cpp/pull/99),
   [#101](https://github.com/tzaeschke/phtree-cpp/pull/101),
-  [#104](https://github.com/tzaeschke/phtree-cpp/pull/104) 
+  [#104](https://github.com/tzaeschke/phtree-cpp/pull/104),
+  [#115](https://github.com/tzaeschke/phtree-cpp/issues/115)
 - Cleaned up HandleCollision() and key comparison functions. [#97](https://github.com/tzaeschke/phtree-cpp/pull/97)
 - Improved performance by eliminating memory indirection for DIM > 3. 
   This was enabled by referencing "Node" directly in "Entry" which was enabled by

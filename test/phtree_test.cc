@@ -266,6 +266,7 @@ TEST(PhTreeTest, SmokeTestBasicOps) {
     SmokeTestBasicOps<6>(10000);
     SmokeTestBasicOps<10>(10000);
     SmokeTestBasicOps<20>(10000);
+    SmokeTestBasicOps<32>(1000);
     SmokeTestBasicOps<63>(100);
 }
 

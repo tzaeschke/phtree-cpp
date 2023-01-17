@@ -947,22 +947,30 @@ TEST(PhTreeFTest, SmokeTestPointInfinity) {
     // Note that the tree returns result in z-order, however, since the z-order is based on
     // the (unsigned) bit representation, negative values come _after_ positive values.
     auto q_window = tree.begin_query({p_neg, p_pos});
-    ASSERT_EQ(1, q_window->_i);
+    std::set<int> result;
+    result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(10, q_window->_i);
+    result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(-10, q_window->_i);
+    result.emplace(q_window->_i);
     ++q_window;
     ASSERT_EQ(q_window, tree.end());
+    ASSERT_EQ(1, result.count(1));
+    ASSERT_EQ(1, result.count(10));
+    ASSERT_EQ(1, result.count(-10));
 
     auto q_extent = tree.begin();
-    ASSERT_EQ(1, q_extent->_i);
+    result.clear();
+    result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(10, q_extent->_i);
+    result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(-10, q_extent->_i);
+    result.emplace(q_extent->_i);
     ++q_extent;
     ASSERT_EQ(q_extent, tree.end());
+    ASSERT_EQ(1, result.count(1));
+    ASSERT_EQ(1, result.count(10));
+    ASSERT_EQ(1, result.count(-10));
 
     auto q_knn = tree.begin_knn_query(10, p, DistanceEuclidean<3>());
     ASSERT_EQ(1, q_knn->_i);

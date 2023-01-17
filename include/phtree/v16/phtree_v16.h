@@ -533,8 +533,9 @@ class PhTreeV16 {
 
         if (result == 0) {
             clean_up(new_key, new_entry, new_node_entry);
+        } else {
+            clean_up(old_key, old_entry, old_node_entry);
         }
-        clean_up(old_key, old_entry, old_node_entry);
         return result;
     }
 

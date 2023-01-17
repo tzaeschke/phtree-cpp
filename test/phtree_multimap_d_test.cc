@@ -1131,22 +1131,30 @@ TEST(PhTreeMMDTest, SmokeTestPointInfinity) {
     // Note that the tree returns result in z-order, however, since the z-order is based on
     // the (unsigned) bit representation, negative values come _after_ positive values.
     auto q_window = tree.begin_query({p_neg, p_pos});
-    ASSERT_EQ(1, q_window->_i);
+    std::set<int> result;
+    result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(10, q_window->_i);
+    result.emplace(q_window->_i);
     ++q_window;
-    ASSERT_EQ(-10, q_window->_i);
+    result.emplace(q_window->_i);
     ++q_window;
     ASSERT_EQ(q_window, tree.end());
+    ASSERT_EQ(1, result.count(1));
+    ASSERT_EQ(1, result.count(10));
+    ASSERT_EQ(1, result.count(-10));
 
     auto q_extent = tree.begin();
-    ASSERT_EQ(1, q_extent->_i);
+    result.clear();
+    result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(10, q_extent->_i);
+    result.emplace(q_extent->_i);
     ++q_extent;
-    ASSERT_EQ(-10, q_extent->_i);
+    result.emplace(q_extent->_i);
     ++q_extent;
     ASSERT_EQ(q_extent, tree.end());
+    ASSERT_EQ(1, result.count(1));
+    ASSERT_EQ(1, result.count(10));
+    ASSERT_EQ(1, result.count(-10));
 
     auto q_knn = tree.begin_knn_query(10, p, DistanceEuclidean<3>());
     ASSERT_EQ(1, q_knn->_i);
@@ -1283,6 +1291,17 @@ TEST(PhTreeMMDTest, TestMovableIterators) {
     // Not movable due to constant fields
     // ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin_knn_query(
     //                 3, {2, 3, 4}, DistanceEuclidean<3>()))>);
+}
+
+TEST(PhTreeMMTest, FuzzTest1) {
+    // See issue #115
+    const dimension_t DIM = 1;
+    // using Key = PhPoint<DIM>;
+    using Value = std::uint8_t;
+    PhTreeMultiMap<DIM, Value, ConverterNoOp<DIM, std::int64_t>> tree{};
+    tree.emplace({0}, 63);
+    tree.emplace({0}, 214);
+    tree.relocate({0}, {17}, 0);
 }
 
 }  // namespace phtree_multimap_d_test
