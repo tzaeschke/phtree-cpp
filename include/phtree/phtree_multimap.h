@@ -823,7 +823,6 @@ class PhTreeMultiMap {
 /**
  * A PH-Tree multi-map that uses (axis aligned) points as keys.
  * The points are defined with 64bit 'double' floating point coordinates.
- *
  * See 'PhTreeD' for details.
  */
 template <
@@ -833,6 +832,22 @@ template <
     typename BUCKET = b_plus_tree_hash_set<T>>
 using PhTreeMultiMapD = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
 
+/**
+ * A PH-Tree multi-map that uses (axis aligned) points as keys.
+ * The points are defined with 32bit 'float' floating point coordinates.
+ * See 'PhTreeD' for details.
+ */
+template <
+    dimension_t DIM,
+    typename T,
+    typename CONVERTER = ConverterFloatIEEE<DIM>,
+    typename BUCKET = b_plus_tree_hash_set<T>>
+using PhTreeMultiMapF = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
+
+/**
+ * A PH-Tree that uses (axis aligned) boxes as keys.
+ * See 'PhTreeD' for details.
+ */
 template <
     dimension_t DIM,
     typename T,
@@ -843,7 +858,6 @@ using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, Q
 /**
  * A PH-Tree multi-map that uses (axis aligned) boxes as keys.
  * The boxes are defined with 64bit 'double' floating point coordinates.
- *
  * See 'PhTreeD' for details.
  */
 template <
@@ -852,6 +866,18 @@ template <
     typename CONVERTER_BOX = ConverterBoxIEEE<DIM>,
     typename BUCKET = b_plus_tree_hash_set<T>>
 using PhTreeMultiMapBoxD = PhTreeMultiMapBox<DIM, T, CONVERTER_BOX, BUCKET>;
+
+/**
+ * A PH-Tree multi-map that uses (axis aligned) boxes as keys.
+ * The boxes are defined with 32bit 'float' floating point coordinates.
+ * See 'PhTreeD' for details.
+ */
+template <
+    dimension_t DIM,
+    typename T,
+    typename CONVERTER_BOX = ConverterBoxFloatIEEE<DIM>,
+    typename BUCKET = b_plus_tree_hash_set<T>>
+using PhTreeMultiMapBoxF = PhTreeMultiMapBox<DIM, T, CONVERTER_BOX, BUCKET>;
 
 }  // namespace improbable::phtree
 

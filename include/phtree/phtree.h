@@ -368,7 +368,7 @@ class PhTree {
     CONVERTER converter_;
 };
 
-/*
+/**
  * Floating-point `double` version of the PH-Tree.
  * This version of the tree accepts multi-dimensional keys with floating point (`double`)
  * coordinates.
@@ -383,23 +383,25 @@ class PhTree {
 template <dimension_t DIM, typename T, typename CONVERTER = ConverterIEEE<DIM>>
 using PhTreeD = PhTree<DIM, T, CONVERTER>;
 
-/*
+/**
  * Floating-point `float` version of the PH-Tree.
  * This version of the tree accepts multi-dimensional keys with floating point (`float`)
  * coordinates.
- *
  * See 'PhTreeD' for details.
  */
 template <dimension_t DIM, typename T, typename CONVERTER = ConverterFloatIEEE<DIM>>
 using PhTreeF = PhTree<DIM, T, CONVERTER>;
 
+/**
+ * A PH-Tree that uses (axis aligned) boxes as keys.
+ * See 'PhTreeD' for details.
+ */
 template <dimension_t DIM, typename T, typename CONVERTER_BOX>
 using PhTreeBox = PhTree<DIM, T, CONVERTER_BOX>;
 
 /**
  * A PH-Tree that uses (axis aligned) boxes as keys.
  * The boxes are defined with 64bit 'double' floating point coordinates.
- *
  * See 'PhTreeD' for details.
  */
 template <dimension_t DIM, typename T, typename CONVERTER_BOX = ConverterBoxIEEE<DIM>>
@@ -408,7 +410,6 @@ using PhTreeBoxD = PhTreeBox<DIM, T, CONVERTER_BOX>;
 /**
  * A PH-Tree that uses (axis aligned) boxes as keys.
  * The boxes are defined with 32bit 'float' coordinates.
- *
  * See 'PhTreeD' for details.
  */
 template <dimension_t DIM, typename T, typename CONVERTER_BOX = ConverterBoxFloatIEEE<DIM>>
