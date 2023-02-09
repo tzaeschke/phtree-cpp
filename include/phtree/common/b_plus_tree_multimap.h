@@ -121,7 +121,7 @@ class b_plus_tree_multimap {
         return *this;
     }
 
-    ~b_plus_tree_multimap() {
+    ~b_plus_tree_multimap() noexcept {
         delete root_;
     }
 

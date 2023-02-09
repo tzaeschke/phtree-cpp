@@ -31,42 +31,42 @@
  */
 namespace improbable::phtree {
 
-template <typename T, std::size_t SIZE>
+template <typename Key, typename Value, std::size_t SIZE>
 class flat_array_map;
 
 namespace detail {
 
-template <typename T>
-using flat_map_pair = std::pair<size_t, T>;
+template <typename Key, typename Value>
+using flat_map_pair = std::pair<Key, Value>;
 
-template <typename T, std::size_t SIZE>
+template <typename Key, typename Value, std::size_t SIZE>
 class flat_map_iterator {
-    friend flat_array_map<T, SIZE>;
+    friend flat_array_map<Key, Value, SIZE>;
 
   public:
     flat_map_iterator() : first{0}, map_{nullptr} {};
 
-    explicit flat_map_iterator(size_t index, const flat_array_map<T, SIZE>* map)
+    explicit flat_map_iterator(size_t index, const flat_array_map<Key, Value, SIZE>* map)
     : first{index}, map_{map} {
         assert(index <= SIZE);
     }
 
     auto& operator*() const {
         assert(first < SIZE && map_->occupied(first));
-        return const_cast<flat_map_pair<T>&>(map_->data(first));
+        return const_cast<flat_map_pair<Key, Value>&>(map_->data(first));
     }
 
     auto* operator->() const {
         assert(first < SIZE && map_->occupied(first));
-        return const_cast<flat_map_pair<T>*>(&map_->data(first));
+        return const_cast<flat_map_pair<Key, Value>*>(&map_->data(first));
     }
 
-    auto& operator++() {
+    auto& operator++() noexcept {
         first = (first + 1) >= SIZE ? SIZE : map_->lower_bound_index(first + 1);
         return *this;
     }
 
-    auto operator++(int) {
+    auto operator++(int) const noexcept {
         flat_map_iterator it(first, map_);
         ++(*this);
         return it;
@@ -82,7 +82,7 @@ class flat_map_iterator {
 
   private:
     size_t first;
-    const flat_array_map<T, SIZE>* map_;
+    const flat_array_map<Key, Value, SIZE>* map_;
 };
 }  // namespace detail
 
@@ -93,10 +93,10 @@ class flat_map_iterator {
  * It has O(1) insertion/removal time complexity, but O(2^DIM) space complexity, so it is best used
  * when DIM is low and/or the map is known to have a high fill ratio.
  */
-template <typename T, std::size_t SIZE>
+template <typename Key, typename Value, std::size_t SIZE>
 class flat_array_map {
-    using map_pair = detail::flat_map_pair<T>;
-    using iterator = detail::flat_map_iterator<T, SIZE>;
+    using map_pair = detail::flat_map_pair<Key, Value>;
+    using iterator = detail::flat_map_iterator<Key, Value, SIZE>;
     friend iterator;
 
   public:
@@ -104,19 +104,19 @@ class flat_array_map {
         return iterator{occupied(index) ? index : SIZE, this};
     }
 
-    [[nodiscard]] auto lower_bound(size_t index) const {
-          return iterator{lower_bound_index(index), this};
+    [[nodiscard]] auto lower_bound(size_t index) const noexcept {
+        return iterator{lower_bound_index(index), this};
     }
 
-    [[nodiscard]] auto begin() const {
-          return iterator{lower_bound_index(0), this};
+    [[nodiscard]] auto begin() const noexcept {
+        return iterator{lower_bound_index(0), this};
     }
 
-    [[nodiscard]] auto cbegin() const {
-          return iterator{lower_bound_index(0), this};
+    [[nodiscard]] auto cbegin() const noexcept {
+        return iterator{lower_bound_index(0), this};
     }
 
-    [[nodiscard]] auto end() const {
+    [[nodiscard]] auto end() const noexcept {
         return iterator{SIZE, this};
     }
 
@@ -130,7 +130,7 @@ class flat_array_map {
         }
     }
 
-    [[nodiscard]] size_t size() const {
+    [[nodiscard]] size_t size() const noexcept {
         return std::bitset<64>(occupancy).count();
     }
 
@@ -147,7 +147,7 @@ class flat_array_map {
         return {&data(index), false};
     }
 
-    bool erase(size_t index) {
+    bool erase(size_t index) noexcept {
         if (occupied(index)) {
             data(index).~pair();
             unoccupy(index);
@@ -156,7 +156,7 @@ class flat_array_map {
         return false;
     }
 
-    bool erase(const iterator& iterator) {
+    bool erase(const iterator& iterator) noexcept {
         return erase(iterator.first);
     }
 
@@ -164,42 +164,42 @@ class flat_array_map {
     /*
      * This returns the element at the given index, which is _not_ the n'th element (for n = index).
      */
-    map_pair& data(size_t index) {
+    map_pair& data(size_t index) noexcept {
         assert(occupied(index));
         return *std::launder(reinterpret_cast<map_pair*>(&data_[index]));
     }
 
-    const map_pair& data(size_t index) const {
+    const map_pair& data(size_t index) const noexcept {
         assert(occupied(index));
         return *std::launder(reinterpret_cast<const map_pair*>(&data_[index]));
     }
 
-    [[nodiscard]] size_t lower_bound_index(size_t index) const {
+    [[nodiscard]] size_t lower_bound_index(size_t index) const noexcept {
         assert(index < SIZE);
         size_t num_zeros = CountTrailingZeros(occupancy >> index);
         // num_zeros may be equal to SIZE if no bits remain
         return std::min(SIZE, index + num_zeros);
     }
 
-    void occupy(size_t index) {
+    void occupy(size_t index) noexcept {
         assert(index < SIZE);
         assert(!occupied(index));
         // flip the bit
-        occupancy ^= (std::uint64_t(1) << index);
+        occupancy ^= (Key{1} << index);
     }
 
-    void unoccupy(size_t index) {
+    void unoccupy(size_t index) noexcept {
         assert(index < SIZE);
         assert(occupied(index));
         // flip the bit
-        occupancy ^= (std::uint64_t(1) << index);
+        occupancy ^= (Key{1} << index);
     }
 
-    [[nodiscard]] bool occupied(size_t index) const {
-        return (occupancy >> index) & std::uint64_t(1);
+    [[nodiscard]] bool occupied(size_t index) const noexcept {
+        return (occupancy >> index) & Key{1};
     }
 
-    std::uint64_t occupancy = 0;
+    Key occupancy = 0;
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
     std::aligned_storage_t<sizeof(map_pair), alignof(map_pair)> data_[SIZE];
 };
@@ -209,15 +209,15 @@ class flat_array_map {
  * This is useful to decouple instantiation of a node from instantiation of it's descendants
  * (the flat_array_map directly instantiates an array of descendants).
  */
-template <typename T, std::size_t SIZE>
+template <typename Key, typename Value, std::size_t SIZE>
 class array_map {
     static_assert(SIZE <= 64);  // or else we need to adapt 'occupancy'
     static_assert(SIZE > 0);
-    using iterator = improbable::phtree::detail::flat_map_iterator<T, SIZE>;
+    using iterator = improbable::phtree::detail::flat_map_iterator<Key, Value, SIZE>;
 
   public:
     array_map() {
-        data_ = new flat_array_map<T, SIZE>();
+        data_ = new flat_array_map<Key, Value, SIZE>();
     }
 
     array_map(const array_map& other) = delete;
@@ -290,7 +290,7 @@ class array_map {
     }
 
   private:
-    flat_array_map<T, SIZE>* data_;
+    flat_array_map<Key, Value, SIZE>* data_;
 };
 
 }  // namespace improbable::phtree

@@ -127,7 +127,7 @@ class b_plus_tree_map {
         return *this;
     }
 
-    ~b_plus_tree_map() {
+    ~b_plus_tree_map() noexcept {
         delete root_;
     }
 

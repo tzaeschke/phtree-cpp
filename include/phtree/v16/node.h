@@ -43,7 +43,7 @@ template <dimension_t DIM, typename Entry>
 // using EntryMap = std::map<hc_pos_dim_t<DIM>, Entry>;
 using EntryMap = typename std::conditional_t<
     DIM <= 3,
-    array_map<Entry, (uint64_t(1) << DIM)>,
+    array_map<hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>,
     typename std::conditional_t<
         DIM <= 8,
         sparse_map<hc_pos_dim_t<DIM>, Entry>,

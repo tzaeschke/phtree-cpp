@@ -124,7 +124,7 @@ class b_plus_tree_hash_set {
         return *this;
     }
 
-    ~b_plus_tree_hash_set() {
+    ~b_plus_tree_hash_set() noexcept {
         delete root_;
     }
 
