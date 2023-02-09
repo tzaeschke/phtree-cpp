@@ -100,8 +100,8 @@ class b_plus_tree_map {
     explicit b_plus_tree_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
     b_plus_tree_map(const b_plus_tree_map& other) : size_{other.size_} {
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
     }
 
     b_plus_tree_map(b_plus_tree_map&& other) noexcept : root_{other.root_}, size_{other.size_} {
@@ -112,8 +112,8 @@ class b_plus_tree_map {
     b_plus_tree_map& operator=(const b_plus_tree_map& other) {
         assert(this != &other);
         delete root_;
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
         size_ = other.size_;
         return *this;
     }
@@ -129,7 +129,6 @@ class b_plus_tree_map {
 
     ~b_plus_tree_map() {
         delete root_;
-        root_ = nullptr;
     }
 
     [[nodiscard]] auto find(KeyT key) noexcept {

@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 - bazel version requirement file `.bazelversion`. [#89](https://github.com/tzaeschke/phtree-cpp/issues/89)
 
+###
+- Fixed copy cstr/assignment of B+trees, see also #102. [#](https://github.com/tzaeschke/phtree-cpp/pull/) 
+
 ## [1.4.0] - 2022-09-09
 ### Added
 - Added build features: [#53](https://github.com/tzaeschke/phtree-cpp/issues/53) 

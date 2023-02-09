@@ -1248,7 +1248,6 @@ TEST(PhTreeMMDTest, TestMoveConstruct) {
 
     TestTree<3, Id> tree{std::move(tree1)};
     test_tree(tree);
-    tree.~PhTreeMultiMap();
 }
 
 TEST(PhTreeMMDTest, TestMoveAssign) {
@@ -1260,7 +1259,6 @@ TEST(PhTreeMMDTest, TestMoveAssign) {
     TestTree<3, Id> tree{};
     tree = std::move(tree1);
     test_tree(tree);
-    tree.~PhTreeMultiMap();
 }
 
 TEST(PhTreeMMDTest, TestMovableIterators) {

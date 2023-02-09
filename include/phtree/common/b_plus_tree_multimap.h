@@ -123,7 +123,6 @@ class b_plus_tree_multimap {
 
     ~b_plus_tree_multimap() {
         delete root_;
-        root_ = nullptr;
     }
 
     [[nodiscard]] auto find(const KeyT key) {

@@ -96,8 +96,8 @@ class b_plus_tree_hash_set {
     explicit b_plus_tree_hash_set() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
     b_plus_tree_hash_set(const b_plus_tree_hash_set& other) : size_{other.size_} {
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
     }
 
     b_plus_tree_hash_set(b_plus_tree_hash_set&& other) noexcept
@@ -109,8 +109,8 @@ class b_plus_tree_hash_set {
     b_plus_tree_hash_set& operator=(const b_plus_tree_hash_set& other) {
         assert(this != &other);
         delete root_;
-        root_ = other.root_->is_leaf() ? new NLeafT(*other.root_->as_leaf())
-                                       : new NInnerT(*other.root_->as_inner());
+        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
+                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
         size_ = other.size_;
         return *this;
     }
@@ -126,7 +126,6 @@ class b_plus_tree_hash_set {
 
     ~b_plus_tree_hash_set() {
         delete root_;
-        root_ = nullptr;
     }
 
     [[nodiscard]] auto find(const T& value) {

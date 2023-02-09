@@ -1285,7 +1285,6 @@ TEST(PhTreeTest, TestMoveConstruct) {
 
     TestTree<3, Id> tree{std::move(tree1)};
     test_tree(tree);
-    tree.~PhTree();
 }
 
 TEST(PhTreeTest, TestMoveAssign) {
@@ -1297,7 +1296,6 @@ TEST(PhTreeTest, TestMoveAssign) {
     TestTree<3, Id> tree{};
     tree = std::move(tree1);
     test_tree(tree);
-    tree.~PhTree();
 }
 
 size_t count_pre{0};
@@ -1351,7 +1349,6 @@ TEST(PhTreeTest, TestMoveAssignCustomConverter) {
     test_tree(tree);
     ASSERT_GE(tree.converter().count_pre_local, 2);
     ASSERT_EQ(tree.converter().count_pre_local, count_pre);
-    tree.~PhTree();
 }
 
 TEST(PhTreeTest, TestMovableIterators) {

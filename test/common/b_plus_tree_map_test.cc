@@ -181,3 +181,90 @@ TEST(PhTreeBptMapTest, SmokeTestLowerBound) {
         }
     }
 }
+
+template <typename TREE>
+void test_tree(TREE& tree) {
+    using Key = size_t;
+    using Value = size_t;
+    Key p{42};
+
+    // test various operations
+    tree.emplace(p, Value{2});
+    Value id3{3};
+    tree.emplace(p, id3);
+    ASSERT_EQ(tree.size(), 1u);
+
+    auto q_extent = tree.begin();
+    ASSERT_NE(q_extent, tree.end());
+    ++q_extent;
+    ASSERT_EQ(q_extent, tree.end());
+
+    tree.erase(p);
+    ASSERT_EQ(0u, tree.size());
+    tree.erase(p);
+    ASSERT_EQ(0u, tree.size());
+    ASSERT_TRUE(tree.empty());
+}
+
+TEST(PhTreeBptMapTest, TestCopyConstruct) {
+    using TestTree = b_plus_tree_map<size_t, size_t, 16>;
+    TestTree tree1;
+    tree1.emplace(42, 1);
+
+    TestTree tree{tree1};
+    test_tree(tree);
+    // The old tree should still work!
+    test_tree(tree1);
+}
+
+TEST(PhTreeBptMapTest, TestCopyAssign) {
+    using TestTree = b_plus_tree_map<size_t, size_t, 16>;
+    TestTree tree1;
+    tree1.emplace(42, 1);
+
+    TestTree tree{};
+    tree = tree1;
+    test_tree(tree);
+    // The old tree should still work!
+    test_tree(tree1);
+}
+
+TEST(PhTreeBptMapTest, TestMoveConstruct) {
+    using TestTree = b_plus_tree_map<size_t, size_t, 16>;
+    TestTree tree1;
+    tree1.emplace(42, 1);
+
+    TestTree tree{std::move(tree1)};
+    test_tree(tree);
+}
+
+TEST(PhTreeBptMapTest, TestMoveAssign) {
+    using TestTree = b_plus_tree_map<size_t, size_t, 16>;
+    TestTree tree1;
+    tree1.emplace(42, 1);
+
+    TestTree tree{};
+    tree = std::move(tree1);
+    test_tree(tree);
+}
+
+TEST(PhTreeBptMapTest, TestMovableIterators) {
+    using Key = size_t;
+    using Value = size_t;
+    using TestTree = b_plus_tree_map<Key, Value, 16>;
+    // Test edge case: only one entry in tree
+    Key p{42};
+    auto tree = TestTree();
+    tree.emplace(p, Value{1});
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.begin())>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.begin())>);
+    ASSERT_NE(tree.begin(), tree.end());
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.end())>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.end())>);
+
+    ASSERT_TRUE(std::is_move_constructible_v<decltype(tree.find(p))>);
+    ASSERT_TRUE(std::is_move_assignable_v<decltype(tree.find(p))>);
+    ASSERT_NE(tree.find(p), tree.end());
+}
