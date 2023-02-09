@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - bazel version requirement file `.bazelversion`. [#89](https://github.com/tzaeschke/phtree-cpp/issues/89)
 
 ###
-- Fixed copy cstr/assignment of B+trees, see also #102. [#](https://github.com/tzaeschke/phtree-cpp/pull/) 
+- Fixed copy cstr/assignment of B+trees, see also #102. [#119](https://github.com/tzaeschke/phtree-cpp/pull/119) 
 
 ## [1.4.0] - 2022-09-09
 ### Added
