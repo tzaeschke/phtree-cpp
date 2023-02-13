@@ -86,7 +86,7 @@ class b_plus_tree_multimap {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT>;
     using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
-    using LeafIteratorT = decltype(std::vector<LeafEntryT>().begin());
+    using LeafIteratorT = decltype(bpt_vector<LeafEntryT>().begin());
     using TreeT = b_plus_tree_multimap<KeyT, ValueT>;
 
   public:
