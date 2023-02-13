@@ -97,7 +97,8 @@ class bpt_vector {
         auto index = to_index(iter);
 
         // TODO mem_move?!?!
-        for (size_t i = size_; i > index; --i) {
+        // TODO Arghh! length!?!?!
+        for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
             data(i) = std::move(data(i-length));
         }
 
@@ -105,11 +106,12 @@ class bpt_vector {
         IterT dst = const_cast<IterT&>(iter);  // Dirty.....  TODO?
         // TODO use mem-move?!?!?
         while (src != src_end) {
-            *dst = std::move(*dst);
+            *dst = std::move(*src);
             ++src;
             ++dst;
         }
         size_ += length;
+        assert(size_ <= SIZE);
         return const_cast<IterT&>(iter);
     }
 
