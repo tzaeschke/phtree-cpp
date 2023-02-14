@@ -34,6 +34,9 @@ struct bpt_config {
 
 template <typename V>
 class bpt_vector_iterator {
+  private:
+    using normal_iterator = bpt_vector_iterator<V>;
+
   public:
     // using iterator_category = std::forward_iterator_tag;
     // using iterator_category = std::bidirectional_iterator_tag;
@@ -43,7 +46,8 @@ class bpt_vector_iterator {
     using pointer = V*;
     using reference = V&;
 
-    explicit bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
+    bpt_vector_iterator() noexcept : ptr_{nullptr} {}
+    bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
 
     V& operator*() const noexcept {
         return *ptr_;  // const_cast<V&>(*this->iter());
@@ -62,15 +66,6 @@ class bpt_vector_iterator {
         return bpt_vector_iterator(ptr_++);
     }
 
-    auto operator--() noexcept {
-        --ptr_;
-        return *this;
-    }
-
-    const bpt_vector_iterator operator--(int) noexcept {
-        return bpt_vector_iterator(ptr_--);
-    }
-
     constexpr bool operator<(const bpt_vector_iterator<V>& right) const noexcept {
         return ptr_ < right.ptr_;
     }
@@ -85,6 +80,48 @@ class bpt_vector_iterator {
         return left.ptr_ != right.ptr_;
     }
 
+    // Bidirectional iterator requirements
+    constexpr normal_iterator& operator--() noexcept {
+        --ptr_;
+        return *this;
+    }
+
+    constexpr normal_iterator operator--(int) noexcept {
+        return normal_iterator(ptr_--);
+    }
+
+    // Random access iterator requirements
+    constexpr reference operator[](difference_type n) const noexcept {
+        return ptr_[n];
+    }
+
+    constexpr normal_iterator& operator+=(difference_type n) noexcept {
+        ptr_ += n;
+        return *this;
+    }
+
+    constexpr normal_iterator operator+(difference_type n) const noexcept {
+        return normal_iterator(ptr_ + n);
+    }
+
+    constexpr normal_iterator& operator-=(difference_type n) noexcept {
+        ptr_ -= n;
+        return *this;
+    }
+
+    constexpr normal_iterator operator-(difference_type n) const noexcept {
+        return normal_iterator(ptr_ - n);
+    }
+
+    // Other // TODO???
+    constexpr auto operator-(const normal_iterator& it) const noexcept {
+        return ptr_ - it.ptr_;
+    }
+
+    constexpr normal_iterator operator-(V* ptr) const noexcept {
+        return normal_iterator(ptr_ - ptr);
+    }
+
   private:
     V* ptr_;
 };
@@ -92,8 +129,10 @@ class bpt_vector_iterator {
 template <typename V, size_t SIZE = 16>
 class bpt_vector {
   public:
-    using IterT = V*;
-    using CIterT = const V*;
+    // using IterT = V*;
+    // using CIterT = const V*;
+    using IterT = bpt_vector_iterator<V>;
+    using CIterT = const bpt_vector_iterator<V>;
     using MoveIterT = std::move_iterator<IterT>;
     using RefT = V&;
     using CRefT = const V&;
@@ -241,7 +280,7 @@ class bpt_vector {
 
   private:
     size_t to_index(CIterT& iter) const noexcept {
-        return iter - &data_c(0);
+        return &*iter - &data_c(0);
     }
 
     CIterT to_iter_c(size_t index) const noexcept {
@@ -265,7 +304,7 @@ class bpt_vector {
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
     std::aligned_storage_t<sizeof(V), alignof(V)> data_[SIZE];
     size_t size_{0};
-    std::vector<double> v;
+    // std::vector<double> v;
 };
 
 template <typename KeyT, typename NInnerT, typename NLeafT>
