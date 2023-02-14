@@ -174,7 +174,7 @@ void PhTree3D_HM_INS(benchmark::State& state, Arguments&&... arguments) {
 
 template <typename... Arguments>
 void PhTree3D_STD_MAP_INS(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, HASH_MAP> benchmark{state, arguments...};
+    IndexBenchmark<3, STD_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 

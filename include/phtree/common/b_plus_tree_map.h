@@ -93,7 +93,7 @@ class b_plus_tree_map {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT, INNER_CFG>;
     using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
-    using LeafIteratorT = decltype(std::vector<LeafEntryT>().begin());
+    using LeafIteratorT = decltype(bpt_vector<LeafEntryT>().begin());
     using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
 
   public:

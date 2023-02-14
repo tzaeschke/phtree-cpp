@@ -88,7 +88,7 @@ class b_plus_tree_hash_set {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<hash_t, NLeafT, IterT>;
     using NodeT = bpt_node_base<hash_t, NInnerT, bpt_node_leaf>;
-    using LeafIteratorT = decltype(std::vector<LeafEntryT>().begin());
+    using LeafIteratorT = decltype(bpt_vector<LeafEntryT>().begin());
     using TreeT = b_plus_tree_hash_set<T, HashT, PredT>;
 
   public:
