@@ -88,7 +88,6 @@ class b_plus_tree_hash_set {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<hash_t, NLeafT, IterT>;
     using NodeT = bpt_node_base<hash_t, NInnerT, bpt_node_leaf>;
-    using LeafIteratorT = decltype(bpt_vector<LeafEntryT>().begin());
     using TreeT = b_plus_tree_hash_set<T, HashT, PredT>;
 
   public:
@@ -312,8 +311,8 @@ class b_plus_tree_hash_set {
         }
     };
 
-    class bpt_iterator : public bpt_iterator_base<LeafIteratorT, NLeafT, NodeT, TreeT> {
-        using SuperT = bpt_iterator_base<LeafIteratorT, NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -323,7 +322,8 @@ class b_plus_tree_hash_set {
         using reference = T&;
 
         // Arbitrary position iterator
-        explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept : SuperT(node, it) {}
+        explicit bpt_iterator(NLeafT* node, typename SuperT::LeafIteratorT it) noexcept
+        : SuperT(node, it) {}
 
         // begin() iterator
         explicit bpt_iterator(NodeT* node) noexcept : SuperT(node) {}

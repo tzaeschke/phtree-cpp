@@ -75,24 +75,28 @@ class sparse_map {
             });
     }
 
-    [[nodiscard]] auto begin() {
+    [[nodiscard]] auto begin() noexcept {
         return data_.begin();
     }
 
-    [[nodiscard]] auto begin() const {
+    [[nodiscard]] auto begin() const noexcept {
         return cbegin();
     }
 
-    [[nodiscard]] auto cbegin() const {
+    [[nodiscard]] auto cbegin() const noexcept {
         return data_.cbegin();
     }
 
-    [[nodiscard]] auto end() {
+    [[nodiscard]] auto end() noexcept {
         return data_.end();
     }
 
-    [[nodiscard]] auto end() const {
+    [[nodiscard]] auto end() const noexcept {
         return data_.end();
+    }
+
+    [[nodiscard]] auto cend() const noexcept {
+        return data_.cend();
     }
 
     template <typename... Args>

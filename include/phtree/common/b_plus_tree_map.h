@@ -93,7 +93,6 @@ class b_plus_tree_map {
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT, INNER_CFG>;
     using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
-    using LeafIteratorT = decltype(bpt_vector<LeafEntryT>().begin());
     using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
 
   public:
@@ -169,6 +168,10 @@ class b_plus_tree_map {
         return IterT();
     }
 
+    [[nodiscard]] auto cend() const noexcept {
+        return IterT();
+    }
+
     template <typename... Args>
     auto emplace(Args&&... args) {
         return try_emplace(std::forward<Args>(args)...);
@@ -211,7 +214,7 @@ class b_plus_tree_map {
     void erase(const IterT& iterator) {
         assert(iterator != end());
         --size_;
-        iterator.node_->erase_entry(iterator.iter_, root_);
+        iterator.node()->erase_entry(iterator.iter(), root_);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -289,8 +292,8 @@ class b_plus_tree_map {
         }
     };
 
-    class bpt_iterator : public bpt_iterator_base<LeafIteratorT, NLeafT, NodeT, TreeT> {
-        using SuperT = bpt_iterator_base<LeafIteratorT, NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -300,7 +303,8 @@ class b_plus_tree_map {
         using reference = ValueT&;
 
         // Arbitrary position iterator
-        explicit bpt_iterator(NLeafT* node, LeafIteratorT it) noexcept : SuperT(node, it) {}
+        explicit bpt_iterator(NLeafT* node, typename SuperT::LeafIteratorT it) noexcept
+        : SuperT(node, it) {}
 
         // begin() iterator
         explicit bpt_iterator(NodeT* node) noexcept : SuperT(node) {}
@@ -314,6 +318,20 @@ class b_plus_tree_map {
 
         auto* operator->() const noexcept {
             return const_cast<LeafEntryT*>(&*this->iter());
+        }
+
+      public:  // TODO
+        auto& iter() {
+            return this->iter_;
+        }
+        const auto& iter() const {
+            return this->iter_;
+        }
+        auto& node() {
+            return this->node_;
+        }
+        const auto& node() const {
+            return this->node_;
         }
     };
 

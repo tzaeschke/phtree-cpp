@@ -122,6 +122,10 @@ class flat_array_map {
         return iterator{SIZE, this};
     }
 
+    [[nodiscard]] auto cend() const noexcept {
+        return iterator{SIZE, this};
+    }
+
     ~flat_array_map() noexcept {
         if (occupancy != 0) {
             for (Key i = 0; i < SIZE; ++i) {
@@ -253,16 +257,20 @@ class array_map {
         return data_->lower_bound(index);
     }
 
-    [[nodiscard]] auto begin() const {
+    [[nodiscard]] auto begin() const noexcept {
         return data_->begin();
     }
 
-    [[nodiscard]] iterator cbegin() const {
+    [[nodiscard]] iterator cbegin() const noexcept {
         return data_->cbegin();
     }
 
-    [[nodiscard]] auto end() const {
+    [[nodiscard]] auto end() const noexcept {
         return data_->end();
+    }
+
+    [[nodiscard]] auto cend() const noexcept {
+        return data_->cend();
     }
 
     template <typename... Args>

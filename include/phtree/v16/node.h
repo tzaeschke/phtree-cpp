@@ -183,7 +183,7 @@ class Node {
         return entries_.end();
     }
 
-    EntryIteratorC<DIM, EntryT> FindPrefix(
+    auto FindPrefix(
         const KeyT& prefix, bit_width_t prefix_post_len, bit_width_t node_postfix_len) const {
         assert(prefix_post_len <= node_postfix_len);
         hc_pos_t hc_pos = CalcPosInArray(prefix, node_postfix_len);
@@ -195,7 +195,7 @@ class Node {
         }
 
         if (DoesEntryMatch(iter->second, prefix, node_postfix_len)) {
-            return {iter};
+            return EntryIteratorC<DIM, EntryT>{iter};
         }
         return entries_.end();
     }

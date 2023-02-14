@@ -768,16 +768,15 @@ class PhTreeV16 {
      * querying box data with QueryInclude. Unfortunately, QueryIntersect queries have +/-0 infinity
      * in their coordinates, so their never is an overlap.
      */
-    std::pair<const EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
-        const PhBox<DIM, ScalarInternal>& query_box) const {
+    auto find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& prefix = query_box.min();
         bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
         const EntryT* parent = &root_;
         if (max_conflicting_bits > root_.GetNodePostfixLen()) {
             // Abort early if we have no shared prefix in the query
-            return {&root_, root_.GetNode().Entries().end()};
+            return std::make_pair(&root_, root_.GetNode().Entries().cend());
         }
-        EntryIteratorC<DIM, EntryT> entry_iter =
+        auto entry_iter =
             root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
@@ -785,7 +784,7 @@ class PhTreeV16 {
             entry_iter = parent->GetNode().FindPrefix(
                 prefix, max_conflicting_bits, parent->GetNodePostfixLen());
         }
-        return {parent, entry_iter};
+        return std::make_pair(parent, entry_iter);
     }
 
     size_t num_entries_;

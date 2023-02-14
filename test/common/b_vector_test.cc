@@ -17,10 +17,8 @@
 #include "phtree/common/b_plus_tree_base.h"
 #include <include/gtest/gtest.h>
 #include <map>
-#include <queue>
 #include <random>
 
-using namespace improbable::phtree;
 using namespace phtree::bptree::detail;
 
 static int default_construct_count_ = 0;
@@ -111,21 +109,20 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
         std::vector<ValueT> reference_map{};
 
         // populate 50%
-        for (size_t j = 0; j < N/2; j++) {
+        for (size_t j = 0; j < N / 2; j++) {
             ValueT val{j};
             test_map.emplace_back(val);
             // test_map._check();
             reference_map.emplace_back(val);
-
         }
         ASSERT_EQ(test_map.size(), reference_map.size());
 
         // populate 100%
-        for (size_t j = N/2; j < N; j++) {
+        for (size_t j = N / 2; j < N; j++) {
             ValueT val{j};
-            test_map.emplace(test_map.begin() + N/4, val);
+            test_map.emplace(test_map.begin() + N / 4, val);
             // test_map._check();
-            reference_map.emplace(reference_map.begin() + N/4, val);
+            reference_map.emplace(reference_map.begin() + N / 4, val);
 
             ASSERT_EQ(test_map.size(), reference_map.size());
         }
@@ -156,7 +153,6 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
         }
         ASSERT_EQ(test_map.size(), reference_map.size());
 
-
         // update ranges
         for (size_t j = 0; j < N; j++) {
             int R = 5;
@@ -167,14 +163,17 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
             ASSERT_EQ(test_map.back(), reference_map.back());
 
             // add
-            int pos2 = std::max(0, (int) (cube_distribution(random_engine) % N - R));
+            int pos2 = std::max(0, (int)(cube_distribution(random_engine) % N - R));
             bpt_vector<Id> tm2{};
             std::vector<Id> ref2{};
             for (int k = 0; k < R; ++k) {
                 tm2.emplace_back(j + k);
                 ref2.emplace_back(j + k);
             }
-            test_map.insert(test_map.begin() + pos2, std::move_iterator(tm2.begin()), std::move_iterator(tm2.end()));
+            test_map.insert(
+                test_map.begin() + pos2,
+                std::move_iterator(tm2.begin()),
+                std::move_iterator(tm2.end()));
             reference_map.insert(reference_map.begin() + pos2, ref2.begin(), ref2.end());
             ASSERT_EQ(test_map[pos2], reference_map[pos2]);
             ASSERT_EQ(test_map.back(), reference_map.back());
@@ -184,9 +183,16 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
         }
         ASSERT_EQ(test_map.size(), reference_map.size());
 
+        size_t n = 0;
+        for (auto it = test_map.begin(); it != test_map.end(); ++it) {
+            ++n;
+        }
+        ASSERT_EQ(N, n);
+        static_assert(std::is_same_v<decltype(test_map.begin()), decltype(test_map.end())>);
+
         // drain 50%
-        while (test_map.size() > N/2) {
-            int pos = cube_distribution(random_engine) % (N/4);
+        while (test_map.size() > N / 2) {
+            int pos = cube_distribution(random_engine) % (N / 4);
             test_map.erase(test_map.begin() + pos, test_map.begin() + pos + 3);
             reference_map.erase(reference_map.begin() + pos, reference_map.begin() + pos + 3);
             ASSERT_EQ(test_map.back(), reference_map.back());

@@ -17,8 +17,9 @@
 #ifndef PHTREE_COMMON_B_PLUS_TREE_BASE_H
 #define PHTREE_COMMON_B_PLUS_TREE_BASE_H
 
-#include "bits.h"
+#include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <tuple>
 #include <vector>
 
@@ -29,6 +30,63 @@ struct bpt_config {
     static constexpr size_t MAX = MAX_;
     static constexpr size_t MIN = MIN_;
     static constexpr size_t INIT = INIT_;
+};
+
+template <typename V>
+class bpt_vector_iterator {
+  public:
+    // using iterator_category = std::forward_iterator_tag;
+    // using iterator_category = std::bidirectional_iterator_tag;
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = V;
+    using difference_type = std::ptrdiff_t;
+    using pointer = V*;
+    using reference = V&;
+
+    explicit bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
+
+    V& operator*() const noexcept {
+        return *ptr_;  // const_cast<V&>(*this->iter());
+    }
+
+    V* operator->() const noexcept {
+        return ptr_;  // const_cast<V*>(&*this->iter());
+    }
+
+    auto operator++() noexcept {
+        ++ptr_;
+        return *this;
+    }
+
+    const bpt_vector_iterator operator++(int) noexcept {
+        return bpt_vector_iterator(ptr_++);
+    }
+
+    auto operator--() noexcept {
+        --ptr_;
+        return *this;
+    }
+
+    const bpt_vector_iterator operator--(int) noexcept {
+        return bpt_vector_iterator(ptr_--);
+    }
+
+    constexpr bool operator<(const bpt_vector_iterator<V>& right) const noexcept {
+        return ptr_ < right.ptr_;
+    }
+
+    friend bool operator==(
+        const bpt_vector_iterator<V>& left, const bpt_vector_iterator<V>& right) noexcept {
+        return left.ptr_ == right.ptr_;
+    }
+
+    friend bool operator!=(
+        const bpt_vector_iterator<V>& left, const bpt_vector_iterator<V>& right) noexcept {
+        return left.ptr_ != right.ptr_;
+    }
+
+  private:
+    V* ptr_;
 };
 
 template <typename V, size_t SIZE = 16>
@@ -47,23 +105,23 @@ class bpt_vector {
         }
     }
 
-    IterT begin() noexcept {
+    constexpr IterT begin() noexcept {
         return to_iter(0);
     }
 
-    CIterT begin() const noexcept {
+    constexpr CIterT begin() const noexcept {
         return to_iter_c(0);
     }
 
-    IterT end() noexcept {
-        //return to_iter(size_ - 1) + 1;
-        //return data_.begin() + size_;
-        return IterT{std::launder(reinterpret_cast<V*>(&data_[size_]))};
+    constexpr IterT end() noexcept {
+        return to_iter(size_);
+        // return data_.begin() + size_;
+        // return IterT{std::launder(reinterpret_cast<V*>(&data_[size_]))};
     }
 
-//    constexpr CIterT end() const noexcept {
-//        return to_iter(size_);
-//    }
+    constexpr CIterT end() const noexcept {
+        return to_iter_c(size_);
+    }
 
     RefT front() noexcept {
         return data(0);
@@ -98,8 +156,9 @@ class bpt_vector {
 
         // TODO mem_move?!?!
         // TODO Arghh! length!?!?!
+        // memmove();
         for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
-            data(i) = std::move(data(i-length));
+            data(i) = std::move(data(i - length));
         }
 
         auto src = src_begin;
@@ -122,7 +181,7 @@ class bpt_vector {
 
         // TODO mem_move?!?!
         for (size_t i = size_; i > index; --i) {
-            data(i) = std::move(data(i-1));
+            data(i) = std::move(data(i - 1));
         }
 
         new (reinterpret_cast<void*>(&data_[index])) V{std::forward<Args>(args)...};
@@ -194,19 +253,19 @@ class bpt_vector {
     }
 
     V& data(size_t index) noexcept {
-//        assert(index < size_);
+        //        assert(index < size_);
         return *std::launder(reinterpret_cast<V*>(&data_[index]));
     }
 
     const V& data_c(size_t index) const noexcept {
-//        assert(index < size_);
+        //        assert(index < size_);
         return *std::launder(reinterpret_cast<const V*>(&data_[index]));
     }
 
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
     std::aligned_storage_t<sizeof(V), alignof(V)> data_[SIZE];
     size_t size_{0};
-    // std::vector<double> v;
+    std::vector<double> v;
 };
 
 template <typename KeyT, typename NInnerT, typename NLeafT>
@@ -252,10 +311,10 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     // TODO This could be improved but requires a code change to move > 1 entry when merging.
     static_assert(CFG::MIN == 2 && "M_MIN != 2 is not supported");
     // using DataIteratorT = decltype(std::vector<EntryT>().begin());
-    using DataIteratorT = decltype(bpt_vector<EntryT>().begin());
     friend IterT;
 
   public:
+    using DataIteratorT = decltype(bpt_vector<EntryT>().begin());
     // MSVC++ requires this to be public, otherwise there it clashes with sub-classes' NodeT!?!?!
     using NodeT = bpt_node_base<KeyT, NInnerT, NLeafT>;
     explicit bpt_node_data(bool is_leaf, NInnerT* parent, ThisT* prev, ThisT* next) noexcept
@@ -269,6 +328,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     virtual ~bpt_node_data() noexcept = default;
 
     [[nodiscard]] auto lower_bound(KeyT key) noexcept {
+        // If this doesn´t compile, check #include <algorithm> !!!
         return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const KeyT key) {
             return left.first < key;
         });
@@ -606,14 +666,17 @@ class bpt_node_inner
     }
 };
 
-template <typename LeafIteratorT, typename NLeafT, typename NodeT, typename F1>
+template <typename NLeafT, typename NodeT, typename F1>
 class bpt_iterator_base {
-    using IterT = bpt_iterator_base<LeafIteratorT, NLeafT, NodeT, F1>;
+    using IterT = bpt_iterator_base<NLeafT, NodeT, F1>;
 
     template <typename A, typename B, typename C, typename D, typename E, typename F, typename G>
     friend class bpt_node_data;
     friend F1;
     friend NLeafT;
+
+  protected:
+    using LeafIteratorT = typename NLeafT::DataIteratorT;
 
   public:
     // Arbitrary position iterator
@@ -673,11 +736,12 @@ class bpt_iterator_base {
         return const_cast<LeafIteratorT&>(iter_);
     }
 
-  private:
+  public:  // TODO
     [[nodiscard]] bool is_end() const noexcept {
         return node_ == nullptr;
     }
 
+  public:  // TODO
     NLeafT* node_;
     LeafIteratorT iter_;
 };
