@@ -33,6 +33,7 @@ enum Scenario {
     MULTIMAP,
     HASH_MAP,
     STD_MAP,
+    STD_MULTIMAP,
 };
 
 using payload_t = int;
@@ -48,7 +49,13 @@ using TestIndex = typename std::conditional_t<
         typename std::conditional_t<
             SCENARIO == HASH_MAP,
             b_plus_tree_hash_map<key_t, payload_t>,
-            std::map<key_t, payload_t>>>>;
+            typename std::conditional_t<
+                SCENARIO == STD_MAP,
+                std::map<key_t, payload_t>,
+                typename std::conditional_t<
+                    SCENARIO == STD_MULTIMAP,
+                    std::multimap<key_t, payload_t>,
+                    void>>>>>;
 
 /*
  * Benchmark for removing entries.
@@ -139,46 +146,57 @@ void IndexBenchmark<DIM, TYPE>::Remove(benchmark::State& state, Index& tree) {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D_MAP_REM_IT(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_REM_IT(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_MM_REM_IT(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MM_REM_IT(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MULTIMAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_HM_REM_IT(benchmark::State& state, Arguments&&... arguments) {
+void BPT_HM_REM_IT(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, HASH_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_STD_MAP_REM_IT(benchmark::State& state, Arguments&&... arguments) {
+void STD_MULTIMAP_REM_IT(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, STD_MULTIMAP> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void STD_MAP_REM_IT(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, STD_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_generator, num_entities, function_to_call
-BENCHMARK_CAPTURE(PhTree3D_MAP_REM_IT, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_REM_IT, MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_MM_REM_IT, MULTIMAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MM_REM_IT, MULTIMAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_HM_REM_IT, HASH_MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_HM_REM_IT, HASH_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_STD_MAP_REM_IT, STD_MAP, 0.0)
+BENCHMARK_CAPTURE(STD_MULTIMAP_REM_IT, STD_MULTIMAP, 0.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(STD_MAP_REM_IT, STD_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);

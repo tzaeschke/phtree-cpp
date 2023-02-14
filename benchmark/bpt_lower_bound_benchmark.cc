@@ -34,6 +34,7 @@ enum Scenario {
     MULTIMAP,
     HASH_MAP,
     STD_MAP,
+    STD_MULTIMAP,
 };
 
 using payload_t = int;
@@ -49,7 +50,13 @@ using TestIndex = typename std::conditional_t<
         typename std::conditional_t<
             SCENARIO == HASH_MAP,
             b_plus_tree_hash_map<key_t, payload_t>,
-            std::map<key_t, payload_t>>>>;
+            typename std::conditional_t<
+                SCENARIO == STD_MAP,
+                std::map<key_t, payload_t>,
+                typename std::conditional_t<
+                    SCENARIO == STD_MULTIMAP,
+                    std::multimap<key_t, payload_t>,
+                    void>>>>>;
 
 /*
  * Benchmark for looking up entries by their key.
@@ -99,7 +106,6 @@ void IndexBenchmark<DIM, TYPE>::Benchmark(benchmark::State& state) {
     }
 
     // Moved outside of the loop because EXPENSIVE
-    state.counters["total_result_count"] += num_found;
     state.counters["query_rate"] += num_inner;
     state.counters["result_rate"] += num_found;
     state.counters["avg_result_count"] += num_found;
@@ -113,7 +119,6 @@ void IndexBenchmark<DIM, TYPE>::SetupWorld(benchmark::State& state) {
         tree_.emplace(points_[i][0], (payload_t)i);
     }
 
-    state.counters["total_result_count"] = benchmark::Counter(0);
     state.counters["query_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["result_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["avg_result_count"] = benchmark::Counter(0, benchmark::Counter::kAvgIterations);
@@ -140,46 +145,57 @@ bool IndexBenchmark<DIM, TYPE>::QueryWorld() {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D_MAP_LOWER(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_LOWER(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_MM_LOWER(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MM_LOWER(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MULTIMAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_HM_LOWER(benchmark::State& state, Arguments&&... arguments) {
+void BPT_HM_LOWER(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, HASH_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_STD_MAP_LOWER(benchmark::State& state, Arguments&&... arguments) {
+void STD_MULTIMAP_LOWER(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, STD_MULTIMAP> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void STD_MAP_LOWER(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, STD_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 // index type, scenario name, data_generator, num_entities, function_to_call
-BENCHMARK_CAPTURE(PhTree3D_MAP_LOWER, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_LOWER, MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_MM_LOWER, MULTIMAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MM_LOWER, MULTIMAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_HM_LOWER, HASH_MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_HM_LOWER, HASH_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_STD_MAP_LOWER, STD_MAP, 0.0)
+BENCHMARK_CAPTURE(STD_MULTIMAP_LOWER, STD_MULTIMAP, 0.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(STD_MAP_LOWER, STD_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);

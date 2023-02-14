@@ -33,6 +33,7 @@ enum Scenario {
     MULTIMAP,
     HASH_MAP,
     STD_MAP,
+    STD_MULTIMAP,
 };
 
 using payload_t = int;
@@ -48,7 +49,13 @@ using TestIndex = typename std::conditional_t<
         typename std::conditional_t<
             SCENARIO == HASH_MAP,
             b_plus_tree_hash_map<key_t, payload_t>,
-            std::map<key_t, payload_t>>>>;
+            typename std::conditional_t<
+                SCENARIO == STD_MAP,
+                std::map<key_t, payload_t>,
+                typename std::conditional_t<
+                    SCENARIO == STD_MULTIMAP,
+                    std::multimap<key_t, payload_t>,
+                    void>>>>>;
 
 /*
  * Benchmark for adding entries to the index.
@@ -110,19 +117,7 @@ void IndexBenchmark<DIM, TYPE>::SetupWorld(benchmark::State& state) {
 template <dimension_t DIM, Scenario TYPE>
 void IndexBenchmark<DIM, TYPE>::Insert(benchmark::State& state, Index& tree) {
     switch (TYPE) {
-    case MAP: {
-        for (size_t i = 0; i < num_entities_; ++i) {
-            tree.emplace(points_[i][0], (payload_t)i);
-        }
-        break;
-    }
-    case MULTIMAP: {
-        for (size_t i = 0; i < num_entities_; ++i) {
-            tree.emplace(points_[i][0], (payload_t)i);
-        }
-        break;
-    }
-    case HASH_MAP: {
+    default: {
         for (size_t i = 0; i < num_entities_; ++i) {
             tree.emplace(points_[i][0], (payload_t)i);
         }
@@ -137,79 +132,90 @@ void IndexBenchmark<DIM, TYPE>::Insert(benchmark::State& state, Index& tree) {
 }  // namespace
 
 template <typename... Arguments>
-void PhTree3D_MAP_INS_3(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_INS_3D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree4D_MAP_INS_4(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_INS_4D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<4, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree6D_MAP_INS_6(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_INS_6D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<6, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_MAP_INS(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MAP_INS(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_MM_INS(benchmark::State& state, Arguments&&... arguments) {
+void BPT_MM_INS(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, MULTIMAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_HM_INS(benchmark::State& state, Arguments&&... arguments) {
+void BPT_HM_INS(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, HASH_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTree3D_STD_MAP_INS(benchmark::State& state, Arguments&&... arguments) {
+void STD_MAP_INS(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, STD_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
+template <typename... Arguments>
+void STD_MULTIMAP_INS(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, STD_MULTIMAP> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
 // index type, scenario name, data_generator, num_entities, function_to_call
-BENCHMARK_CAPTURE(PhTree3D_MAP_INS_3, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_INS_3D, MAP, 0.0)
     ->RangeMultiplier(2)
     ->Ranges({{2, 8}, {TestGenerator::CUBE, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree4D_MAP_INS_4, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_INS_4D, MAP, 0.0)
     ->RangeMultiplier(2)
     ->Ranges({{2, 16}, {TestGenerator::CUBE, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree6D_MAP_INS_6, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_INS_6D, MAP, 0.0)
     ->RangeMultiplier(2)
     ->Ranges({{2, 32}, {TestGenerator::CUBE, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_MAP_INS, MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MAP_INS, MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_MM_INS, MULTIMAP, 0.0)
+BENCHMARK_CAPTURE(BPT_MM_INS, MULTIMAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_HM_INS, HASH_MAP, 0.0)
+BENCHMARK_CAPTURE(BPT_HM_INS, HASH_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_CAPTURE(PhTree3D_STD_MAP_INS, STD_MAP, 0.0)
+BENCHMARK_CAPTURE(STD_MULTIMAP_INS, STD_MULTIMAP, 0.0)
+    ->RangeMultiplier(10)
+    ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(STD_MAP_INS, STD_MAP, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
