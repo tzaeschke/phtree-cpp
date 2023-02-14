@@ -736,12 +736,11 @@ class bpt_iterator_base {
         return const_cast<LeafIteratorT&>(iter_);
     }
 
-  public:  // TODO
+  private:
     [[nodiscard]] bool is_end() const noexcept {
         return node_ == nullptr;
     }
 
-  public:  // TODO
     NLeafT* node_;
     LeafIteratorT iter_;
 };

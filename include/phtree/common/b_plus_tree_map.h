@@ -214,7 +214,7 @@ class b_plus_tree_map {
     void erase(const IterT& iterator) {
         assert(iterator != end());
         --size_;
-        iterator.node()->erase_entry(iterator.iter(), root_);
+        iterator.node_->erase_entry(iterator.iter_, root_);
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -318,20 +318,6 @@ class b_plus_tree_map {
 
         auto* operator->() const noexcept {
             return const_cast<LeafEntryT*>(&*this->iter());
-        }
-
-      public:  // TODO
-        auto& iter() {
-            return this->iter_;
-        }
-        const auto& iter() const {
-            return this->iter_;
-        }
-        auto& node() {
-            return this->node_;
-        }
-        const auto& node() const {
-            return this->node_;
         }
     };
 
