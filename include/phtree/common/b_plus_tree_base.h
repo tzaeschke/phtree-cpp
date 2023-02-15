@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <tuple>
 #include <vector>
 
@@ -47,22 +48,22 @@ class bpt_vector_iterator {
     using reference = V&;
 
     bpt_vector_iterator() noexcept : ptr_{nullptr} {}
-    bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
+    explicit bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
 
     V& operator*() const noexcept {
-        return *ptr_;  // const_cast<V&>(*this->iter());
+        return *ptr_;
     }
 
     V* operator->() const noexcept {
-        return ptr_;  // const_cast<V*>(&*this->iter());
+        return ptr_;
     }
 
-    auto operator++() noexcept {
+    constexpr bpt_vector_iterator& operator++() noexcept {
         ++ptr_;
         return *this;
     }
 
-    const bpt_vector_iterator operator++(int) noexcept {
+    constexpr bpt_vector_iterator operator++(int) noexcept {
         return bpt_vector_iterator(ptr_++);
     }
 
@@ -122,6 +123,11 @@ class bpt_vector_iterator {
         return normal_iterator(ptr_ - ptr);
     }
 
+    // implicit conversion to const iterator
+    operator bpt_vector_iterator<const V>() {
+        return bpt_vector_iterator<const V>{ptr_};
+    }
+
   private:
     V* ptr_;
 };
@@ -129,80 +135,100 @@ class bpt_vector_iterator {
 template <typename V, size_t SIZE = 16>
 class bpt_vector {
   public:
-    // using IterT = V*;
-    // using CIterT = const V*;
-    using IterT = bpt_vector_iterator<V>;
-    using CIterT = const bpt_vector_iterator<V>;
-    using MoveIterT = std::move_iterator<IterT>;
-    using RefT = V&;
-    using CRefT = const V&;
-
+    // TODO implement "Member types":  https://en.cppreference.com/w/cpp/container/vector
   public:
+    // Member types
+    using value_type = V;
+    // using allocator_type = Allocator
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    // using pointer 	Allocator::pointer 	(until C++11)
+    //     std::allocator_traits<Allocator>::pointer 	(since C++11)
+    // using const_pointer 	Allocator::const_pointer 	(until C++11)
+    //             std::allocator_traits<Allocator>::const_pointer 	(since C++11)
+    using iterator = bpt_vector_iterator<value_type>;  // LegacyRandomAccessIterator
+                                                       // and LegacyContiguousIterator to value_type
+    //(until C++20)
+    //            LegacyRandomAccessIterator, contiguous_iterator, and ConstexprIterator to
+    //            value_type
+    //                            (since C++20)
+    // TODO LegacyContiguousIterator ?!!?!?!?
+    using const_iterator = bpt_vector_iterator<const value_type>;
+    // LegacyRandomAccessIterator and LegacyContiguousIterator to const value_type
+    //(until C++20)
+    //     LegacyRandomAccessIterator, contiguous_iterator, and ConstexprIterator to const
+    //     value_type
+
     ~bpt_vector() noexcept {
-        for (size_t i = 0; i < size_; ++i) {
+        // TODO loop with pointer?
+        for (size_type i = 0; i < size_; ++i) {
             data(i).~V();
         }
     }
 
-    constexpr IterT begin() noexcept {
+    constexpr iterator begin() noexcept {
         return to_iter(0);
     }
 
-    constexpr CIterT begin() const noexcept {
+    constexpr const_iterator begin() const noexcept {
         return to_iter_c(0);
     }
 
-    constexpr IterT end() noexcept {
+    constexpr iterator end() noexcept {
         return to_iter(size_);
-        // return data_.begin() + size_;
-        // return IterT{std::launder(reinterpret_cast<V*>(&data_[size_]))};
     }
 
-    constexpr CIterT end() const noexcept {
+    constexpr const_iterator end() const noexcept {
         return to_iter_c(size_);
     }
 
-    RefT front() noexcept {
+    reference front() noexcept {
         return data(0);
     }
 
-    CRefT front() const noexcept {
+    const_reference front() const noexcept {
         return data_c(0);
     }
 
-    RefT back() noexcept {
+    reference back() noexcept {
         return data(size_ - 1);
     }
 
-    CRefT back() const noexcept {
+    const_reference back() const noexcept {
         return data_c(size_ - 1);
     }
 
-    RefT operator[](size_t index) noexcept {
+    reference operator[](size_t index) noexcept {
         assert(index < size_);
         return data(index);
     }
 
-    CRefT operator[](size_t index) const noexcept {
+    const_reference operator[](size_t index) const noexcept {
         assert(index < size_);
         return data_c(index);
     }
 
-    template <typename... Args>
-    IterT insert(CIterT iter, MoveIterT src_begin, MoveIterT src_end) {
+    template <typename InputIterator>
+    // iterator insert(const_iterator iter, std::move_iterator<const_iterator> src_begin,
+    // std::move_iterator<const_iterator> src_end) {
+    iterator insert(const_iterator iter, InputIterator src_begin, InputIterator src_end) {
         auto length = src_end - src_begin;
+        assert(size_ + length <= SIZE);
         auto index = to_index(iter);
 
-        // TODO mem_move?!?!
-        // TODO Arghh! length!?!?!
-        // memmove();
-        for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
-            data(i) = std::move(data(i - length));
-        }
+        // TODO check for count=0?
+        std::memmove(
+            &*(begin() + index + length), &*(begin() + index), sizeof(V) * (size_ - index));
+        //        for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
+        //            data(i) = std::move(data(i - length));
+        //        }
 
+        // TODO This is really hacky, it works only if "src" is also a bpt_vector....
+        //        std::memmove(&*(begin() + index), &*(src_begin), sizeof(V) + length);
         auto src = src_begin;
-        IterT dst = const_cast<IterT&>(iter);  // Dirty.....  TODO?
-        // TODO use mem-move?!?!?
+        iterator dst = begin() + index;
         while (src != src_end) {
             *dst = std::move(*src);
             ++src;
@@ -210,18 +236,19 @@ class bpt_vector {
         }
         size_ += length;
         assert(size_ <= SIZE);
-        return const_cast<IterT&>(iter);
+        return begin() + index;
     }
 
     template <typename... Args>
-    IterT emplace(CIterT iter, Args&&... args) {
+    iterator emplace(const_iterator iter, Args&&... args) {
         assert(size_ < SIZE);
         auto index = to_index(iter);
 
-        // TODO mem_move?!?!
-        for (size_t i = size_; i > index; --i) {
-            data(i) = std::move(data(i - 1));
-        }
+        auto src = begin() + index;
+        memmove(&*(src + 1), &*src, sizeof(V) * (size_ - index));
+        //        for (size_t i = size_; i > index; --i) {
+        //            data(i) = std::move(data(i - 1));
+        //        }
 
         new (reinterpret_cast<void*>(&data_[index])) V{std::forward<Args>(args)...};
         ++size_;
@@ -229,41 +256,45 @@ class bpt_vector {
     }
 
     template <typename... Args>
-    IterT emplace_back(Args&&... args) {
+    reference emplace_back(Args&&... args) {
         assert(size_ < SIZE);
         new (reinterpret_cast<void*>(&data_[size_])) V{std::forward<Args>(args)...};
         ++size_;
-        return to_iter(size_ - 1);
+        return data(size_ - 1);
     }
 
-    IterT erase(CIterT iterator) noexcept {
+    iterator erase(const_iterator iterator) noexcept {
         auto index = to_index(iterator);
         data(index).~V();
 
-        // TODO mem_move?!?!
-        for (size_t i = index; i < (size_ - 1); ++i) {
-            // TODO destruct???
-            data(i) = std::move(data(i + 1));
+        auto dst = begin() + index;
+        if (size_ > 1) {
+            memmove(&*dst, &*(dst + 1), sizeof(V) * (size_ - index - 1));
         }
+        //        for (size_t i = index; i < (size_ - 1); ++i) {
+        //            data(i) = std::move(data(i + 1));
+        //        }
 
         --size_;
-        return to_iter(index);
+        return dst;
     }
 
-    IterT erase(CIterT first, CIterT last) noexcept {
+    iterator erase(const_iterator first, const_iterator last) noexcept {
         auto index_0 = to_index(first);
         auto index_n = to_index(last);
         auto length = last - first;
-        for (size_t i = index_0; i < index_n; ++i) {
+        for (size_t i = index_0; i < index_n; ++i) {  // TODO loop with pointer?
             data(i).~V();
         }
-        // TODO mem_move?!?!
-        for (size_t i = index_0; i < (size_ - length); ++i) {
-            // TODO destruct???
-            data(i) = std::move(data(i + length));
+        auto dst = begin() + index_0;
+        if (size_ > index_n) {
+            memmove(&*dst, &*dst + length, sizeof(V) * (size_ - index_n));
         }
+        //        for (size_t i = index_0; i < (size_ - length); ++i) {
+        //            data(i) = std::move(data(i + length));
+        //        }
         size_ -= length;
-        return to_iter(index_0);
+        return to_iter(index_0);  // TODO return first?
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -279,25 +310,23 @@ class bpt_vector {
     }
 
   private:
-    size_t to_index(CIterT& iter) const noexcept {
+    size_type to_index(const_iterator& iter) const noexcept {
         return &*iter - &data_c(0);
     }
 
-    CIterT to_iter_c(size_t index) const noexcept {
-        return IterT{&data(index)};
+    const_iterator to_iter_c(size_t index) const noexcept {
+        return iterator{&data(index)};
     }
 
-    IterT to_iter(size_t index) noexcept {
-        return IterT{&data(index)};
+    iterator to_iter(size_t index) noexcept {
+        return iterator{&data(index)};
     }
 
-    V& data(size_t index) noexcept {
-        //        assert(index < size_);
+    reference data(size_t index) noexcept {
         return *std::launder(reinterpret_cast<V*>(&data_[index]));
     }
 
-    const V& data_c(size_t index) const noexcept {
-        //        assert(index < size_);
+    const_reference data_c(size_t index) const noexcept {
         return *std::launder(reinterpret_cast<const V*>(&data_[index]));
     }
 
@@ -349,11 +378,10 @@ template <
 class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     // TODO This could be improved but requires a code change to move > 1 entry when merging.
     static_assert(CFG::MIN == 2 && "M_MIN != 2 is not supported");
-    // using DataIteratorT = decltype(std::vector<EntryT>().begin());
     friend IterT;
 
   public:
-    using DataIteratorT = decltype(bpt_vector<EntryT>().begin());
+    using DataIteratorT = typename bpt_vector<EntryT>::iterator;
     // MSVC++ requires this to be public, otherwise there it clashes with sub-classes' NodeT!?!?!
     using NodeT = bpt_node_base<KeyT, NInnerT, NLeafT>;
     explicit bpt_node_data(bool is_leaf, NInnerT* parent, ThisT* prev, ThisT* next) noexcept
@@ -387,13 +415,13 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
         DataIteratorT iter_;
     };
 
-    auto erase_entry(const DataIteratorT& it_to_erase, NodeT*& root) {
+    auto erase_entry(DataIteratorT it_to_erase, NodeT*& root) {
         auto max_key = data_.back().first;
         auto it_after_erased = data_.erase(it_to_erase);
         return check_merge(it_after_erased, max_key, root);
     }
 
-    auto check_merge(const DataIteratorT& iter_after_erased, KeyT max_key_old, NodeT*& root) {
+    auto check_merge(DataIteratorT iter_after_erased, KeyT max_key_old, NodeT*& root) {
         using ER = EraseResult;
         auto& parent_ = this->parent_;
         bool tail_entry_erased = iter_after_erased == data_.end();
@@ -441,7 +469,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
                     prev_node->parent_->update_key(old1, new1, prev_node);
                 }
                 if (!tail_entry_erased) {
-                    return ER{prev_node, &prev_data.back()};
+                    return ER{prev_node, --prev_data.end()};
                 }
                 return next_node == nullptr ? ER{} : ER{next_node, next_node->data_.begin()};
             } else if (next_node_ != nullptr && next_node_->data_.size() < CFG::MAX) {
@@ -585,7 +613,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
 
   public:
     // std::vector<EntryT> data_;
-    bpt_vector<EntryT> data_;
+    bpt_vector<EntryT, CFG::MAX> data_;
     ThisT* prev_node_;
     ThisT* next_node_;
 };
