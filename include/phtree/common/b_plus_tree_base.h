@@ -458,7 +458,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
                     prev_node->parent_->update_key(old1, new1, prev_node);
                 }
                 if (!tail_entry_erased) {
-                    return ER{prev_node, --prev_data.end()};
+                    return ER{prev_node, prev_data.end() - 1};
                 }
                 return next_node == nullptr ? ER{} : ER{next_node, next_node->data_.begin()};
             } else if (next_node_ != nullptr && next_node_->data_.size() < CFG::MAX) {
