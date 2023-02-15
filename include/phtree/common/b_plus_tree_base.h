@@ -44,17 +44,17 @@ class bpt_vector_iterator {
     using iterator_category = std::random_access_iterator_tag;
     using value_type = V;
     using difference_type = std::ptrdiff_t;
-    using pointer = V*;
-    using reference = V&;
+    using pointer = value_type*;
+    using reference = value_type&;
 
     bpt_vector_iterator() noexcept : ptr_{nullptr} {}
-    explicit bpt_vector_iterator(V* ptr) noexcept : ptr_{ptr} {}
+    explicit bpt_vector_iterator(value_type* ptr) noexcept : ptr_{ptr} {}
 
-    V& operator*() const noexcept {
+    reference operator*() const noexcept {
         return *ptr_;
     }
 
-    V* operator->() const noexcept {
+    pointer operator->() const noexcept {
         return ptr_;
     }
 
@@ -119,9 +119,9 @@ class bpt_vector_iterator {
         return ptr_ - it.ptr_;
     }
 
-    constexpr normal_iterator operator-(V* ptr) const noexcept {
-        return normal_iterator(ptr_ - ptr);
-    }
+    //    constexpr normal_iterator operator-(V* ptr) const noexcept {
+    //        return normal_iterator(ptr_ - ptr);
+    //    }
 
     // implicit conversion to const iterator
     operator bpt_vector_iterator<const V>() {
@@ -148,23 +148,16 @@ class bpt_vector {
     //     std::allocator_traits<Allocator>::pointer 	(since C++11)
     // using const_pointer 	Allocator::const_pointer 	(until C++11)
     //             std::allocator_traits<Allocator>::const_pointer 	(since C++11)
-    using iterator = bpt_vector_iterator<value_type>;  // LegacyRandomAccessIterator
-                                                       // and LegacyContiguousIterator to value_type
-    //(until C++20)
-    //            LegacyRandomAccessIterator, contiguous_iterator, and ConstexprIterator to
-    //            value_type
-    //                            (since C++20)
     // TODO LegacyContiguousIterator ?!!?!?!?
-    using const_iterator = bpt_vector_iterator<const value_type>;
-    // LegacyRandomAccessIterator and LegacyContiguousIterator to const value_type
-    //(until C++20)
-    //     LegacyRandomAccessIterator, contiguous_iterator, and ConstexprIterator to const
-    //     value_type
+    // using iterator = bpt_vector_iterator<value_type>;  // LegacyRandomAccessIterator
+    // using const_iterator = bpt_vector_iterator<const value_type>;
+    using iterator = value_type*;  // LegacyRandomAccessIterator
+    using const_iterator = const value_type*;
 
     ~bpt_vector() noexcept {
-        // TODO loop with pointer?
-        for (size_type i = 0; i < size_; ++i) {
-            data(i).~V();
+        auto b = begin();
+        for (auto it = b; it < b + size_; ++it) {
+            it->~V();
         }
     }
 
@@ -218,7 +211,6 @@ class bpt_vector {
         assert(size_ + length <= SIZE);
         auto index = to_index(iter);
 
-        // TODO check for count=0?
         std::memmove(
             &*(begin() + index + length), &*(begin() + index), sizeof(V) * (size_ - index));
         //        for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
@@ -268,9 +260,7 @@ class bpt_vector {
         data(index).~V();
 
         auto dst = begin() + index;
-        if (size_ > 1) {
-            memmove(&*dst, &*(dst + 1), sizeof(V) * (size_ - index - 1));
-        }
+        memmove(&*dst, &*(dst + 1), sizeof(V) * (size_ - index - 1));
         //        for (size_t i = index; i < (size_ - 1); ++i) {
         //            data(i) = std::move(data(i + 1));
         //        }
@@ -283,13 +273,12 @@ class bpt_vector {
         auto index_0 = to_index(first);
         auto index_n = to_index(last);
         auto length = last - first;
-        for (size_t i = index_0; i < index_n; ++i) {  // TODO loop with pointer?
-            data(i).~V();
+        auto ptr_last = &*last;
+        for (auto* ptr = &*first; ptr < ptr_last; ++ptr) {
+            ptr->~V();
         }
         auto dst = begin() + index_0;
-        if (size_ > index_n) {
-            memmove(&*dst, &*dst + length, sizeof(V) * (size_ - index_n));
-        }
+        memmove(&*dst, &*dst + length, sizeof(V) * (size_ - index_n));
         //        for (size_t i = index_0; i < (size_ - length); ++i) {
         //            data(i) = std::move(data(i + length));
         //        }
