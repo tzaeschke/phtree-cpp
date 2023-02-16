@@ -9,6 +9,7 @@ cc_library(
         "b_plus_tree_multimap.h",
         "base_types.h",
         "bits.h",
+        "bpt_fixed_vector.h",
         "common.h",
         "debug_helper.h",
         "flat_array_map.h",
