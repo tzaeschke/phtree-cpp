@@ -234,7 +234,7 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, LEAF_CFG>;
+    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, true, LeafEntryT, LEAF_CFG>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
