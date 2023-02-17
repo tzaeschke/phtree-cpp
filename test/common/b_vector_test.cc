@@ -98,7 +98,92 @@ void CheckMapResult(const R& result, END end, const K& key, const V& val) {
     ASSERT_EQ(result->second, val);
 }
 
-TEST(PhTreeBptHeapTest, SmokeTest) {
+TEST(PhTreeBptFixedVectorTest, SmokeTest0) {
+    const size_t N = 100;
+    std::default_random_engine random_engine{0};
+    std::uniform_int_distribution<> cube_distribution(0, N - 1);
+
+    using ValueT = Id;
+    for (int i = 0; i < 100; i++) {
+        std::cout << "Round i=" << i << std::endl;
+        bpt_vector<ValueT, N> test_map{};
+
+        // populate 50%
+        for (size_t j = 0; j < N / 2; j++) {
+            test_map.emplace_back(j);
+            // test_map._check();
+        }
+        ASSERT_EQ(test_map.size(), N / 2);
+
+        // populate 100%
+        for (size_t j = N / 2; j < N; j++) {
+            test_map.emplace(test_map.begin() + N / 4, j);
+        }
+        ASSERT_EQ(test_map.size(), N);
+
+        for (size_t j = 0; j < N; j++) {
+            ASSERT_LE(test_map[j].i_, (int)N);
+        }
+
+        // update
+        for (size_t j = 0; j < N; j++) {
+            int pos = cube_distribution(random_engine);
+            test_map.erase(test_map.begin() + pos);
+
+            // add
+            int pos2 = cube_distribution(random_engine);
+            test_map.emplace(test_map.begin() + pos2, j);
+        }
+        ASSERT_EQ(test_map.size(), N);
+
+        // update ranges
+        for (size_t j = 0; j < N; j++) {
+            int R = 5;
+            size_t pos = cube_distribution(random_engine) % (N - R);
+            test_map.erase(test_map.begin() + pos, test_map.begin() + pos + R);
+
+            // add
+            int pos2 = std::max(0, (int)(cube_distribution(random_engine) % N - R));
+            bpt_vector<Id> tm2{};
+            // std::vector<Id> ref2{};
+            for (int k = 0; k < R; ++k) {
+                tm2.emplace_back(j + k);
+            }
+            test_map.insert(
+                test_map.begin() + pos2,
+                std::move_iterator(tm2.begin()),
+                std::move_iterator(tm2.end()));
+        }
+        ASSERT_EQ(test_map.size(), N);
+
+        size_t n = 0;
+        for (auto it = test_map.begin(); it != test_map.end(); ++it) {
+            ++n;
+        }
+        ASSERT_EQ(N, n);
+        static_assert(std::is_same_v<decltype(test_map.begin()), decltype(test_map.end())>);
+
+        // drain 50%
+        while (test_map.size() > N / 2) {
+            size_t pos = cube_distribution(random_engine) % (N / 4);
+            test_map.erase(test_map.begin() + pos, test_map.begin() + pos + 3);
+        }
+
+        // drain 100%
+        while (!test_map.empty()) {
+            size_t pos = cube_distribution(random_engine) % test_map.size();
+            test_map.erase(test_map.begin() + pos);
+        }
+
+        ASSERT_EQ(0u, test_map.size());
+        ASSERT_TRUE(test_map.empty());
+    }
+
+    ASSERT_GE(construct_count_ + copy_construct_count_ + move_construct_count_, destruct_count_);
+    ASSERT_LE(construct_count_ + copy_construct_count_, destruct_count_);
+}
+
+TEST(PhTreeBptFixedVectorTest, SmokeTest) {
     const size_t N = 100;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N - 1);
@@ -110,19 +195,17 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
 
         // populate 50%
         for (size_t j = 0; j < N / 2; j++) {
-            ValueT val{j};
-            test_map.emplace_back(val);
+            test_map.emplace_back(j);
             // test_map._check();
-            reference_map.emplace_back(val);
+            reference_map.emplace_back(j);
         }
         ASSERT_EQ(test_map.size(), reference_map.size());
 
         // populate 100%
         for (size_t j = N / 2; j < N; j++) {
-            ValueT val{j};
-            test_map.emplace(test_map.begin() + N / 4, val);
+            test_map.emplace(test_map.begin() + N / 4, j);
             // test_map._check();
-            reference_map.emplace(reference_map.begin() + N / 4, val);
+            reference_map.emplace(reference_map.begin() + N / 4, j);
 
             ASSERT_EQ(test_map.size(), reference_map.size());
         }
@@ -142,9 +225,8 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
 
             // add
             int pos2 = cube_distribution(random_engine);
-            ValueT val{j};
-            test_map.emplace(test_map.begin() + pos2, val);
-            reference_map.emplace(reference_map.begin() + pos2, val);
+            test_map.emplace(test_map.begin() + pos2, j);
+            reference_map.emplace(reference_map.begin() + pos2, j);
             ASSERT_EQ(test_map[pos2], reference_map[pos2]);
             ASSERT_EQ(test_map.back(), reference_map.back());
 
@@ -156,7 +238,7 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
         // update ranges
         for (size_t j = 0; j < N; j++) {
             int R = 5;
-            int pos = cube_distribution(random_engine) % (N - R);
+            size_t pos = cube_distribution(random_engine) % (N - R);
             ASSERT_EQ(test_map[pos], reference_map[pos]);
             test_map.erase(test_map.begin() + pos, test_map.begin() + pos + R);
             reference_map.erase(reference_map.begin() + pos, reference_map.begin() + pos + R);
@@ -192,7 +274,7 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
 
         // drain 50%
         while (test_map.size() > N / 2) {
-            int pos = cube_distribution(random_engine) % (N / 4);
+            size_t pos = cube_distribution(random_engine) % (N / 4);
             test_map.erase(test_map.begin() + pos, test_map.begin() + pos + 3);
             reference_map.erase(reference_map.begin() + pos, reference_map.begin() + pos + 3);
             ASSERT_EQ(test_map.back(), reference_map.back());
@@ -200,7 +282,7 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
 
         // drain 100%
         while (!test_map.empty()) {
-            int pos = cube_distribution(random_engine) % test_map.size();
+            size_t pos = cube_distribution(random_engine) % test_map.size();
             ASSERT_EQ(test_map[pos], reference_map[pos]);
             test_map.erase(test_map.begin() + pos);
             reference_map.erase(reference_map.begin() + pos);
@@ -209,6 +291,9 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
         ASSERT_EQ(0u, test_map.size());
         ASSERT_TRUE(test_map.empty());
     }
+
+    ASSERT_GE(construct_count_ + copy_construct_count_ + move_construct_count_, destruct_count_);
+    ASSERT_LE(construct_count_ + copy_construct_count_, destruct_count_);
 }
 
 template <typename TREE>
@@ -227,7 +312,7 @@ void test_tree(TREE& tree) {
     ASSERT_TRUE(tree.empty());
 }
 
-TEST(PhTreeBptMulitmapTest, TestCopyConstruct) {
+TEST(PhTreeBptFixedVectorTest, TestCopyConstruct) {
     using TestTree = bpt_vector<Id>;
     TestTree tree1;
     tree1.emplace_back(Id(1));
@@ -238,7 +323,7 @@ TEST(PhTreeBptMulitmapTest, TestCopyConstruct) {
     test_tree(tree1);
 }
 
-TEST(PhTreeBptMulitmapTest, TestCopyAssign) {
+TEST(PhTreeBptFixedVectorTest, TestCopyAssign) {
     using TestTree = bpt_vector<Id>;
     TestTree tree1;
     tree1.emplace_back(Id(1));
@@ -250,7 +335,7 @@ TEST(PhTreeBptMulitmapTest, TestCopyAssign) {
     test_tree(tree1);
 }
 
-TEST(PhTreeBptMulitmapTest, TestMoveConstruct) {
+TEST(PhTreeBptFixedVectorTest, TestMoveConstruct) {
     using TestTree = bpt_vector<Id>;
     TestTree tree1;
     tree1.emplace_back(Id(1));
@@ -259,7 +344,7 @@ TEST(PhTreeBptMulitmapTest, TestMoveConstruct) {
     test_tree(tree);
 }
 
-TEST(PhTreeBptMulitmapTest, TestMoveAssign) {
+TEST(PhTreeBptFixedVectorTest, TestMoveAssign) {
     using TestTree = bpt_vector<Id>;
     TestTree tree1;
     tree1.emplace_back(Id(1));

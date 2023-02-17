@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-Nothing yet.
+### Added
+- Added `bpt_fixed_vector`, a fixed size flat vector for future use. It can be dropped in for an std::vector.
+  [#124](https://github.com/tzaeschke/phtree-cpp/pull/124)
 
 ## [1.5.0] - 2023-02-09
 ### Added

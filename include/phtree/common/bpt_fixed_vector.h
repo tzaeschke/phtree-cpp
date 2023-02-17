@@ -134,9 +134,9 @@ class bpt_vector {
     using difference_type = std::ptrdiff_t;
     using reference = value_type&;
     using const_reference = const value_type&;
-    // using pointer 	Allocator::pointer 	(until C++11)
+    using pointer = value_type*;  //	Allocator::pointer 	(until C++11)
     //     std::allocator_traits<Allocator>::pointer 	(since C++11)
-    // using const_pointer 	Allocator::const_pointer 	(until C++11)
+    using const_pointer = const value_type*;  //	Allocator::const_pointer 	(until C++11)
     //             std::allocator_traits<Allocator>::const_pointer 	(since C++11)
     // TODO LegacyContiguousIterator ?!!?!?!?
     // using iterator = bpt_vector_iterator<value_type>;  // LegacyRandomAccessIterator
@@ -194,27 +194,20 @@ class bpt_vector {
     }
 
     template <typename InputIterator>
-    // iterator insert(const_iterator iter, std::move_iterator<const_iterator> src_begin,
-    // std::move_iterator<const_iterator> src_end) {
     iterator insert(const_iterator iter, InputIterator src_begin, InputIterator src_end) {
         auto length = src_end - src_begin;
         assert(size_ + length <= SIZE);
         auto index = to_index(iter);
 
-        std::memmove(
-            &*(begin() + index + length), &*(begin() + index), sizeof(V) * (size_ - index));
-        //        for (size_t i = size_ + length - 1; i > index + length - 1; --i) {
-        //            data(i) = std::move(data(i - length));
-        //        }
+        pointer dst_ptr = {const_cast<pointer>(&*iter)};
+        std::memmove(dst_ptr + length, dst_ptr, sizeof(V) * (size_ - index));
 
-        // TODO This is really hacky, it works only if "src" is also a bpt_vector....
-        //        std::memmove(&*(begin() + index), &*(src_begin), sizeof(V) + length);
+        // TODO Use memmove if the source is also a bpt_vector....
         auto src = src_begin;
-        iterator dst = begin() + index;
         while (src != src_end) {
-            *dst = std::move(*src);
+            place(dst_ptr, std::move(*src));
             ++src;
-            ++dst;
+            ++dst_ptr;
         }
         size_ += length;
         assert(size_ <= SIZE);
@@ -225,51 +218,37 @@ class bpt_vector {
     iterator emplace(const_iterator iter, Args&&... args) {
         assert(size_ < SIZE);
         auto index = to_index(iter);
-
-        auto src = begin() + index;
-        memmove(&*(src + 1), &*src, sizeof(V) * (size_ - index));
-        //        for (size_t i = size_; i > index; --i) {
-        //            data(i) = std::move(data(i - 1));
-        //        }
-
-        new (reinterpret_cast<void*>(&data_[index * sizeof(V)])) V{std::forward<Args>(args)...};
+        pointer dst_ptr{const_cast<pointer>(&*iter)};
+        memmove(dst_ptr + 1, dst_ptr, sizeof(V) * (size_ - index));
+        place(dst_ptr, std::forward<Args>(args)...);
         ++size_;
-        return to_iter(index);
+        return iterator{dst_ptr};
     }
 
     template <typename... Args>
     reference emplace_back(Args&&... args) {
         assert(size_ < SIZE);
-        new (reinterpret_cast<void*>(&data_[size_ * sizeof(V)])) V{std::forward<Args>(args)...};
-        ++size_;
-        return data(size_ - 1);
+        return *place(size_++, std::forward<Args>(args)...);
     }
 
-    iterator erase(const_iterator iterator) noexcept {
-        auto index = to_index(iterator);
-        data(index).~V();
-
-        auto dst = begin() + index;
-        memmove(&*dst, &*(dst + 1), sizeof(V) * (size_ - index - 1));
+    iterator erase(const_iterator iter) noexcept {
+        iter->~V();
+        pointer dst{const_cast<pointer>(&*iter)};
+        memmove(dst, dst + 1, sizeof(V) * (size_ - to_index(iter) - 1));
         --size_;
-        return dst;
+        return iterator{dst};
     }
 
     iterator erase(const_iterator first, const_iterator last) noexcept {
-        auto index_0 = to_index(first);
-        auto index_n = to_index(last);
-        auto length = last - first;
         auto ptr_last = &*last;
         for (auto* ptr = &*first; ptr < ptr_last; ++ptr) {
             ptr->~V();
         }
-        auto dst = begin() + index_0;
-        memmove(&*dst, &*dst + length, sizeof(V) * (size_ - index_n));
-        //        for (size_t i = index_0; i < (size_ - length); ++i) {
-        //            data(i) = std::move(data(i + length));
-        //        }
+        auto length = last - first;
+        pointer dst{const_cast<pointer>(&*first)};
+        memmove(dst, dst + length, sizeof(V) * (end_ptr() - &*last));
         size_ -= length;
-        return to_iter(index_0);  // TODO return first?
+        return iterator{dst};
     }
 
     [[nodiscard]] size_t size() const noexcept {
@@ -283,8 +262,19 @@ class bpt_vector {
     void reserve(size_t) noexcept {}
 
   private:
+    template <typename... Args>
+    pointer place(size_t index, Args&&... args) noexcept {
+        return new (reinterpret_cast<void*>(&data_[index * sizeof(V)]))
+            V{std::forward<Args>(args)...};
+    }
+
+    template <typename... Args>
+    pointer place(pointer ptr, Args&&... args) noexcept {
+        return new (reinterpret_cast<void*>(ptr)) V{std::forward<Args>(args)...};
+    }
+
     size_type to_index(const_iterator& iter) const noexcept {
-        return &*iter - &data_c(0);
+        return &*iter - reinterpret_cast<const_pointer>(&data_);
     }
 
     const_iterator to_iter_c(size_t index) const noexcept {
@@ -301,6 +291,10 @@ class bpt_vector {
 
     const_reference data_c(size_t index) const noexcept {
         return *std::launder(reinterpret_cast<const V*>(&data_[index * sizeof(V)]));
+    }
+
+    pointer end_ptr() noexcept {
+        return std::launder(reinterpret_cast<V*>(&data_[size_ * sizeof(V)]));
     }
 
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
