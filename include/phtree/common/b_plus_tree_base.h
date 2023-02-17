@@ -73,14 +73,16 @@ class bpt_node_base {
 
 template <
     typename KeyT,
+    typename ValueT,
     typename NInnerT,
     typename NLeafT,
     bool IsLeaf,
-    typename EntryT,
     typename CFG = bpt_config<16, 2, 2>>
 class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     // TODO This could be improved but requires a code change to move > 1 entry when merging.
     static_assert(CFG::MIN == 2 && "M_MIN != 2 is not supported");
+    using ValueT2 = std::conditional_t<IsLeaf, ValueT, bpt_node_base<KeyT, NInnerT, NLeafT>*>;
+    using EntryT = std::pair<KeyT, ValueT2>;
     using ContainerT = std::conditional_t<
         CFG::MODE == bpt_config_container::VAR,
         std::vector<EntryT>,
@@ -326,27 +328,18 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     ThisT* next_node_;
 };
 
-template <typename KeyT, typename NLeafT, typename CFG>
-class bpt_node_inner;
+// This type is replaced with the proper type inside bpt_node_data
+using bpt_dummy = void;
 
 template <typename KeyT, typename NLeafT, typename CFG = bpt_config<16, 2, 2>>
-using bpt_entry = std::pair<KeyT, bpt_node_base<KeyT, bpt_node_inner<KeyT, NLeafT, CFG>, NLeafT>*>;
-
-template <typename KeyT, typename NLeafT, typename CFG = bpt_config<16, 2, 2>>
-class bpt_node_inner : public bpt_node_data<
-                           KeyT,
-                           bpt_node_inner<KeyT, NLeafT, CFG>,
-                           NLeafT,
-                           false,
-                           bpt_entry<KeyT, NLeafT, CFG>,
-                           CFG> {
+class bpt_node_inner
+: public bpt_node_data<KeyT, bpt_dummy, bpt_node_inner<KeyT, NLeafT, CFG>, NLeafT, false, CFG> {
     using NInnerT = bpt_node_inner<KeyT, NLeafT, CFG>;
     using NodePtrT = bpt_node_base<KeyT, NInnerT, NLeafT>*;
-    using EntryT = std::pair<KeyT, NodePtrT>;
 
   public:
     explicit bpt_node_inner(NInnerT* parent, NInnerT* prev, NInnerT* next) noexcept
-    : bpt_node_data<KeyT, NInnerT, NLeafT, false, EntryT, CFG>(false, parent, prev, next) {}
+    : bpt_node_data<KeyT, bpt_dummy, NInnerT, NLeafT, false, CFG>(false, parent, prev, next) {}
 
     ~bpt_node_inner() noexcept {
         for (auto& e : this->data_) {
@@ -448,7 +441,7 @@ template <typename NLeafT, typename NodeT, typename F1>
 class bpt_iterator_base {
     using IterT = bpt_iterator_base<NLeafT, NodeT, F1>;
 
-    template <typename A, typename B, typename C, bool D, typename E, typename F>
+    template <typename A, typename B, typename C, typename D, bool E, typename F>
     friend class bpt_node_data;
     friend F1;
     friend NLeafT;

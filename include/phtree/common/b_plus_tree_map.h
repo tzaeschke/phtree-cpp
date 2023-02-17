@@ -88,7 +88,6 @@ class b_plus_tree_map {
 
     class bpt_node_leaf;
     class bpt_iterator;
-    using LeafEntryT = std::pair<KeyT, ValueT>;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<KeyT, NLeafT, INNER_CFG>;
@@ -234,7 +233,7 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, true, LeafEntryT, LEAF_CFG>;
+    using bpt_leaf_super = bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, LEAF_CFG>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -312,11 +311,11 @@ class b_plus_tree_map {
         bpt_iterator() noexcept : SuperT() {}
 
         auto& operator*() const noexcept {
-            return const_cast<LeafEntryT&>(*this->iter());
+            return *this->iter();
         }
 
         auto* operator->() const noexcept {
-            return const_cast<LeafEntryT*>(&*this->iter());
+            return &*this->iter();
         }
     };
 

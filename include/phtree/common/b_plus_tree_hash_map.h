@@ -83,7 +83,6 @@ class b_plus_tree_hash_set {
 
     class bpt_node_leaf;
     class bpt_iterator;
-    using LeafEntryT = std::pair<hash_t, T>;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
     using NInnerT = bpt_node_inner<hash_t, NLeafT>;
@@ -240,7 +239,7 @@ class b_plus_tree_hash_set {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<hash_t, NInnerT, NLeafT, true, LeafEntryT>;
+    using bpt_leaf_super = bpt_node_data<hash_t, T, NInnerT, NLeafT, true>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
