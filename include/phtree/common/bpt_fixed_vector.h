@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <cstring>
 #include <tuple>
-#include <vector>
 
 namespace phtree::bptree::detail {
 
@@ -32,8 +31,6 @@ class bpt_vector_iterator {
     using normal_iterator = bpt_vector_iterator<V>;
 
   public:
-    // using iterator_category = std::forward_iterator_tag;
-    // using iterator_category = std::bidirectional_iterator_tag;
     using iterator_category = std::random_access_iterator_tag;
     using value_type = V;
     using difference_type = std::ptrdiff_t;
@@ -235,7 +232,7 @@ class bpt_vector {
         //            data(i) = std::move(data(i - 1));
         //        }
 
-        new (reinterpret_cast<void*>(&data_[index])) V{std::forward<Args>(args)...};
+        new (reinterpret_cast<void*>(&data_[index * sizeof(V)])) V{std::forward<Args>(args)...};
         ++size_;
         return to_iter(index);
     }
@@ -243,7 +240,7 @@ class bpt_vector {
     template <typename... Args>
     reference emplace_back(Args&&... args) {
         assert(size_ < SIZE);
-        new (reinterpret_cast<void*>(&data_[size_])) V{std::forward<Args>(args)...};
+        new (reinterpret_cast<void*>(&data_[size_ * sizeof(V)])) V{std::forward<Args>(args)...};
         ++size_;
         return data(size_ - 1);
     }
@@ -254,10 +251,6 @@ class bpt_vector {
 
         auto dst = begin() + index;
         memmove(&*dst, &*(dst + 1), sizeof(V) * (size_ - index - 1));
-        //        for (size_t i = index; i < (size_ - 1); ++i) {
-        //            data(i) = std::move(data(i + 1));
-        //        }
-
         --size_;
         return dst;
     }
@@ -303,17 +296,16 @@ class bpt_vector {
     }
 
     reference data(size_t index) noexcept {
-        return *std::launder(reinterpret_cast<V*>(&data_[index]));
+        return *std::launder(reinterpret_cast<V*>(&data_[index * sizeof(V)]));
     }
 
     const_reference data_c(size_t index) const noexcept {
-        return *std::launder(reinterpret_cast<const V*>(&data_[index]));
+        return *std::launder(reinterpret_cast<const V*>(&data_[index * sizeof(V)]));
     }
 
     // We use an untyped array to avoid implicit calls to constructors and destructors of entries.
-    std::aligned_storage_t<sizeof(V), alignof(V)> data_[SIZE];
+    alignas(V) std::byte data_[sizeof(V) * SIZE];
     size_t size_{0};
-    // std::vector<double> v;
 };
 }  // namespace phtree::bptree::detail
 
