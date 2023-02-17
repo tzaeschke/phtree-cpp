@@ -86,7 +86,7 @@ class b_plus_tree_hash_set {
     using LeafEntryT = std::pair<hash_t, T>;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = bpt_node_inner<hash_t, NLeafT, IterT>;
+    using NInnerT = bpt_node_inner<hash_t, NLeafT>;
     using NodeT = bpt_node_base<hash_t, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_hash_set<T, HashT, PredT>;
 
@@ -240,7 +240,7 @@ class b_plus_tree_hash_set {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<hash_t, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT>;
+    using bpt_leaf_super = bpt_node_data<hash_t, NInnerT, NLeafT, NLeafT, LeafEntryT>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -250,7 +250,7 @@ class b_plus_tree_hash_set {
 
         [[nodiscard]] IterT find(hash_t hash, const T& value) noexcept {
             PredT equals{};
-            IterT iter_full = this->lower_bound_as_iter(hash);
+            IterT iter_full = this->template lower_bound_as_iter<IterT>(hash);
             while (!iter_full.is_end() && iter_full.hash() == hash) {
                 if (equals(*iter_full, value)) {
                     return iter_full;
@@ -262,7 +262,7 @@ class b_plus_tree_hash_set {
 
         [[nodiscard]] auto lower_bound_value(hash_t hash, const T& value) noexcept {
             PredT equals{};
-            IterT iter_full = this->lower_bound_as_iter(hash);
+            IterT iter_full = this->template lower_bound_as_iter<IterT>(hash);
             while (!iter_full.is_end() && iter_full.hash() == hash) {
                 if (equals(*iter_full, value)) {
                     break;
@@ -287,7 +287,7 @@ class b_plus_tree_hash_set {
             }
             ++entry_count;
 
-            auto full_it = this->check_split_and_adjust_iterator(it, hash, root);
+            auto full_it = this->template check_split_and_adjust_iterator<IterT>(it, hash, root);
             auto it_result = full_it.node_->data_.emplace(full_it.iter_, hash, std::move(t));
             return std::make_pair(IterT(full_it.node_, it_result), true);
         }

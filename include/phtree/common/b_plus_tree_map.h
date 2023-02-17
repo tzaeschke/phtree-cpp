@@ -91,7 +91,7 @@ class b_plus_tree_map {
     using LeafEntryT = std::pair<KeyT, ValueT>;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = bpt_node_inner<KeyT, NLeafT, IterT, INNER_CFG>;
+    using NInnerT = bpt_node_inner<KeyT, NLeafT, INNER_CFG>;
     using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
 
@@ -141,7 +141,7 @@ class b_plus_tree_map {
 
     [[nodiscard]] auto lower_bound(KeyT key) noexcept {
         auto leaf = lower_bound_leaf(key, root_);
-        return leaf != nullptr ? leaf->lower_bound_as_iter(key) : IterT{};
+        return leaf != nullptr ? leaf->template lower_bound_as_iter<IterT>(key) : IterT{};
     }
 
     [[nodiscard]] auto lower_bound(KeyT key) const noexcept {
@@ -234,8 +234,7 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super =
-        bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, IterT, LEAF_CFG>;
+    using bpt_leaf_super = bpt_node_data<KeyT, NInnerT, NLeafT, NLeafT, LeafEntryT, LEAF_CFG>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -259,7 +258,7 @@ class b_plus_tree_map {
             }
             ++entry_count;
 
-            auto full_it = this->check_split_and_adjust_iterator(it, key, root);
+            auto full_it = this->template check_split_and_adjust_iterator<IterT>(it, key, root);
             auto it_result = full_it.node_->data_.emplace(
                 full_it.iter_,
                 std::piecewise_construct,
