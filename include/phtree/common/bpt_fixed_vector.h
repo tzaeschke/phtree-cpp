@@ -200,9 +200,10 @@ class bpt_vector {
         auto index = to_index(iter);
 
         pointer dst_ptr = {const_cast<pointer>(&*iter)};
-        std::memmove(dst_ptr + length, dst_ptr, sizeof(V) * (size_ - index));
+        move_to_back(dst_ptr + length, dst_ptr, size_ - index);
 
         // TODO Use memmove if the source is also a bpt_vector....
+        // if constexpr (src_begin.base() is b_vector_iterator) ... move_to_back else loop
         auto src = src_begin;
         while (src != src_end) {
             place(dst_ptr, std::move(*src));
@@ -219,7 +220,7 @@ class bpt_vector {
         assert(size_ < SIZE);
         auto index = to_index(iter);
         pointer dst_ptr{const_cast<pointer>(&*iter)};
-        memmove(dst_ptr + 1, dst_ptr, sizeof(V) * (size_ - index));
+        move_to_back(dst_ptr + 1, dst_ptr, size_ - index);
         place(dst_ptr, std::forward<Args>(args)...);
         ++size_;
         return iterator{dst_ptr};
@@ -234,7 +235,7 @@ class bpt_vector {
     iterator erase(const_iterator iter) noexcept {
         iter->~V();
         pointer dst{const_cast<pointer>(&*iter)};
-        memmove(dst, dst + 1, sizeof(V) * (size_ - to_index(iter) - 1));
+        move_to_front(dst, dst + 1, size_ - to_index(iter) - 1);
         --size_;
         return iterator{dst};
     }
@@ -246,7 +247,7 @@ class bpt_vector {
         }
         auto length = last - first;
         pointer dst{const_cast<pointer>(&*first)};
-        memmove(dst, dst + length, sizeof(V) * (end_ptr() - &*last));
+        move_to_front(dst, dst + length, end_ptr() - &*last);
         size_ -= length;
         return iterator{dst};
     }
@@ -262,6 +263,32 @@ class bpt_vector {
     void reserve(size_t) noexcept {}
 
   private:
+    template <class V2 = V, typename std::enable_if_t<std::is_trivially_copyable_v<V2>, int> = 0>
+    void move_to_back(pointer dst, pointer src, size_t count) noexcept {
+        memmove(dst, src, count * sizeof(V));
+    }
+
+    template <class V2 = V, typename std::enable_if_t<!std::is_trivially_copyable_v<V2>, int> = 0>
+    void move_to_back(pointer dst, pointer src, size_t count) noexcept {
+        dst += count - 1;
+        src += count - 1;
+        for (size_t i = 0; i < count; ++i, --dst, --src) {
+            data(dst) = std::move(data(src));
+        }
+    }
+
+    template <class V2 = V, typename std::enable_if_t<std::is_trivially_copyable_v<V2>, int> = 0>
+    void move_to_front(pointer dst, pointer src, size_t count) noexcept {
+        memmove(dst, src, count * sizeof(V));
+    }
+
+    template <class V2 = V, typename std::enable_if_t<!std::is_trivially_copyable_v<V2>, int> = 0>
+    void move_to_front(pointer dst, pointer src, size_t count) noexcept {
+        for (size_t i = 0; i < count; ++i, ++dst, ++src) {
+            *dst = std::move(*src);
+        }
+    }
+
     template <typename... Args>
     pointer place(size_t index, Args&&... args) noexcept {
         return new (reinterpret_cast<void*>(&data_[index * sizeof(V)]))
@@ -283,6 +310,10 @@ class bpt_vector {
 
     iterator to_iter(size_t index) noexcept {
         return iterator{&data(index)};
+    }
+
+    reference data(pointer ptr) noexcept {
+        return *std::launder(ptr);
     }
 
     reference data(size_t index) noexcept {

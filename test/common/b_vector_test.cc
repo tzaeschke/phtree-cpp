@@ -91,6 +91,20 @@ struct Id {
     int i_;
 };
 
+struct IdTriviallyCopyable {
+    IdTriviallyCopyable() : i_{0} {}
+
+    explicit IdTriviallyCopyable(const size_t i) : i_{static_cast<int>(i)} {}
+
+    explicit IdTriviallyCopyable(const int i) : i_{i} {}
+
+    bool operator==(const IdTriviallyCopyable& rhs) const {
+        return i_ == rhs.i_;
+    }
+
+    int i_;
+};
+
 template <typename R, typename K, typename V, typename END>
 void CheckMapResult(const R& result, END end, const K& key, const V& val) {
     ASSERT_NE(result, end);
@@ -105,7 +119,6 @@ TEST(PhTreeBptFixedVectorTest, SmokeTest0) {
 
     using ValueT = Id;
     for (int i = 0; i < 100; i++) {
-        std::cout << "Round i=" << i << std::endl;
         bpt_vector<ValueT, N> test_map{};
 
         // populate 50%
@@ -183,7 +196,8 @@ TEST(PhTreeBptFixedVectorTest, SmokeTest0) {
     ASSERT_LE(construct_count_ + copy_construct_count_, destruct_count_);
 }
 
-TEST(PhTreeBptFixedVectorTest, SmokeTest) {
+template <typename Id>
+void SmokeTest() {
     const size_t N = 100;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N - 1);
@@ -291,9 +305,19 @@ TEST(PhTreeBptFixedVectorTest, SmokeTest) {
         ASSERT_EQ(0u, test_map.size());
         ASSERT_TRUE(test_map.empty());
     }
+}
 
+TEST(PhTreeBptFixedVectorTest, SmokeTest) {
+    static_assert(!std::is_trivially_copyable_v<Id>);
+    reset_id_counters();
+    SmokeTest<Id>();
     ASSERT_GE(construct_count_ + copy_construct_count_ + move_construct_count_, destruct_count_);
     ASSERT_LE(construct_count_ + copy_construct_count_, destruct_count_);
+}
+
+TEST(PhTreeBptFixedVectorTest, SmokeTest_TriviallyCopyable) {
+    static_assert(std::is_trivially_copyable_v<IdTriviallyCopyable>);
+    SmokeTest<IdTriviallyCopyable>();
 }
 
 template <typename TREE>
