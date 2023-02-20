@@ -26,11 +26,15 @@
 namespace improbable::phtree::v16 {
 
 template <dimension_t DIM, typename T, typename CONVERT>
-class PhTreeV16;
+class PhTreeV16; // TODO remove?
 
-template <dimension_t DIM, typename T, typename SCALAR>
+//template <dimension_t DIM2, typename T2, typename SCALAR2>
+template <typename EntryT>
 class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
-    using EntryT = Entry<DIM, T, SCALAR>;
+    //using EntryT = Entry<DIM2, T2, SCALAR2>;
+    //using SCALAR = decltype(std::declval<EntryT&>()[std::size_t{}]);
+    using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(std::declval<EntryT&>().GetKey()[std::size_t{}])>>;
+    //using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(EntryT{}.GetKey()[0])>>;
 
   public:
     DebugHelperV16(const EntryT& root, size_t size) : root_{root}, size_{size} {}
@@ -112,11 +116,12 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
 
         // for a leaf node, the existence of a sub just indicates that the value exists.
         if (infix_len > 0) {
-            bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << infix_len;
-            mask = ~mask;
-            mask <<= (std::uint64_t)postfix_len + 1;
-            for (dimension_t i = 0; i < DIM; ++i) {
-                sb << ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
+//            bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << infix_len;
+//            mask = ~mask;
+//            mask <<= (std::uint64_t)postfix_len + 1;
+            for (dimension_t i = 0; i < entry.GetKey().size(); ++i) {
+                //sb << ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
+                sb << ToBinary<SCALAR>(entry.GetKey()[i]) << ",";
             }
         }
         current_depth += infix_len;

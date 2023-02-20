@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,9 +49,29 @@ namespace improbable::phtree {
  * @returns Encoded HC position, which is the index in the array if the entries would be stored in
  * an array.
  */
-template <dimension_t DIM, typename SCALAR>
-static hc_pos_dim_t<DIM> CalcPosInArray(
-    const PhPoint<DIM, SCALAR>& valSet, bit_width_t postfix_len) {
+// template <dimension_t DIM, typename SCALAR>
+// static hc_pos_dim_t<DIM> CalcPosInArray(
+//     const PhPoint<DIM, SCALAR>& valSet, bit_width_t postfix_len) {
+//     // n=DIM,  i={0..n-1}
+//     // i = 0 :  |0|1|0|1|0|1|0|1|
+//     // i = 1 :  | 0 | 1 | 0 | 1 |
+//     // i = 2 :  |   0   |   1   |
+//     // len = 2^n
+//     // Following formula was for inverse ordering of current ordering...
+//     // pos = sum (i=1..n, len/2^i) = sum (..., 2^(n-i))
+//     bit_mask_t<SCALAR> valMask = bit_mask_t<SCALAR>(1) << postfix_len;
+//     hc_pos_64_t pos = 0;
+//     for (dimension_t i = 0; i < DIM; ++i) {
+//         pos <<= 1;
+//         // set pos-bit if bit is set in value
+//         pos |= (valMask & valSet[i]) >> postfix_len;
+//     }
+//     return static_cast<hc_pos_dim_t<DIM>>(pos);
+// }
+
+template <typename Point>
+static auto CalcPosInArray(const Point& v, bit_width_t postfix_len) {
+    using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(v[0])>>;
     // n=DIM,  i={0..n-1}
     // i = 0 :  |0|1|0|1|0|1|0|1|
     // i = 1 :  | 0 | 1 | 0 | 1 |
@@ -60,20 +81,31 @@ static hc_pos_dim_t<DIM> CalcPosInArray(
     // pos = sum (i=1..n, len/2^i) = sum (..., 2^(n-i))
     bit_mask_t<SCALAR> valMask = bit_mask_t<SCALAR>(1) << postfix_len;
     hc_pos_64_t pos = 0;
-    for (dimension_t i = 0; i < DIM; ++i) {
+    for (dimension_t i = 0; i < v.size(); ++i) {
         pos <<= 1;
         // set pos-bit if bit is set in value
-        pos |= (valMask & valSet[i]) >> postfix_len;
+        pos |= (valMask & v[i]) >> postfix_len;
     }
-    return static_cast<hc_pos_dim_t<DIM>>(pos);
+    return static_cast<hc_pos_point_t<Point>>(pos);
 }
 
-template <dimension_t DIM, typename SCALAR>
-static bool IsInRange(
-    const PhPoint<DIM, SCALAR>& candidate,
-    const PhPoint<DIM, SCALAR>& range_min,
-    const PhPoint<DIM, SCALAR>& range_max) {
-    for (dimension_t i = 0; i < DIM; ++i) {
+// template <dimension_t DIM, typename SCALAR>
+// static bool IsInRange(
+//     const PhPoint<DIM, SCALAR>& candidate,
+//     const PhPoint<DIM, SCALAR>& range_min,
+//     const PhPoint<DIM, SCALAR>& range_max) {
+//     for (dimension_t i = 0; i < DIM; ++i) {
+//         auto k = candidate[i];
+//         if (k < range_min[i] || k > range_max[i]) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
+template <typename Point>
+static bool IsInRange(const Point& candidate, const Point& range_min, const Point& range_max) {
+    for (dimension_t i = 0; i < candidate.size(); ++i) {
         auto k = candidate[i];
         if (k < range_min[i] || k > range_max[i]) {
             return false;
@@ -91,12 +123,25 @@ static bool IsInRange(
  * the two keys. In case of key1==key2 we return 0. In other words, for 64 bit keys, we return 64
  * minus the number of leading bits that are common in both keys across all dimensions.
  */
-template <dimension_t DIM, typename SCALAR>
-static bit_width_t NumberOfDivergingBits(
-    const PhPoint<DIM, SCALAR>& v1, const PhPoint<DIM, SCALAR>& v2) {
+// template <dimension_t DIM, typename SCALAR>
+// static bit_width_t NumberOfDivergingBits(
+//     const PhPoint<DIM, SCALAR>& v1, const PhPoint<DIM, SCALAR>& v2) {
+//     // write all differences to diff, we just check diff afterwards
+//     SCALAR diff = 0;
+//     for (dimension_t i = 0; i < DIM; ++i) {
+//         diff |= (v1[i] ^ v2[i]);
+//     }
+//     auto diff2 = reinterpret_cast<bit_mask_t<SCALAR>&>(diff);
+//     assert(CountLeadingZeros(diff2) <= MAX_BIT_WIDTH<SCALAR>);
+//     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
+// }
+//
+template <typename Point>
+static bit_width_t NumberOfDivergingBits(const Point& v1, const Point& v2) {
+    using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(v1[0])>>;
     // write all differences to diff, we just check diff afterwards
     SCALAR diff = 0;
-    for (dimension_t i = 0; i < DIM; ++i) {
+    for (dimension_t i = 0; i < v1.size(); ++i) {
         diff |= (v1[i] ^ v2[i]);
     }
     auto diff2 = reinterpret_cast<bit_mask_t<SCALAR>&>(diff);
@@ -104,11 +149,20 @@ static bit_width_t NumberOfDivergingBits(
     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
 }
 
-template <dimension_t DIM, typename SCALAR>
-static bool KeyEquals(
-    const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, bit_width_t ignore_bits) {
+// template <dimension_t DIM, typename SCALAR>
+// static bool KeyEquals(
+//     const PhPoint<DIM, SCALAR>& key_a, const PhPoint<DIM, SCALAR>& key_b, bit_width_t
+//     ignore_bits) { SCALAR diff{0}; for (dimension_t i = 0; i < DIM; ++i) {
+//         diff |= key_a[i] ^ key_b[i];
+//     }
+//     return diff >> ignore_bits == 0;
+// }
+
+template <typename Point>
+static bool KeyEquals(const Point& key_a, const Point& key_b, bit_width_t ignore_bits) {
+    using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(key_a[0])>>;
     SCALAR diff{0};
-    for (dimension_t i = 0; i < DIM; ++i) {
+    for (dimension_t i = 0; i < key_a.size(); ++i) {
         diff |= key_a[i] ^ key_b[i];
     }
     return diff >> ignore_bits == 0;
@@ -145,7 +199,17 @@ static inline std::string ToBinary(SCALAR l, bit_width_t width = MAX_BIT_WIDTH<S
 
 template <dimension_t DIM, typename SCALAR>
 static inline std::string ToBinary(
-    const PhPoint<DIM, SCALAR>& la, bit_width_t width = MAX_BIT_WIDTH<SCALAR>) {
+    const PhPointLD<DIM, SCALAR>& la, bit_width_t width = MAX_BIT_WIDTH<SCALAR>) {
+    std::ostringstream sb;
+    for (dimension_t i = 0; i < DIM; ++i) {
+        sb << ToBinary(la[i], width) << ", ";
+    }
+    return sb.str();
+}
+
+template <dimension_t DIM, typename SCALAR>
+static inline std::string ToBinary(
+    const PhPointHD<DIM, SCALAR>& la, bit_width_t width = MAX_BIT_WIDTH<SCALAR>) {
     std::ostringstream sb;
     for (dimension_t i = 0; i < DIM; ++i) {
         sb << ToBinary(la[i], width) << ", ";

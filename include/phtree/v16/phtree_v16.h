@@ -776,7 +776,7 @@ class PhTreeV16 {
      * This function is only for debugging.
      */
     auto GetDebugHelper() const {
-        return DebugHelperV16(root_, num_entries_);
+        return DebugHelperV16<EntryT>(root_, num_entries_);
     }
 
     /*

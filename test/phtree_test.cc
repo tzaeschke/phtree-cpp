@@ -118,34 +118,34 @@ bool comparePointDistance(PointDistance& i1, PointDistance& i2) {
     return (i1._distance < i2._distance);
 }
 
-template <dimension_t DIM>
-double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+template <typename Point>
+double distance(const Point& p1, const Point& p2) {
     double sum2 = 0;
-    for (dimension_t i = 0; i < DIM; i++) {
+    for (dimension_t i = 0; i < p1.size(); i++) {
         double d = (double)p1[i] - (double)p2[i];
         sum2 += d * d;
     }
     return sqrt(sum2);
 }
 
-template <dimension_t DIM>
-double distanceL1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+template <typename Point>
+double distanceL1(const Point& p1, const Point& p2) {
     double sum = 0;
-    for (dimension_t i = 0; i < DIM; i++) {
+    for (dimension_t i = 0; i < p1.size(); i++) {
         sum += std::abs(p1[i] - p2[i]);
     }
     return sum;
 }
 
-template <dimension_t DIM>
-void generateCube(std::vector<TestPoint<DIM>>& points, size_t N) {
+template <typename Point>
+void generateCube(std::vector<Point>& points, size_t N) {
     IntRng rng(-1000, 1000);
-    auto refTree = std::map<TestPoint<DIM>, size_t>();
+    auto refTree = std::map<Point, size_t>();
 
     points.reserve(N);
     for (size_t i = 0; i < N; i++) {
-        auto point = TestPoint<DIM>();
-        for (dimension_t d = 0; d < DIM; ++d) {
+        auto point = Point();
+        for (dimension_t d = 0; d < point.size(); ++d) {
             point[d] = rng.next();
         }
         if (refTree.count(point) != 0) {
@@ -926,16 +926,16 @@ TEST(PhTreeTest, TestRangeBasedForLoop) {
     ASSERT_EQ(N, num_e2);
 }
 
-template <dimension_t DIM>
+template <typename Point>
 void referenceQuery(
-    std::vector<TestPoint<DIM>>& points,
-    TestPoint<DIM>& min,
-    TestPoint<DIM>& max,
+    std::vector<Point>& points,
+    Point& min,
+    Point& max,
     std::set<size_t>& result) {
     for (size_t i = 0; i < points.size(); i++) {
         auto& p = points[i];
         bool match = true;
-        for (dimension_t d = 0; d < DIM; d++) {
+        for (dimension_t d = 0; d < p.size(); d++) {
             match &= p[d] >= min[d] && p[d] <= max[d];
         }
         if (match) {

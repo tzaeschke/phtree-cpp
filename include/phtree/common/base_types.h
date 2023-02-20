@@ -1,5 +1,6 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@
 #include <cstdint>
 #include <limits>
 #include <sstream>
+#include <vector>
 
 /*
  * PLEASE do not include this file directly, it is included via common.h.
@@ -31,6 +33,19 @@
  * PhPoint, PhPointD and PhPointBox.
  */
 namespace improbable::phtree {
+
+// ************************************************************************
+// SFINAE helper
+// ************************************************************************
+template <typename T>
+constexpr auto hc_pos_t_helper(int)
+    -> decltype(std::integral_constant<decltype(T::size()), T::size()>{},
+                typename std::conditional_t<T{}.size() < 32, std::uint32_t, std::uint64_t>{});
+template <typename>
+constexpr auto hc_pos_t_helper(long) -> std::uint64_t;
+template <typename T>
+// This returns 32bit for point types with `constexpr size()` and DIM < 32, otherwise 64bit.
+using hc_pos_point_t = decltype(hc_pos_t_helper<T>(0));
 
 // ************************************************************************
 // Constants and base types
@@ -61,23 +76,37 @@ using dimension_t = size_t;  // Number of dimensions
 // difference in performance when this is used.
 // The hc_pos_64_t type is always set to 64. It is used where computations play a role that appear
 // to prefer being in always 64bit, mainly in CalcPosInArray() and in Node.
-template<dimension_t DIM>
+template <dimension_t DIM>
 using hc_pos_dim_t = std::conditional_t<(DIM < 32), uint32_t, uint64_t>;
 using hc_pos_64_t = uint64_t;
+// template <typename POINT>
+// using hc_pos_point_t = std::conditional_t<std::is_same_v<isConstExprSize<POINT>, std::true_type>,
+// hc_pos_dim_t<POINT{}.size()>, uint64_t> ;
 
 // ************************************************************************
 // Basic structs and classes
 // ************************************************************************
 
+template <dimension_t DIM, typename SCALAR = scalar_64_t>
+struct PhPointLD : public std::array<SCALAR, DIM> {};
+template <dimension_t DIM, typename SCALAR = scalar_64_t>
+struct PhPointHD : public std::vector<SCALAR> {};
+// template<typename SCALAR, typename... _Up>
+// PhPointLD(SCALAR, _Up...)
+//     -> PhPointLD<std::enable_if_t<(std::is_same_v<SCALAR, _Up> && ...), SCALAR>,
+//                  1 + sizeof...(_Up)>;
+
 // The SCALAR type needs to be a signet integer, i.e. int32_t or int64_t.
 template <dimension_t DIM, typename SCALAR = scalar_64_t>
-using PhPoint = std::array<SCALAR, DIM>;
+using PhPoint = std::conditional_t < DIM<300, PhPointLD<DIM, SCALAR>, PhPointHD<DIM, SCALAR>>;
+// using PhPoint = std::conditional_t < DIM<3, std::array<SCALAR, DIM>, std::vector<SCALAR>>;
+//  using PhPoint = std::array<SCALAR, DIM>;
 
 template <dimension_t DIM>
-using PhPointD = std::array<double, DIM>;
+using PhPointD = PhPoint<DIM, double>;
 
 template <dimension_t DIM>
-using PhPointF = std::array<float, DIM>;
+using PhPointF = PhPoint<DIM, float>;
 
 template <dimension_t DIM, typename SCALAR = scalar_64_t>
 class PhBox {
@@ -88,7 +117,15 @@ class PhBox {
 
     PhBox(const PhBox<DIM, SCALAR>& orig) = default;
 
-    PhBox(const std::array<SCALAR, DIM>& min, const std::array<SCALAR, DIM>& max)
+    // PhBox(const std::array<SCALAR, DIM>& min, const std::array<SCALAR, DIM>& max)
+    //: min_{min}, max_{max} {} // TODO put back in
+    // TODO decide:
+    //  - either use inheritance of PhPointLD:
+    //      -> Can be used as std:array externally
+    //  - use delegation
+    //      -> PhBox and other constructors function continue to accept std::array as argument....
+
+    PhBox(const PhPointLD<DIM, SCALAR>& min, const PhPointLD<DIM, SCALAR>& max)
     : min_{min}, max_{max} {}
 
     [[nodiscard]] const Point& min() const {
@@ -134,14 +171,25 @@ using PhBoxD = PhBox<DIM, double>;
 template <dimension_t DIM>
 using PhBoxF = PhBox<DIM, float>;
 
-template <dimension_t DIM, typename SCALAR>
-std::ostream& operator<<(std::ostream& os, const PhPoint<DIM, SCALAR>& data) {
-    assert(DIM >= 1);
+template <improbable::phtree::dimension_t DIM, typename SCALAR>
+std::ostream& operator<<(std::ostream& os, const PhPointLD<DIM, SCALAR>& data) {
+    assert(data.size() >= 1);
     os << "[";
-    for (dimension_t i = 0; i < DIM - 1; ++i) {
+    for (dimension_t i = 0; i < data.size() - 1; ++i) {
         os << data[i] << ",";
     }
-    os << data[DIM - 1] << "]";
+    os << data[data.size() - 1] << "]";
+    return os;
+}
+
+template <improbable::phtree::dimension_t DIM, typename SCALAR>
+std::ostream& operator<<(std::ostream& os, const PhPointHD<DIM, SCALAR>& data) {
+    assert(data.size() >= 1);
+    os << "[";
+    for (dimension_t i = 0; i < data.size() - 1; ++i) {
+        os << data[i] << ",";
+    }
+    os << data[data.size() - 1] << "]";
     return os;
 }
 
@@ -161,8 +209,8 @@ inline void hash_combine(std::size_t& seed, const T& v) {
 
 namespace std {
 template <improbable::phtree::dimension_t DIM, typename SCALAR>
-struct hash<improbable::phtree::PhPoint<DIM, SCALAR>> {
-    size_t operator()(const improbable::phtree::PhPoint<DIM, SCALAR>& x) const {
+struct hash<improbable::phtree::PhPointLD<DIM, SCALAR>> {
+    size_t operator()(const improbable::phtree::PhPointLD<DIM, SCALAR>& x) const {
         std::size_t hash_val = 0;
         for (improbable::phtree::dimension_t i = 0; i < DIM; ++i) {
             improbable::phtree::hash_combine(hash_val, x[i]);
@@ -170,6 +218,18 @@ struct hash<improbable::phtree::PhPoint<DIM, SCALAR>> {
         return hash_val;
     }
 };
+
+template <improbable::phtree::dimension_t DIM, typename SCALAR>
+struct hash<improbable::phtree::PhPointHD<DIM, SCALAR>> {
+    size_t operator()(const improbable::phtree::PhPointHD<DIM, SCALAR>& x) const {
+        std::size_t hash_val = 0;
+        for (improbable::phtree::dimension_t i = 0; i < DIM; ++i) {
+            improbable::phtree::hash_combine(hash_val, x[i]);
+        }
+        return hash_val;
+    }
+};
+
 template <improbable::phtree::dimension_t DIM, typename SCALAR>
 struct hash<improbable::phtree::PhBox<DIM, SCALAR>> {
     size_t operator()(const improbable::phtree::PhBox<DIM, SCALAR>& x) const {
