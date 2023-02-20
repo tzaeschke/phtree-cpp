@@ -139,7 +139,7 @@ int IndexBenchmark<DIM, QUERY_TYPE>::QueryWorldFind() {
     } else {
         // This should rarely be a match
         int x = pos % GLOBAL_MAX;
-        PhPoint<DIM> p = PhPoint<DIM>({x, x, x});
+        PhPoint<DIM> p = PhPoint<DIM>(x, x, x);
         found = tree_.find(p) != tree_.end();
     }
     return found;

@@ -39,8 +39,7 @@ namespace improbable::phtree {
 // ************************************************************************
 template <typename T>
 constexpr auto hc_pos_t_helper(int)
-    -> decltype(std::integral_constant<decltype(T::size()), T::size()>{},
-                typename std::conditional_t<T{}.size() < 32, std::uint32_t, std::uint64_t>{});
+    -> decltype(std::integral_constant<decltype(T::size()), T::size()>{}, typename std::conditional_t<T{}.size() < 32, std::uint32_t, std::uint64_t>{});
 template <typename>
 constexpr auto hc_pos_t_helper(long) -> std::uint64_t;
 template <typename T>
@@ -90,7 +89,142 @@ using hc_pos_64_t = uint64_t;
 template <dimension_t DIM, typename SCALAR = scalar_64_t>
 struct PhPointLD : public std::array<SCALAR, DIM> {};
 template <dimension_t DIM, typename SCALAR = scalar_64_t>
-struct PhPointHD : public std::vector<SCALAR> {};
+// struct PhPointHD : public std::vector<SCALAR> {};
+struct PhPointHD {
+    using value_type = SCALAR;
+
+  public:
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using iterator = value_type*;
+    using const_iterator = const value_type*;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    // typedef std::reverse_iterator<iterator>	      reverse_iterator;
+    // typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
+
+    PhPointHD() noexcept {
+        array_ = new std::array<SCALAR, DIM>;
+    };
+
+    PhPointHD(const PhPointHD& orig) noexcept {
+        array_ = new std::array<SCALAR, DIM>(*orig.array_);
+    };
+
+    //    PhPointHD(const std::array<SCALAR, DIM>& array) noexcept {
+    //        array_ = new std::array<SCALAR, DIM>(array);
+    //    };
+
+    PhPointHD(PhPointHD&& orig) noexcept {
+        array_ = orig.array_;
+        orig.array_ = nullptr;  // TODO remove
+    };
+
+    // PhBox(const std::array<SCALAR, DIM>& min, const std::array<SCALAR, DIM>& max)
+    //: min_{min}, max_{max} {} // TODO put back in
+    // TODO decide:
+    //  - either use inheritance of PhPointLD:
+    //      -> Can be used as std:array externally
+    //  - use delegation
+    //      -> PhBox and other constructors function continue to accept std::array as argument....
+
+//    explicit PhPointHD(const std::array<SCALAR, DIM>& array) noexcept {
+//        array_ = new std::array<SCALAR, DIM>(array);
+//    }
+
+//    template<typename ...E>
+//    PhPointHD(E&&...e) : array_{new std::array<SCALAR, DIM>{{std::forward<E>(e)...}}} {}
+
+    // TODO this ALMOST works.....
+//    template<typename E1, typename ...E>
+//    PhPointHD(E1 e1, E...e) : array_{new std::array<SCALAR, DIM>{{e1, e...}}} {}
+
+    //    template<typename ...E>
+//    PhPointHD(E...e) : array_{new std::array<SCALAR, DIM>{{e...}}} {}
+
+
+    //template<typename E1, typename E2, typename ...E>
+    PhPointHD(SCALAR e) : array_{new std::array<SCALAR, DIM>{{e}}} {
+        // TODO enable_if
+
+    }
+
+    template<typename E1, typename E2, typename ...E>
+    PhPointHD(E1 e1, E2 e2, E...e) : array_{new std::array<SCALAR, DIM>{{e1, e2, e...}}} {
+       // TODO enable_if
+        static_assert(std::is_same_v<E1, E2>);
+    }
+
+
+//    template <typename... Args>
+//    explicit PhPointHD(Args&&... t) : array_{new std::array<SCALAR, DIM>{{std::forward<Args>(t)...}}} {}
+
+//    PhPointHD(std::initializer_list<SCALAR> inputs)
+//    :array_{new std::array<SCALAR, DIM>{inputs}} {}
+
+    PhPointHD& operator=(const PhPointHD<DIM, SCALAR>& other) noexcept {
+        if (this == &other) {
+            return *this;
+        }
+        *array_ = *other.array_;
+        return *this;
+    }
+
+    PhPointHD& operator=(PhPointHD<DIM, SCALAR>&& other) noexcept {
+        array_ = other.array_;
+        other.array_ = nullptr;  // TODO remove
+        return *this;
+    }
+
+    ~PhPointHD() {
+        delete array_;
+    }
+
+    constexpr SCALAR& operator[](size_t index) noexcept {
+        return (*array_)[index];
+    }
+
+    const constexpr SCALAR& operator[](size_t index) const noexcept {
+        return (*array_)[index];
+    }
+
+    auto operator==(const PhPointHD<DIM, SCALAR>& other) const noexcept {
+        return *array_ == *other.array_;
+    }
+
+    auto operator!=(const PhPointHD<DIM, SCALAR>& other) const noexcept {
+        return *array_ != *other.array_;
+    }
+
+    constexpr bool operator<(const PhPointHD& other) const noexcept {
+        return *array_ < *other.array_;
+    }
+
+    constexpr iterator begin() noexcept {
+        return iterator(array_->begin());
+    }
+
+    constexpr const_iterator begin() const noexcept {
+        return const_iterator(array_->begin());
+    }
+
+    constexpr iterator end() noexcept {
+        return iterator(array_->end());
+    }
+
+    constexpr const_iterator end() const noexcept {
+        return const_iterator(array_->end());
+    }
+
+    [[nodiscard]] constexpr size_t size() const noexcept {
+        return DIM;
+    }
+
+  private:
+    std::array<SCALAR, DIM>* array_;
+};
 // template<typename SCALAR, typename... _Up>
 // PhPointLD(SCALAR, _Up...)
 //     -> PhPointLD<std::enable_if_t<(std::is_same_v<SCALAR, _Up> && ...), SCALAR>,
@@ -98,9 +232,9 @@ struct PhPointHD : public std::vector<SCALAR> {};
 
 // The SCALAR type needs to be a signet integer, i.e. int32_t or int64_t.
 template <dimension_t DIM, typename SCALAR = scalar_64_t>
-using PhPoint = std::conditional_t < DIM<300, PhPointLD<DIM, SCALAR>, PhPointHD<DIM, SCALAR>>;
-// using PhPoint = std::conditional_t < DIM<3, std::array<SCALAR, DIM>, std::vector<SCALAR>>;
-//  using PhPoint = std::array<SCALAR, DIM>;
+// using PhPoint = std::conditional_t < DIM<300, PhPointLD<DIM, SCALAR>, PhPointHD<DIM, SCALAR>>;
+//   using PhPoint = std::array<SCALAR, DIM>;
+using PhPoint = PhPointHD<DIM, SCALAR>;
 
 template <dimension_t DIM>
 using PhPointD = PhPoint<DIM, double>;
@@ -125,7 +259,14 @@ class PhBox {
     //  - use delegation
     //      -> PhBox and other constructors function continue to accept std::array as argument....
 
-    PhBox(const PhPointLD<DIM, SCALAR>& min, const PhPointLD<DIM, SCALAR>& max)
+//    PhBox(const PhPointLD<DIM, SCALAR>& min, const PhPointLD<DIM, SCALAR>& max)
+//    : min_{min}, max_{max} {}
+//
+//    // TODO avoid copy??
+//    PhBox(const PhPointHD<DIM, SCALAR>& min, const PhPointHD<DIM, SCALAR>& max)
+//    : min_{min}, max_{max} {}
+
+    PhBox(const PhPoint<DIM, SCALAR>& min, const PhPoint<DIM, SCALAR>& max)
     : min_{min}, max_{max} {}
 
     [[nodiscard]] const Point& min() const {

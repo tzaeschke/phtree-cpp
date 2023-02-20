@@ -49,6 +49,7 @@ using EntryMap = typename std::conditional_t<
         sparse_map<hc_pos_dim_t<DIM>, Entry>,
         b_plus_tree_map<hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
 
+// TODO use declvar: using SCALAR = std::remove_cv_t<std::remove_reference_t<decltype(std::declval<EntryT&>().GetKey()[std::size_t{}])>>;
 template <dimension_t DIM, typename Entry>
 using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;
 template <dimension_t DIM, typename Entry>
