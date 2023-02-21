@@ -41,7 +41,8 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
 
   public:
     template <typename F>
-    IteratorLowerBound(const EntryT* root, const KeyInternalT& key, const CONVERT* converter, F&& filter)
+    IteratorLowerBound(
+        const EntryT* root, const KeyInternalT& key, const CONVERT* converter, F&& filter)
     : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
     , stack_{}
     , stack_size_{0} {
@@ -87,10 +88,6 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
                     return;
                 }
             } else {
-                if (!found) { // TODO remove this clause, it is not required....
-                    FindNextElement();
-                    return;
-                }
                 this->SetCurrentResult(&entry);
                 return;
             }
@@ -98,13 +95,6 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
         // finished
         this->SetFinished();
     }
-
-//    void cleanup(bool found) {
-//        if (found) {
-//            return; // Nothing to do
-//        }
-//        FindNextElement();
-//    }
 
     void FindNextElement() noexcept {
         while (!IsEmpty()) {

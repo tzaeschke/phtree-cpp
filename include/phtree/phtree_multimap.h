@@ -350,6 +350,21 @@ class PhTreeMultiMap {
     }
 
     /*
+     * Analogous to map:lower_bound().
+     *
+     * Get an entry associated with a k dimensional key or the next key.
+     * This follows roughly Z-ordering (Morton order), except that negative value come AFTER
+     * positive values.
+     *
+     * @param key the key to look up
+     * @return an iterator that points either to the associated value or,
+     * if there is no entry with the given key, to the following entry.
+     */
+    auto lower_bound(const Key& key) const {
+        return CreateIterator(tree_.lower_bound(converter_.pre(key)));
+    }
+
+    /*
      * See std::unordered_multimap::erase(). Removes the provided key/value pair if it exists.
      *
      * @return '1' if the key/value pair was found, otherwise '0'.
