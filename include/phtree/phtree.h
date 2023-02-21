@@ -135,15 +135,34 @@ class PhTree {
     }
 
     /*
-     * Analogous to map:find().
+     * Analogous to map:find() except that it returns a NON-ITERABLE iterator. NON-ITERABLE means
+     * that the iterator cannot be incremented. It can however be compared to other iterators
+     * (like end()) and can obviously be used to access an element.
+     * This is an intentional limitation due to performance reasons.
+     * To get an _iterable_ iterator, please use `lower_bound()`.
      *
      * Get an entry associated with a k dimensional key.
      * @param key the key to look up
-     * @return an iterator that points either to the associated value or to {@code end()} if the key
-     * was found
+     * @return an NON-ITERABLE "iterator" that points either to the associated value or to
+     * {@code end()} if the key was not found.
      */
     auto find(const Key& key) const {
         return tree_.find(converter_.pre(key));
+    }
+
+    /*
+     * Analogous to map:lower_bound().
+     *
+     * Get an entry associated with a k dimensional key or the next key.
+     * This follows roughly Z-ordering (Morton order), except that negative value come AFTER
+     * positive values.
+     *
+     * @param key the key to look up
+     * @return an iterator that points either to the associated value or,
+     * if there is no entry with the given key, to the following entry.
+     */
+    auto lower_bound(const Key& key) const {
+        return tree_.lower_bound(converter_.pre(key));
     }
 
     /*

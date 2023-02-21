@@ -24,6 +24,7 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
+#include "iterator_lower_bound.h"
 #include "iterator_with_parent.h"
 #include "node.h"
 
@@ -196,12 +197,16 @@ class PhTreeV16 {
     }
 
     /*
-     * Analogous to map:find().
+     * Analogous to map:find() except that it returns a NON-ITERABLE iterator. NON-ITERABLE means
+     * that the iterator cannot be incremented. It can however be compared to other iterators
+     * (like end()) and can obviously be used to access an element.
+     * This is an intentional limitation due to performance reasons.
+     * To get an ITERABLE iterator, please use `find_iterable()`.
      *
      * Get an entry associated with a k dimensional key.
      * @param key the key to look up
-     * @return an iterator that points either to the associated value or to {@code end()} if the key
-     * was found
+     * @return an NON-ITERABLE "iterator" that points either to the associated value or to
+     * {@code end()} if the key was not found.
      */
     auto find(const KeyT& key) const {
         const EntryT* current_entry = &root_;
@@ -214,6 +219,21 @@ class PhTreeV16 {
         }
 
         return IteratorWithParent<T, CONVERT>(current_entry, current_node, parent_node, converter_);
+    }
+
+    /*
+     * Analogous to map:lower_bound().
+     *
+     * Get an entry associated with a k dimensional key or the next key.
+     * This follows roughly Z-ordering (Morton order), except that negative value come AFTER
+     * positive values.
+     *
+     * @param key the key to look up
+     * @return an iterator that points either to the associated value or,
+     * if there is no entry with the given key, to the following entry.
+     */
+    auto lower_bound(const KeyT& key) const {
+        return IteratorLowerBound<T, CONVERT, FilterNoOp>(&root_, key, converter_, FilterNoOp{});
     }
 
     /*

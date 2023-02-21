@@ -118,6 +118,7 @@ tree.insert(p, my_data);
 tree[p] = my_data;
 tree.count(p);
 tree.find(p);
+tree.lower_bounds(p); // Find a key or the next higher key following Morton order (except positive/negative swapped)
 tree.erase(p);
 tree.erase(iterator);
 tree.size();

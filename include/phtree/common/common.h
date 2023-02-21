@@ -114,6 +114,17 @@ static bool KeyEquals(
     return diff >> ignore_bits == 0;
 }
 
+/**
+ * @return "true" iff the first key comes before the second key when using Morton order
+ * (z-ordering). Exception: negative values are considered "larger" than positive values due to
+ * their first bit being always '1'.
+ */
+template <dimension_t DIM, typename SCALAR>
+bool KeyLess(const PhPoint<DIM, SCALAR>& k1, const PhPoint<DIM, SCALAR>& k2) {
+    auto b = NumberOfDivergingBits(k1, k2);
+    return b > 0 && CalcPosInArray(k1, b - 1) < CalcPosInArray(k2, b - 1);
+}
+
 // ************************************************************************
 // String helpers
 // ************************************************************************

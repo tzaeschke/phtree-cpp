@@ -172,7 +172,17 @@ class Node {
         found =
             (iter != entries_.end() && iter->first == hc_pos &&
              DoesEntryMatch(iter->second, key, postfix_len));
+        if (!found && iter != entries_.end() && iter->first == hc_pos &&
+            KeyLess(iter->second.GetKey(), key)) {
+            // There is an entry in the same slot as key would go. However it is not equal to
+            // key. We need to figure out whether "key" goes before the existing entry or not.
+            ++iter;
+        }
         return iter;
+    }
+
+    auto LowerBoundC(const KeyT& key, bit_width_t postfix_len, bool& found) const {
+        return const_cast<Node&>(*this).LowerBound(key, postfix_len, found);
     }
 
     auto End() {

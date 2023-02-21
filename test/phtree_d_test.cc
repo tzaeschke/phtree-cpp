@@ -437,6 +437,116 @@ TEST(PhTreeDTest, TestFind) {
     ASSERT_NE(tree.end(), iter1);
 }
 
+TEST(PhTreeDTest, TestLowerBound) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 200;
+    std::vector<TestPoint<dim>> points;
+
+    // find non-existing "lowest" point
+    TestPoint<dim> pMin{0, 0, 0};
+    // find non-existing somewhere in the middle
+    TestPoint<dim> pMid{1000, 1000, 1000};
+    // find non-existing "highest" point
+    TestPoint<dim> pMax{-1, -1, -1};
+
+    // empty tree
+    ASSERT_EQ(tree.lower_bound(pMin), tree.end());
+    ASSERT_EQ(tree.lower_bound(pMid), tree.end());
+    ASSERT_EQ(tree.lower_bound(pMax), tree.end());
+
+    populate(tree, points, N);
+
+    size_t i = 0;
+    size_t n_begin = 0;
+    size_t n_end = 0;
+    size_t n_not_end = 0;
+    size_t n2 = 0;
+    for (auto& p : points) {
+        // test commutativity
+        ASSERT_NE(tree.lower_bound(p), tree.end());
+        ASSERT_NE(tree.end(), tree.lower_bound(p));
+        ASSERT_EQ(tree.lower_bound(p)->_i, i);
+        ASSERT_EQ(tree.lower_bound(p), tree.find(p));
+
+        // test entry
+        auto it = tree.lower_bound(p);
+        n_begin += it == tree.begin();
+        ++n2;
+        ++it;
+        n_end += it == tree.end();
+        n_not_end += it != tree.end();
+        while (it != tree.end()) {
+            ++n2;
+            ++it;
+        }
+
+        // min/max
+        ASSERT_EQ(tree.lower_bound(pMin), tree.begin());
+        ASSERT_EQ(tree.lower_bound(pMax), tree.end());
+
+        ++i;
+    }
+    ASSERT_EQ(1, n_begin);
+    ASSERT_EQ(1, n_end);
+    ASSERT_EQ(N - 1, n_not_end);
+    ASSERT_EQ(N * N / 2 + N / 2, n2);
+
+    // min / mid / max
+    ASSERT_EQ(tree.lower_bound(pMin), tree.begin());
+    ASSERT_NE(tree.lower_bound(pMid), tree.begin());
+    ASSERT_NE(tree.lower_bound(pMid), tree.end());
+    ASSERT_EQ(tree.lower_bound(pMax), tree.end());
+
+    auto iter1 = tree.lower_bound(points[0]);
+    auto iter2 = tree.lower_bound(points[0]);
+    ASSERT_EQ(iter1, iter2);
+    ASSERT_NE(tree.end(), iter1);
+}
+
+TEST(PhTreeDTest, TestLowerBoundErase) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 100;
+    std::vector<TestPoint<dim>> points;
+
+    populate(tree, points, N);
+
+    for (size_t i = 0; i < N; ++i) {
+        auto& p = points[i];
+        // test entry
+        auto it = tree.lower_bound(p);
+        ASSERT_NE(it, tree.end());
+        tree.erase(it);
+        ASSERT_EQ(tree.find(p), tree.end());
+    }
+    ASSERT_EQ(tree.size(), 0);
+}
+
+TEST(PhTreeDTest, TestLowerBoundEmplace) {
+    const dimension_t dim = 3;
+    TestTree<dim, Id> tree;
+    size_t N = 100;
+    std::vector<TestPoint<dim>> points;
+    generateCube(points, N);
+
+    for (size_t i = 0; i < N; ++i) {
+        auto& p = points[i];
+        // test entry
+        auto it = tree.lower_bound(p);
+        tree.emplace_hint(it, p, i);
+        ASSERT_NE(tree.find(p), tree.end());
+    }
+    ASSERT_EQ(tree.size(), N);
+
+    // Verify
+    for (size_t i = 0; i < N; ++i) {
+        auto& p = points[i];
+        ASSERT_NE(tree.find(p), tree.end());
+        ASSERT_EQ(tree.find(p)->_i, i);
+    }
+}
+
 TEST(PhTreeDTest, TestUpdateWithEmplace) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
