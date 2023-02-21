@@ -306,7 +306,10 @@ class Node {
         } else {
             for (auto d : current_entry.GetKey()) {
                 assert(((d >> post_len) & 0x1) == 1 && "Last bit of node center must be `1`");
-                assert(((d >> post_len) << post_len) == d && "postlen bits must all be `0`");
+                // Avoid undefined behavior warnings for left-shifting a negative number.
+                using unsigned_key_t = std::make_unsigned_t<decltype(d)>;
+                unsigned_key_t d2 = reinterpret_cast<unsigned_key_t&>(d);
+                assert(((d2 >> post_len) << post_len) == d && "postlen bits must all be `0`");
             }
         }
 
