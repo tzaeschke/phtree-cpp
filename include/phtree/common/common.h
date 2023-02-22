@@ -126,6 +126,8 @@ void CalcLimits(
     // query higher ||                                       NO                  YES
     //
     assert(postfix_len < MAX_BIT_WIDTH<SCALAR>);
+    mask_lower = 0;
+    mask_upper = 0;
     // to prevent problems with signed long when using 64 bit
     if (postfix_len < MAX_BIT_WIDTH<SCALAR> - 1) {
         for (dimension_t i = 0; i < DIM; ++i) {
