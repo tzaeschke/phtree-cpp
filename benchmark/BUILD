@@ -18,6 +18,22 @@ cc_library(
 )
 
 cc_binary(
+    name = "bit_ops_benchmark",
+    testonly = True,
+    srcs = [
+        "bit_ops_benchmark.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        ":benchmark",
+        "//:phtree",
+        "//include/phtree/common",
+        "@gbenchmark//:benchmark",
+        "@spdlog",
+    ],
+)
+
+cc_binary(
     name = "bpt_insert_benchmark",
     testonly = True,
     srcs = [

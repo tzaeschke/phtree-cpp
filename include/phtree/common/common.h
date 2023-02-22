@@ -49,8 +49,7 @@ namespace improbable::phtree {
  * an array.
  */
 template <dimension_t DIM, typename SCALAR>
-static hc_pos_dim_t<DIM> CalcPosInArray(
-    const PhPoint<DIM, SCALAR>& valSet, bit_width_t postfix_len) {
+static hc_pos_dim_t<DIM> CalcPosInArray(const PhPoint<DIM, SCALAR>& key, bit_width_t postfix_len) {
     // n=DIM,  i={0..n-1}
     // i = 0 :  |0|1|0|1|0|1|0|1|
     // i = 1 :  | 0 | 1 | 0 | 1 |
@@ -58,24 +57,24 @@ static hc_pos_dim_t<DIM> CalcPosInArray(
     // len = 2^n
     // Following formula was for inverse ordering of current ordering...
     // pos = sum (i=1..n, len/2^i) = sum (..., 2^(n-i))
-    bit_mask_t<SCALAR> valMask = bit_mask_t<SCALAR>(1) << postfix_len;
+    bit_mask_t<SCALAR> mask = bit_mask_t<SCALAR>(1) << postfix_len;
     hc_pos_64_t pos = 0;
     for (dimension_t i = 0; i < DIM; ++i) {
         pos <<= 1;
-        // set pos-bit if bit is set in value
-        pos |= (valMask & valSet[i]) >> postfix_len;
+        // set pos-bit if bit is set in key
+        pos |= (mask & key[i]) >> postfix_len;
     }
     return static_cast<hc_pos_dim_t<DIM>>(pos);
 }
 
 template <dimension_t DIM, typename SCALAR>
 static bool IsInRange(
-    const PhPoint<DIM, SCALAR>& candidate,
-    const PhPoint<DIM, SCALAR>& range_min,
-    const PhPoint<DIM, SCALAR>& range_max) {
+    const PhPoint<DIM, SCALAR>& key,
+    const PhPoint<DIM, SCALAR>& min,
+    const PhPoint<DIM, SCALAR>& max) {
     for (dimension_t i = 0; i < DIM; ++i) {
-        auto k = candidate[i];
-        if (k < range_min[i] || k > range_max[i]) {
+        auto k = key[i];
+        if (k < min[i] || k > max[i]) {
             return false;
         }
     }
@@ -102,6 +101,69 @@ static bit_width_t NumberOfDivergingBits(
     auto diff2 = reinterpret_cast<bit_mask_t<SCALAR>&>(diff);
     assert(CountLeadingZeros(diff2) <= MAX_BIT_WIDTH<SCALAR>);
     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
+}
+
+namespace detail {
+template <dimension_t DIM, typename SCALAR, typename MASK>
+void CalcLimits(
+    bit_width_t postfix_len,
+    const PhPoint<DIM, SCALAR>& range_min,
+    const PhPoint<DIM, SCALAR>& range_max,
+    const PhPoint<DIM, SCALAR>& prefix,
+    MASK& mask_lower,
+    MASK& mask_upper) {
+    // create limits for the local node. there is a lower and an upper limit. Each limit
+    // consists of a series of DIM bit, one for each dimension.
+    // For the lower limit, a '1' indicates that the 'lower' half of this dimension does
+    // not need to be queried.
+    // For the upper limit, a '0' indicates that the 'higher' half does not need to be
+    // queried.
+    //
+    //              ||  lower_limit=0 || lower_limit=1 || upper_limit = 0 || upper_limit = 1
+    // =============||======================================================================
+    // query lower  ||     YES              NO
+    // ============ || =====================================================================
+    // query higher ||                                       NO                  YES
+    //
+    assert(postfix_len < MAX_BIT_WIDTH<SCALAR>);
+    SCALAR lower_limit = 0;
+    SCALAR upper_limit = 0;
+    // to prevent problems with signed long when using 64 bit
+    if (postfix_len < MAX_BIT_WIDTH<SCALAR> - 1) {
+        for (dimension_t i = 0; i < DIM; ++i) {
+            lower_limit <<= 1;
+            //==> set to 1 if lower value should not be queried
+            lower_limit |= range_min[i] >= prefix[i];
+        }
+        for (dimension_t i = 0; i < DIM; ++i) {
+            upper_limit <<= 1;
+            // Leave 0 if higher value should not be queried.
+            upper_limit |= range_max[i] >= prefix[i];
+        }
+    } else {
+        // special treatment for signed longs
+        // The problem (difference) here is that a '1' at the leading bit does indicate a
+        // LOWER value, opposed to indicating a HIGHER value as in the remaining 63 bits.
+        // The hypercube assumes that a leading '0' indicates a lower value.
+        // Solution: We leave HC as it is.
+        for (dimension_t i = 0; i < DIM; ++i) {
+            upper_limit <<= 1;
+            // If minimum is positive, we don't need the search negative values
+            //==> set upper_limit to 0, prevent searching values starting with '1'.
+            upper_limit |= range_min[i] < 0;
+        }
+        for (dimension_t i = 0; i < DIM; ++i) {
+            lower_limit <<= 1;
+            // Leave 0 if higher value should not be queried
+            // If maximum is negative, we do not need to search positive values
+            //(starting with '0').
+            //--> lower_limit = '1'
+            lower_limit |= range_max[i] < 0;
+        }
+    }
+    mask_lower = static_cast<MASK>(lower_limit);
+    mask_upper = static_cast<MASK>(upper_limit);
+}
 }
 
 template <dimension_t DIM, typename SCALAR>
