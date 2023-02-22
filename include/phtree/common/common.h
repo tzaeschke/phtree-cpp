@@ -29,7 +29,7 @@
 #include <limits>
 #include <sstream>
 
-namespace improbable::phtree {
+namespace improbable::phtree::detail {
 
 // This is the single-point inclusion file for common types/function/... for the PH-Tree.
 // 'single-point inclusion' meaning that including it provides all relevant types/functions/... .
@@ -103,7 +103,6 @@ static bit_width_t NumberOfDivergingBits(
     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
 }
 
-namespace detail {
 template <dimension_t DIM, typename SCALAR, typename MASK>
 void CalcLimits(
     bit_width_t postfix_len,
@@ -162,7 +161,6 @@ void CalcLimits(
         }
     }
 }
-}  // namespace detail
 
 template <dimension_t DIM, typename SCALAR>
 static bool KeyEquals(
@@ -213,6 +211,6 @@ static inline std::string ToBinary(
     return sb.str();
 }
 
-}  // namespace improbable::phtree
+}  // namespace improbable::phtree::detail
 
 #endif  // PHTREE_COMMON_COMMON_H

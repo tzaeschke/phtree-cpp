@@ -32,7 +32,7 @@
  * - count leading zeroes
  * - count trailing zeros
  */
-namespace improbable::phtree {
+namespace improbable::phtree::detail {
 
 namespace {
 inline bit_width_t NumberOfLeadingZeros(std::uint64_t bit_string) {
@@ -180,6 +180,6 @@ inline bit_width_t NumberOfTrailingZeros_MSVC_BUILTIN(std::uint32_t bit_string) 
 #define CountTrailingZeros(bits) NumberOfTrailingZeros(bits)
 #endif
 
-}  // namespace improbable::phtree
+}  // namespace improbable::phtree::detail
 
 #endif  // PHTREE_COMMON_BITS_H

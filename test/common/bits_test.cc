@@ -19,6 +19,7 @@
 #include <random>
 
 using namespace improbable::phtree;
+using namespace detail;
 
 TEST(PhTreeBitsTest, CountLeadingZeros64) {
     std::uint64_t x = 1;

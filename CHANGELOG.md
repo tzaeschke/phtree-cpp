@@ -6,10 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Added benchmark for bit operations in `common`.  [#128](https://github.com/tzaeschke/phtree-cpp/pull/128)
+- Added benchmark for bit operations in `common`. [#128](https://github.com/tzaeschke/phtree-cpp/pull/128)
 - Added `lower_bounds(key)` to API. [#126](https://github.com/tzaeschke/phtree-cpp/issues/126)
 - Added `bpt_fixed_vector`, a fixed size flat vector for future use. It can be dropped in for an std::vector.
   [#124](https://github.com/tzaeschke/phtree-cpp/pull/124)
+
+### Changed
+- Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
 
 ## [1.5.0] - 2023-02-09
 ### Added

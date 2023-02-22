@@ -30,6 +30,7 @@
  * PH-Tree.
  */
 namespace improbable::phtree {
+using namespace detail;
 
 template <typename Key, typename Value, Key SIZE>
 class flat_array_map;

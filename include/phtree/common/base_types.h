@@ -39,7 +39,9 @@ namespace improbable::phtree {
 using scalar_64_t = int64_t;
 using scalar_32_t = int32_t;
 using scalar_16_t = int16_t;
+using dimension_t = size_t;  // Number of dimensions
 
+namespace detail {
 // Bits in a coordinate (usually a double or long has 64 bits, so uint_8 suffices).
 // However, uint32_t turned out to be faster, probably due to fewer cycles required for 32bit
 // instructions (8bit/16bit tend to require more cycles, see CPU tables available on the web).
@@ -54,16 +56,16 @@ template <typename SCALAR>
 using bit_mask_t = typename std::make_unsigned<SCALAR>::type;
 template <typename SCALAR>
 static constexpr bit_mask_t<SCALAR> MAX_MASK = std::numeric_limits<bit_mask_t<SCALAR>>::max();
-using dimension_t = size_t;  // Number of dimensions
 // We have two types that represent hypercube addresses (HC position).
 // The hc_pos_dim_t uses a template parameter to determine how many bits are needed, this is either
 // 32bit or 64bit. This parameter is used where HC positions are stored because benchmarks show a
 // difference in performance when this is used.
 // The hc_pos_64_t type is always set to 64. It is used where computations play a role that appear
 // to prefer being in always 64bit, mainly in CalcPosInArray() and in Node.
-template<dimension_t DIM>
+template <dimension_t DIM>
 using hc_pos_dim_t = std::conditional_t<(DIM < 32), uint32_t, uint64_t>;
 using hc_pos_64_t = uint64_t;
+}  // namespace detail
 
 // ************************************************************************
 // Basic structs and classes
@@ -120,7 +122,7 @@ class PhBox {
     }
 
     auto operator!=(const PhBox<DIM, SCALAR>& other) const -> bool {
-        return !(*this == other);
+        return min_ != other.min_ || max_ != other.max_;
     }
 
   private:

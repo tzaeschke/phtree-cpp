@@ -28,6 +28,7 @@
  * They provide various statistics on the PH-Tree instance that returns them.
  */
 namespace improbable::phtree {
+using namespace detail;
 
 class PhTreeStats {
     using SCALAR = scalar_64_t;

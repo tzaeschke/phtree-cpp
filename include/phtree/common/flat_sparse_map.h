@@ -29,6 +29,7 @@
  * the PH-Tree.
  */
 namespace improbable::phtree {
+using namespace detail;
 
 /*
  * The sparse_map is a flat map implementation that uses an array of *at* *most* SIZE=2^DIM.
