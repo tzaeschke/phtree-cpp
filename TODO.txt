@@ -8,6 +8,15 @@ Ideas that didn't work
      Counting showed that PQ would go 3-5 nodes deep (100K:3, 10M: 5) but that had no effect.
      Lesson: Look at WQ initialization, it may be too expensive. Why is WQ traversal so slow???
 
+Non-flat keys: Use e.g. vector as keys
+     Tested in: https://github.com/tzaeschke/phtree-cpp/tree/yolo/vector-keys
+     The implementation actually uses a pointer-to-array instead of a vector (this allows constexpr SIZE for
+     loop unrolling etc).
+     Results:
+     - There is no problem for PhPointLD using an inherited std::array -> No effect on performance
+     - Using a delegated array (with unique_ptr) has an effect,
+     - For insert, it starts paying of for 30D, being up to 20% faster for 60D
+     - For query and kNN, it never pays off.
 
 
 Fix const-ness

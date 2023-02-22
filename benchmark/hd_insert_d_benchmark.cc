@@ -113,6 +113,18 @@ void PhTree20D(benchmark::State& state, Arguments&&...) {
     benchmark.Benchmark(state);
 }
 
+template <typename... Arguments>
+void PhTree30D(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<30> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTree60D(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<60> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
 // index type, scenario name, data_generator, num_entities
 BENCHMARK_CAPTURE(PhTree6D, INSERT, 0)
     ->RangeMultiplier(10)
@@ -127,6 +139,16 @@ BENCHMARK_CAPTURE(PhTree10D, INSERT, 0)
 BENCHMARK_CAPTURE(PhTree20D, INSERT, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree30D, INSERT, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree60D, INSERT, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

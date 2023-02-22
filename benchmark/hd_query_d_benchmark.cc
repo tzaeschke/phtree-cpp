@@ -185,6 +185,18 @@ void PhTree20D_FE(benchmark::State& state, Arguments&&...) {
 }
 
 template <typename... Arguments>
+void PhTree30D_FE(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<30, MIN_MAX_FOR_EACH> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTree60D_FE(benchmark::State& state, Arguments&&...) {
+    IndexBenchmark<60, MIN_MAX_FOR_EACH> benchmark{state};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
 void PhTree6D_IT(benchmark::State& state, Arguments&&...) {
     IndexBenchmark<6, MIN_MAX_ITER> benchmark{state};
     benchmark.Benchmark(state);
@@ -216,6 +228,16 @@ BENCHMARK_CAPTURE(PhTree10D_FE, WQ, 0)
 BENCHMARK_CAPTURE(PhTree20D_FE, WQ, 0)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree30D_FE, WQ, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 100}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree60D_FE, WQ, 0)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 100}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_CAPTURE(PhTree6D_IT, WQ, 0)

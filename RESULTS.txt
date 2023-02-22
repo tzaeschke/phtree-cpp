@@ -1,0 +1,283 @@
+Non-flat keys: Use e.g. vector as keys
+     Tested in: https://github.com/tzaeschke/phtree-cpp/tree/yolo/vector-keys
+     The implementation actually uses a pointer-to-array instead of a vector (this allows constexpr SIZE for
+     loop unrolling etc).
+     Results:
+     - There is no problem for PhPointLD using an inherited std::array -> No effect on performance
+     - Using a delegated array (with unique_ptr) has an effect,
+     - For insert, it starts paying of for 30D, being up to 20% faster for 60D
+     - For query and kNN, it never pays off.
+
+
+
+PhPointHD - Delegated std::array
+================================
+------------------------------------------------------------------------------------------------
+Benchmark                           Time             CPU   Iterations   put_rate total_put_count
+------------------------------------------------------------------------------------------------
+PhTree6D/INSERT/1000/7          0.121 ms        0.121 ms         5588 8.27672M/s          5.588M
+PhTree6D/INSERT/10000/7          1.69 ms         1.69 ms          417 5.93145M/s           4.17M
+PhTree6D/INSERT/100000/7         18.9 ms         18.9 ms           37 5.29017M/s            3.7M
+PhTree6D/INSERT/1000000/7         194 ms          194 ms            3 5.14323M/s              3M
+PhTree6D/INSERT/1000/4          0.163 ms        0.163 ms         4282 6.13822M/s          4.282M
+PhTree6D/INSERT/10000/4          1.97 ms         1.97 ms          356 5.07353M/s           3.56M
+PhTree6D/INSERT/100000/4         28.2 ms         28.2 ms           25 3.54379M/s            2.5M
+PhTree6D/INSERT/1000000/4         452 ms          452 ms            2 2.21301M/s              2M
+PhTree10D/INSERT/1000/7         0.155 ms        0.155 ms         4399 6.44247M/s          4.399M
+PhTree10D/INSERT/10000/7         1.81 ms         1.81 ms          390 5.52728M/s            3.9M
+PhTree10D/INSERT/100000/7        20.1 ms         20.1 ms           35  4.9658M/s            3.5M
+PhTree10D/INSERT/1000000/7        268 ms          268 ms            3 3.73514M/s              3M
+PhTree10D/INSERT/1000/4         0.145 ms        0.145 ms         4788 6.89293M/s          4.788M
+PhTree10D/INSERT/10000/4         2.14 ms         2.14 ms          330 4.68279M/s            3.3M
+PhTree10D/INSERT/100000/4        34.0 ms         34.0 ms           21 2.93924M/s            2.1M
+PhTree10D/INSERT/1000000/4        548 ms          548 ms            1 1.82594M/s           1000k
+PhTree20D/INSERT/1000/7         0.203 ms        0.203 ms         3429 4.93395M/s          3.429M
+PhTree20D/INSERT/10000/7         2.04 ms         2.04 ms          343  4.8916M/s           3.43M
+PhTree20D/INSERT/100000/7        21.9 ms         21.9 ms           32 4.56824M/s            3.2M
+PhTree20D/INSERT/1000000/7        235 ms          235 ms            3 4.25018M/s              3M
+PhTree20D/INSERT/1000/4         0.174 ms        0.174 ms         4023 5.76362M/s          4.023M
+PhTree20D/INSERT/10000/4         2.16 ms         2.16 ms          324 4.63843M/s           3.24M
+PhTree20D/INSERT/100000/4        29.6 ms         29.6 ms           23 3.38049M/s            2.3M
+PhTree20D/INSERT/1000000/4        573 ms          573 ms            1 1.74485M/s           1000k
+PhTree30D/INSERT/1000/7         0.227 ms        0.227 ms         3081 4.41027M/s          3.081M
+PhTree30D/INSERT/10000/7         2.38 ms         2.38 ms          287 4.20326M/s           2.87M
+PhTree30D/INSERT/100000/7        24.6 ms         24.6 ms           28 4.07012M/s            2.8M
+PhTree30D/INSERT/1000/4         0.186 ms        0.186 ms         3719 5.37671M/s          3.719M
+PhTree30D/INSERT/10000/4         2.16 ms         2.16 ms          325  4.6376M/s           3.25M
+PhTree30D/INSERT/100000/4        30.5 ms         30.5 ms           23 3.28282M/s            2.3M
+PhTree60D/INSERT/1000/7         0.292 ms        0.292 ms         2411 3.42555M/s          2.411M
+PhTree60D/INSERT/10000/7         3.16 ms         3.16 ms          225 3.16816M/s           2.25M
+PhTree60D/INSERT/100000/7        34.3 ms         34.3 ms           21 2.91371M/s            2.1M
+PhTree60D/INSERT/1000/4         0.216 ms        0.216 ms         3216 4.63078M/s          3.216M
+PhTree60D/INSERT/10000/4         2.61 ms         2.61 ms          268 3.83102M/s           2.68M
+PhTree60D/INSERT/100000/4        37.4 ms         37.4 ms           19 2.67737M/s            1.9M
+
+Run on (8 X 4615.4 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 256 KiB (x8)
+  L3 Unified 12288 KiB (x1)
+Load Average: 1.13, 0.66, 0.33
+-------------------------------------------------------------------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations avg_result_count query_rate result_rate total_result_count
+-------------------------------------------------------------------------------------------------------------------------------
+PhTree6D_FE/WQ/1000/7          0.001 ms        0.001 ms       707513          58.3582 1084.03k/s  63.2618M/s           41.2892M
+PhTree6D_FE/WQ/10000/7         0.002 ms        0.002 ms       378481          73.3353 540.444k/s  39.6336M/s            27.756M
+PhTree6D_FE/WQ/100000/7        0.004 ms        0.004 ms       191483          98.9063 275.983k/s  27.2964M/s           18.9389M
+PhTree6D_FE/WQ/1000000/7       0.007 ms        0.007 ms       100220          98.7334  143.75k/s  14.1929M/s           9.89506M
+PhTree6D_FE/WQ/1000/4          0.005 ms        0.005 ms       128769           101.77 185.745k/s  18.9033M/s           13.1048M
+PhTree6D_FE/WQ/10000/4         0.016 ms        0.016 ms        44211          102.261 63.1295k/s  6.45566M/s           4.52104M
+PhTree6D_FE/WQ/100000/4        0.034 ms        0.034 ms        20643          100.906 29.6575k/s  2.99261M/s           2.08299M
+PhTree6D_FE/WQ/1000000/4       0.071 ms        0.071 ms        10010           101.11 14.1073k/s  1.42639M/s           1012.11k
+PhTree10D_FE/WQ/1000/7         0.001 ms        0.001 ms       794778           13.148 1.13241M/s   14.889M/s           10.4498M
+PhTree10D_FE/WQ/10000/7        0.004 ms        0.004 ms       193364          85.9604 274.136k/s  23.5648M/s           16.6216M
+PhTree10D_FE/WQ/100000/7       0.007 ms        0.007 ms       100236          103.955 142.755k/s    14.84M/s             10.42M
+PhTree10D_FE/WQ/1000000/7      0.019 ms        0.019 ms        36401          101.104 51.7755k/s  5.23469M/s           3.68027M
+PhTree10D_FE/WQ/1000/4         0.012 ms        0.012 ms        59942          103.147 86.0385k/s  8.87461M/s           6.18283M
+PhTree10D_FE/WQ/10000/4        0.032 ms        0.032 ms        22171          100.838  31.608k/s  3.18729M/s           2.23568M
+PhTree10D_FE/WQ/100000/4       0.127 ms        0.127 ms         5510          100.941 7.86842k/s  794.248k/s           556.186k
+PhTree10D_FE/WQ/1000000/4      0.627 ms        0.628 ms         1151          101.651 1.59334k/s  161.964k/s               117k
+PhTree20D_FE/WQ/1000/7         0.001 ms        0.001 ms       499420          12.3248 710.786k/s  8.76031M/s           6.15526M
+PhTree20D_FE/WQ/10000/7        0.005 ms        0.005 ms       132518          70.0641 203.302k/s  14.2442M/s           9.28475M
+PhTree20D_FE/WQ/100000/7       0.010 ms        0.010 ms        70022          99.1256 100.938k/s  10.0055M/s           6.94097M
+PhTree20D_FE/WQ/1000000/7      0.035 ms        0.035 ms        19945          107.177 28.5918k/s  3.06439M/s           2.13765M
+PhTree20D_FE/WQ/1000/4         0.014 ms        0.014 ms        51482          107.389 72.7632k/s  7.81394M/s           5.52858M
+PhTree20D_FE/WQ/10000/4        0.080 ms        0.080 ms         8704          102.514 12.5023k/s  1.28166M/s           892.286k
+PhTree20D_FE/WQ/100000/4       0.380 ms        0.380 ms         1824          104.124 2.62859k/s  273.699k/s           189.922k
+PhTree20D_FE/WQ/1000000/4       1.90 ms         1.90 ms          375          101.912  526.173/s  53.6233k/s            38.217k
+PhTree30D_FE/WQ/1000/7         0.004 ms        0.004 ms       162527          60.1225 233.109k/s  14.0151M/s           9.77153M
+PhTree30D_FE/WQ/10000/7        0.005 ms        0.005 ms       139918          48.2003 200.734k/s  9.67543M/s            6.7441M
+PhTree30D_FE/WQ/100000/7       0.013 ms        0.013 ms        51818          73.9398 74.7805k/s  5.52926M/s           3.83141M
+PhTree30D_FE/WQ/1000/4         0.016 ms        0.016 ms        42860          102.947 60.7754k/s  6.25666M/s           4.41232M
+PhTree30D_FE/WQ/10000/4        0.077 ms        0.077 ms         9076          108.222 12.9611k/s  1.40268M/s           982.224k
+PhTree30D_FE/WQ/100000/4       0.699 ms        0.699 ms          967          105.396 1.43037k/s  150.755k/s           101.918k
+PhTree60D_FE/WQ/1000/7         0.005 ms        0.005 ms       137036          49.8182 195.183k/s  9.72367M/s           6.82688M
+PhTree60D_FE/WQ/10000/7        0.013 ms        0.013 ms        52540           75.072  75.864k/s  5.69526M/s           3.94428M
+PhTree60D_FE/WQ/100000/7       0.042 ms        0.042 ms        16696          142.238 23.9428k/s  3.40558M/s           2.37481M
+PhTree60D_FE/WQ/1000/4         0.029 ms        0.029 ms        24315          105.083 34.8886k/s  3.66621M/s            2.5551M
+PhTree60D_FE/WQ/10000/4        0.150 ms        0.150 ms         4680          98.0342 6.66784k/s  653.676k/s             458.8k
+PhTree60D_FE/WQ/100000/4        1.64 ms         1.64 ms          428          99.8341  610.584/s  60.9571k/s            42.729k
+
+Run on (8 X 4650.4 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 256 KiB (x8)
+  L3 Unified 12288 KiB (x1)
+Load Average: 1.35, 0.59, 0.41
+-------------------------------------------------------------------------------------------------------------------
+Benchmark                           Time             CPU   Iterations avg_result_count query_rate total_query_count
+-------------------------------------------------------------------------------------------------------------------
+PhTree6D/KNN/1000/1/7           0.002 ms        0.002 ms       298668                1 431.204k/s          298.668k
+PhTree6D/KNN/10000/1/7          0.007 ms        0.007 ms        99500                1 142.809k/s             99.5k
+PhTree6D/KNN/100000/1/7         0.044 ms        0.044 ms        15858                1 22.6093k/s           15.858k
+PhTree6D/KNN/1000000/1/7        0.326 ms        0.326 ms         2146                1 3.06514k/s            2.146k
+PhTree6D/KNN/1000/10/7          0.004 ms        0.004 ms       167983               10 239.591k/s          167.983k
+PhTree6D/KNN/10000/10/7         0.009 ms        0.009 ms        78126               10 111.071k/s           78.126k
+PhTree6D/KNN/100000/10/7        0.046 ms        0.046 ms        15236               10 21.7823k/s           15.236k
+PhTree6D/KNN/1000000/10/7       0.328 ms        0.328 ms         2130               10  3.0473k/s             2.13k
+PhTree6D/KNN/1000/1/4           0.026 ms        0.026 ms        26614                1 38.4735k/s           26.614k
+PhTree6D/KNN/10000/1/4          0.212 ms        0.212 ms         3306                1 4.72615k/s            3.306k
+PhTree6D/KNN/100000/1/4          1.28 ms         1.28 ms          545                1  778.736/s               545
+PhTree6D/KNN/1000000/1/4         8.02 ms         8.02 ms           82                1  124.639/s                82
+PhTree6D/KNN/1000/10/4          0.030 ms        0.030 ms        23635               10 33.6389k/s           23.635k
+PhTree6D/KNN/10000/10/4         0.232 ms        0.232 ms         3016               10 4.30116k/s            3.016k
+PhTree6D/KNN/100000/10/4         1.51 ms         1.51 ms          469               10  663.266/s               469
+PhTree6D/KNN/1000000/10/4        8.94 ms         8.94 ms           76               10  111.895/s                76
+PhTree10D/KNN/1000/1/7          0.008 ms        0.008 ms        85111                1 122.488k/s           85.111k
+PhTree10D/KNN/10000/1/7         0.016 ms        0.016 ms        43024                1 61.2202k/s           43.024k
+PhTree10D/KNN/100000/1/7        0.095 ms        0.096 ms         7262                1 10.4693k/s            7.262k
+PhTree10D/KNN/1000000/1/7       0.928 ms        0.928 ms          741                1  1077.48/s               741
+PhTree10D/KNN/1000/10/7         0.009 ms        0.009 ms        80078               10 114.554k/s           80.078k
+PhTree10D/KNN/10000/10/7        0.017 ms        0.017 ms        41378               10 59.6027k/s           41.378k
+PhTree10D/KNN/100000/10/7       0.096 ms        0.096 ms         7225               10 10.3865k/s            7.225k
+PhTree10D/KNN/1000000/10/7      0.942 ms        0.942 ms          745               10  1061.92/s               745
+PhTree10D/KNN/1000/1/4          0.051 ms        0.051 ms        13699                1  19.659k/s           13.699k
+PhTree10D/KNN/10000/1/4         0.542 ms        0.542 ms         1281                1 1.84469k/s            1.281k
+PhTree10D/KNN/100000/1/4         10.3 ms         10.3 ms           69                1  97.4644/s                69
+PhTree10D/KNN/1000000/1/4         107 ms          107 ms            7                1  9.36107/s                 7
+PhTree10D/KNN/1000/10/4         0.054 ms        0.054 ms        12825               10   18.52k/s           12.825k
+PhTree10D/KNN/10000/10/4        0.592 ms        0.592 ms         1209               10 1.68805k/s            1.209k
+PhTree10D/KNN/100000/10/4        10.5 ms         10.5 ms           67               10  95.2617/s                67
+PhTree10D/KNN/1000000/10/4        112 ms          112 ms            7               10  8.89987/s                 7
+PhTree20D/KNN/1000/1/7          0.011 ms        0.011 ms        64193                1 87.2556k/s           64.193k
+PhTree20D/KNN/10000/1/7         0.024 ms        0.024 ms        29692                1 42.3411k/s           29.692k
+PhTree20D/KNN/100000/1/7        0.141 ms        0.142 ms         4767                1 7.06625k/s            4.767k
+PhTree20D/KNN/1000000/1/7        1.57 ms         1.57 ms          461                1  635.798/s               461
+PhTree20D/KNN/1000/10/7         0.011 ms        0.011 ms        62041               10 88.5124k/s           62.041k
+PhTree20D/KNN/10000/10/7        0.024 ms        0.024 ms        29253               10 42.0563k/s           29.253k
+PhTree20D/KNN/100000/10/7       0.142 ms        0.142 ms         4908               10 7.01846k/s            4.908k
+PhTree20D/KNN/1000000/10/7       1.51 ms         1.51 ms          454               10  663.203/s               454
+PhTree20D/KNN/1000/1/4          0.057 ms        0.057 ms        12436                1 17.4498k/s           12.436k
+PhTree20D/KNN/10000/1/4         0.604 ms        0.605 ms         1157                1 1.65416k/s            1.157k
+PhTree20D/KNN/100000/1/4         14.1 ms         14.1 ms           49                1  70.9317/s                49
+PhTree20D/KNN/1000000/1/4         173 ms          173 ms            4                1  5.77782/s                 4
+PhTree20D/KNN/1000/10/4         0.056 ms        0.056 ms        12315               10 17.7688k/s           12.315k
+PhTree20D/KNN/10000/10/4        0.608 ms        0.609 ms         1153               10 1.64336k/s            1.153k
+PhTree20D/KNN/100000/10/4        14.8 ms         14.8 ms           49               10  67.4845/s                49
+PhTree20D/KNN/1000000/10/4        175 ms          175 ms            4               10  5.72508/s                 4
+PhTree30D/KNN/1000/1/7          0.012 ms        0.012 ms        60396                1 86.7311k/s           60.396k
+PhTree30D/KNN/10000/1/7         0.027 ms        0.027 ms        25376                1 36.4117k/s           25.376k
+PhTree30D/KNN/100000/1/7        0.228 ms        0.228 ms         2994                1 4.37835k/s            2.994k
+PhTree30D/KNN/1000/10/7         0.012 ms        0.012 ms        58826               10 83.7707k/s           58.826k
+PhTree30D/KNN/10000/10/7        0.028 ms        0.028 ms        24991               10 35.4838k/s           24.991k
+PhTree30D/KNN/100000/10/7       0.228 ms        0.228 ms         3058               10 4.38795k/s            3.058k
+PhTree30D/KNN/1000/1/4          0.071 ms        0.071 ms         9949                1 14.1286k/s            9.949k
+PhTree30D/KNN/10000/1/4         0.709 ms        0.709 ms          990                1 1.41048k/s               990
+PhTree30D/KNN/100000/1/4         15.2 ms         15.2 ms           46                1   65.624/s                46
+PhTree30D/KNN/1000/10/4         0.070 ms        0.070 ms         9825               10 14.1967k/s            9.825k
+PhTree30D/KNN/10000/10/4        0.709 ms        0.709 ms          986               10 1.41089k/s               986
+PhTree30D/KNN/100000/10/4        15.1 ms         15.1 ms           47               10  66.2674/s                47
+PhTree60D/KNN/1000/1/7          0.030 ms        0.030 ms        23537                1 33.6811k/s           23.537k
+PhTree60D/KNN/10000/1/7         0.090 ms        0.090 ms         7689                1 11.0562k/s            7.689k
+PhTree60D/KNN/100000/1/7        0.650 ms        0.650 ms         1075                1 1.53916k/s              1075
+PhTree60D/KNN/1000/10/7         0.030 ms        0.030 ms        22906               10 32.9715k/s           22.906k
+PhTree60D/KNN/10000/10/7        0.091 ms        0.092 ms         7686               10 10.9258k/s            7.686k
+PhTree60D/KNN/100000/10/7       0.643 ms        0.643 ms         1079               10 1.55424k/s              1079
+PhTree60D/KNN/1000/1/4          0.101 ms        0.101 ms         6908                1 9.92413k/s            6.908k
+PhTree60D/KNN/10000/1/4          1.10 ms         1.10 ms          628                1  911.322/s               628
+PhTree60D/KNN/100000/1/4         20.9 ms         20.9 ms           33                1  47.7534/s                33
+PhTree60D/KNN/1000/10/4         0.102 ms        0.102 ms         6881               10 9.83299k/s            6.881k
+PhTree60D/KNN/10000/10/4         1.10 ms         1.10 ms          633               10  906.143/s               633
+PhTree60D/KNN/100000/10/4        20.9 ms         20.9 ms           33               10  47.7977/s                33
+
+
+==============================================================================================
+PhPointLD - Inherited std::array
+==============================================================================================
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 256 KiB (x8)
+  L3 Unified 12288 KiB (x1)
+Load Average: 0.53, 0.52, 0.49
+------------------------------------------------------------------------------------------------
+Benchmark                           Time             CPU   Iterations   put_rate total_put_count
+------------------------------------------------------------------------------------------------
+PhTree6D/INSERT/1000/7          0.095 ms        0.095 ms         6962   10.51M/s          6.962M
+PhTree6D/INSERT/10000/7          1.09 ms         1.09 ms          639 9.17009M/s           6.39M
+PhTree6D/INSERT/100000/7         12.2 ms         12.2 ms           57 8.18051M/s            5.7M
+PhTree6D/INSERT/1000000/7         138 ms          138 ms            4 7.26063M/s              4M
+PhTree6D/INSERT/1000/4          0.110 ms        0.110 ms         6344 9.06855M/s          6.344M
+PhTree6D/INSERT/10000/4          1.45 ms         1.45 ms          481 6.88984M/s           4.81M
+PhTree6D/INSERT/100000/4         20.2 ms         20.2 ms           35 4.95451M/s            3.5M
+PhTree6D/INSERT/1000000/4         364 ms          364 ms            2 2.74674M/s              2M
+PhTree10D/INSERT/1000/7         0.141 ms        0.141 ms         4970  7.1005M/s           4.97M
+PhTree10D/INSERT/10000/7         1.36 ms         1.36 ms          513 7.32879M/s           5.13M
+PhTree10D/INSERT/100000/7        15.6 ms         15.6 ms           45 6.39639M/s            4.5M
+PhTree10D/INSERT/1000000/7        181 ms          181 ms            4 5.51298M/s              4M
+PhTree10D/INSERT/1000/4         0.137 ms        0.138 ms         5073 7.27249M/s          5.073M
+PhTree10D/INSERT/10000/4         1.87 ms         1.87 ms          375 5.33483M/s           3.75M
+PhTree10D/INSERT/100000/4        28.8 ms         28.8 ms           25 3.47699M/s            2.5M
+PhTree10D/INSERT/1000000/4        555 ms          555 ms            1 1.80065M/s           1000k
+PhTree20D/INSERT/1000/7         0.192 ms        0.192 ms         3643 5.21271M/s          3.643M
+PhTree20D/INSERT/10000/7         2.07 ms         2.07 ms          338 4.81977M/s           3.38M
+PhTree20D/INSERT/100000/7        21.7 ms         21.7 ms           32 4.60736M/s            3.2M
+PhTree20D/INSERT/1000000/7        245 ms          245 ms            3  4.0857M/s              3M
+PhTree20D/INSERT/1000/4         0.168 ms        0.168 ms         4172 5.96218M/s          4.172M
+PhTree20D/INSERT/10000/4         2.22 ms         2.22 ms          316 4.50829M/s           3.16M
+PhTree20D/INSERT/100000/4        35.9 ms         35.9 ms           20 2.78394M/s              2M
+PhTree20D/INSERT/1000000/4        648 ms          648 ms            1 1.54233M/s           1000k
+PhTree30D/INSERT/1000/7         0.207 ms        0.207 ms         3375 4.82359M/s          3.375M
+PhTree30D/INSERT/10000/7         2.13 ms         2.13 ms          327 4.68527M/s           3.27M
+PhTree30D/INSERT/100000/7        24.0 ms         24.0 ms           29  4.1613M/s            2.9M
+PhTree30D/INSERT/1000/4         0.175 ms        0.175 ms         3983 5.70517M/s          3.983M
+PhTree30D/INSERT/10000/4         2.30 ms         2.30 ms          306 4.34752M/s           3.06M
+PhTree30D/INSERT/100000/4        39.3 ms         39.3 ms           18  2.5431M/s            1.8M
+PhTree60D/INSERT/1000/7         0.312 ms        0.312 ms         2218  3.2068M/s          2.218M
+PhTree60D/INSERT/10000/7         3.46 ms         3.46 ms          205 2.89182M/s           2.05M
+PhTree60D/INSERT/100000/7        38.5 ms         38.5 ms           18 2.59797M/s            1.8M
+PhTree60D/INSERT/1000/4         0.265 ms        0.265 ms         2703 3.77003M/s          2.703M
+PhTree60D/INSERT/10000/4         3.29 ms         3.29 ms          213 3.04336M/s           2.13M
+PhTree60D/INSERT/100000/4        60.3 ms         60.3 ms           12 1.65808M/s            1.2M
+
+Run on (8 X 4696.92 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 256 KiB (x8)
+  L3 Unified 12288 KiB (x1)
+Load Average: 0.53, 0.24, 0.14
+-------------------------------------------------------------------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations avg_result_count query_rate result_rate total_result_count
+-------------------------------------------------------------------------------------------------------------------------------
+PhTree6D_FE/WQ/1000/7          0.001 ms        0.001 ms       898358          58.3559 1.29409M/s  75.5178M/s           52.4245M
+PhTree6D_FE/WQ/10000/7         0.002 ms        0.002 ms       439314          73.2308 625.754k/s  45.8245M/s           32.1713M
+PhTree6D_FE/WQ/100000/7        0.003 ms        0.003 ms       209071          98.8628 304.264k/s  30.0804M/s           20.6694M
+PhTree6D_FE/WQ/1000000/7       0.006 ms        0.006 ms       115944          98.7085 167.035k/s  16.4877M/s           11.4447M
+PhTree6D_FE/WQ/1000/4          0.005 ms        0.005 ms       142490          101.767 203.745k/s  20.7345M/s           14.5008M
+PhTree6D_FE/WQ/10000/4         0.014 ms        0.014 ms        49946          102.219 71.3998k/s  7.29843M/s           5.10544M
+PhTree6D_FE/WQ/100000/4        0.028 ms        0.028 ms        25268          100.922  35.596k/s  3.59242M/s            2.5501M
+PhTree6D_FE/WQ/1000000/4       0.057 ms        0.057 ms        12353          101.064 17.5027k/s   1.7689M/s           1.24845M
+PhTree10D_FE/WQ/1000/7         0.001 ms        0.001 ms      1265030          13.1414 1.80757M/s   23.754M/s           16.6242M
+PhTree10D_FE/WQ/10000/7        0.002 ms        0.002 ms       306365          85.8351 434.078k/s  37.2592M/s           26.2969M
+PhTree10D_FE/WQ/100000/7       0.005 ms        0.005 ms       137132          104.195 198.379k/s  20.6701M/s           14.2885M
+PhTree10D_FE/WQ/1000000/7      0.014 ms        0.014 ms        50132          100.881  73.318k/s  7.39641M/s           5.05738M
+PhTree10D_FE/WQ/1000/4         0.009 ms        0.009 ms        75786           103.15 109.297k/s   11.274M/s           7.81734M
+PhTree10D_FE/WQ/10000/4        0.026 ms        0.026 ms        27159          100.741 38.8269k/s  3.91144M/s           2.73601M
+PhTree10D_FE/WQ/100000/4       0.099 ms        0.099 ms         7151          100.981 10.0788k/s  1017.77k/s           722.117k
+PhTree10D_FE/WQ/1000000/4      0.505 ms        0.505 ms         1000          101.842 1.98113k/s  201.762k/s           101.842k
+PhTree20D_FE/WQ/1000/7         0.001 ms        0.001 ms       730163          12.3449 1046.01k/s  12.9129M/s           9.01376M
+PhTree20D_FE/WQ/10000/7        0.003 ms        0.003 ms       223262          70.1398 318.305k/s  22.3258M/s           15.6596M
+PhTree20D_FE/WQ/100000/7       0.007 ms        0.007 ms       100339           99.044 143.624k/s  14.2251M/s           9.93798M
+PhTree20D_FE/WQ/1000000/7      0.026 ms        0.026 ms        26840          106.823 38.2339k/s  4.08426M/s           2.86713M
+PhTree20D_FE/WQ/1000/4         0.009 ms        0.010 ms        73787          107.349 105.149k/s  11.2877M/s           7.92098M
+PhTree20D_FE/WQ/10000/4        0.061 ms        0.061 ms        11390          102.502  16.455k/s  1.68667M/s            1.1675M
+PhTree20D_FE/WQ/100000/4       0.324 ms        0.324 ms         2204          104.316 3.08815k/s  322.144k/s           229.913k
+PhTree20D_FE/WQ/1000000/4       1.81 ms         1.81 ms          390          101.864  551.024/s  56.1296k/s            39.727k
+PhTree30D_FE/WQ/1000/7         0.003 ms        0.003 ms       217055          60.0079  309.16k/s   18.552M/s            13.025M
+PhTree30D_FE/WQ/10000/7        0.004 ms        0.004 ms       172485          48.3232 245.426k/s  11.8597M/s           8.33502M
+PhTree30D_FE/WQ/100000/7       0.011 ms        0.011 ms        63628          74.1792 92.0891k/s  6.83109M/s           4.71987M
+PhTree30D_FE/WQ/1000/4         0.013 ms        0.013 ms        52986          102.912 75.5687k/s   7.7769M/s           5.45288M
+PhTree30D_FE/WQ/10000/4        0.060 ms        0.060 ms        11713          108.098  16.675k/s  1.80253M/s           1.26615M
+PhTree30D_FE/WQ/100000/4       0.527 ms        0.527 ms         1282          105.269 1.89816k/s  199.818k/s           134.955k
+PhTree60D_FE/WQ/1000/7         0.005 ms        0.005 ms       146383           49.813 209.224k/s  10.4221M/s           7.29178M
+PhTree60D_FE/WQ/10000/7        0.012 ms        0.012 ms        56410           75.122 81.5994k/s  6.12991M/s           4.23763M
+PhTree60D_FE/WQ/100000/7       0.040 ms        0.040 ms        17647          142.073 25.1788k/s  3.57721M/s           2.50715M
+PhTree60D_FE/WQ/1000/4         0.024 ms        0.024 ms        28967          105.079 41.4679k/s  4.35742M/s           3.04383M
+PhTree60D_FE/WQ/10000/4        0.131 ms        0.131 ms         5348          98.0522 7.62989k/s  748.127k/s           524.383k
+PhTree60D_FE/WQ/100000/4        1.18 ms         1.18 ms          588           99.881  847.512/s  84.6503k/s             58.73k
+PhTree6D_IT/WQ/1000/7          0.001 ms        0.001 ms       634685          58.3504 894.289k/s  52.1821M/s           37.0341M
+PhTree6D_IT/WQ/10000/7         0.002 ms        0.002 ms       339325          73.4538 485.857k/s  35.6881M/s           24.9247M
+PhTree6D_IT/WQ/100000/7        0.004 ms        0.004 ms       180831          98.9445 260.233k/s  25.7486M/s           17.8922M
