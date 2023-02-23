@@ -56,6 +56,7 @@ namespace improbable::phtree::v16 {
 template <dimension_t DIM, typename T, typename CONVERT = ConverterNoOp<DIM, scalar_64_t>>
 class PhTreeV16 {
     friend PhTreeDebugHelper;
+    using bit_width_t = detail::bit_width_t;
     using ScalarExternal = typename CONVERT::ScalarExternal;
     using ScalarInternal = typename CONVERT::ScalarInternal;
     using KeyT = typename CONVERT::KeyInternal;
@@ -73,7 +74,7 @@ class PhTreeV16 {
 
     explicit PhTreeV16(CONVERT* converter)
     : num_entries_{0}
-    , root_{{}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , root_{{}, NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1}
     , converter_{converter} {}
 
     PhTreeV16(const PhTreeV16& other) = delete;
@@ -144,7 +145,7 @@ class PhTreeV16 {
             }
 
             auto* parent_entry = iterator.GetParentNodeEntry();
-            if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
+            if (detail::NumberOfDivergingBits(key, parent_entry->GetKey()) >
                 parent_entry->GetNodePostfixLen() + 1) {
                 // replace higher up in the tree
                 return try_emplace(key, std::forward<Args>(args)...);
@@ -347,7 +348,7 @@ class PhTreeV16 {
      */
     template <typename PRED>
     auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+        bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
         EntryT* current_entry = &root_;           // An entry.
         EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
@@ -487,7 +488,7 @@ class PhTreeV16 {
         bool verify_exists,
         RELOCATE&& relocate_fn,
         COUNT&& count_fn) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+        bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
         if (!verify_exists && n_diverging_bits == 0) {
             return 1;  // We omit calling COUNT because that would require looking up the entry...
@@ -754,7 +755,7 @@ class PhTreeV16 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT({}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT({}, NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*
@@ -790,7 +791,8 @@ class PhTreeV16 {
      */
     auto find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& prefix = query_box.min();
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        bit_width_t max_conflicting_bits =
+            detail::NumberOfDivergingBits(query_box.min(), query_box.max());
         const EntryT* parent = &root_;
         if (max_conflicting_bits > root_.GetNodePostfixLen()) {
             // Abort early if we have no shared prefix in the query

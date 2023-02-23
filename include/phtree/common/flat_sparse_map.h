@@ -28,8 +28,7 @@
  * This file contains the sparse_map implementation, which is used in medium-dimensional nodes in
  * the PH-Tree.
  */
-namespace improbable::phtree {
-using namespace detail;
+namespace improbable::phtree::detail {
 
 /*
  * The sparse_map is a flat map implementation that uses an array of *at* *most* SIZE=2^DIM.

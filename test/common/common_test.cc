@@ -19,6 +19,7 @@
 #include <include/gtest/gtest.h>
 
 using namespace improbable::phtree;
+using namespace improbable::phtree::detail;
 
 TEST(PhTreeCommonTest, NumberOfDivergingBits) {
     double d1 = -55;

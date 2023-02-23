@@ -22,7 +22,6 @@
 #include "phtree/common/common.h"
 
 namespace improbable::phtree::v16 {
-using namespace detail;
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
@@ -136,14 +135,15 @@ class NodeIterator {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
     using EntriesT = const EntryMap<DIM, EntryT>;
-    using hc_pos_t = hc_pos_dim_t<DIM>;
+    using hc_pos_t = detail::hc_pos_dim_t<DIM>;
 
   public:
     NodeIterator() : iter_{}, entries_{nullptr}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}
 
     void Init(const KeyT& min, const KeyT& max, const EntryT& entry) {
         auto& node = entry.GetNode();
-        CalcLimits(entry.GetNodePostfixLen(), min, max, entry.GetKey(), mask_lower_, mask_upper_);
+        detail::CalcLimits(
+            entry.GetNodePostfixLen(), min, max, entry.GetKey(), mask_lower_, mask_upper_);
         iter_ = node.Entries().lower_bound(mask_lower_);
         entries_ = &node.Entries();
         postfix_len_ = entry.GetNodePostfixLen();
@@ -169,7 +169,7 @@ class NodeIterator {
 
     bool CheckEntry(const EntryT& candidate, const KeyT& range_min, const KeyT& range_max) const {
         if (candidate.IsValue()) {
-            return IsInRange(candidate.GetKey(), range_min, range_max);
+            return detail::IsInRange(candidate.GetKey(), range_min, range_max);
         }
 
         // Check if node-prefix allows sub-node to contain any useful values.
@@ -180,8 +180,8 @@ class NodeIterator {
         }
 
         // Mask for comparing the prefix with the query boundaries.
-        assert(candidate.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
-        SCALAR comparison_mask = MAX_MASK<SCALAR> << (candidate.GetNodePostfixLen() + 1);
+        assert(candidate.GetNodePostfixLen() + 1 < detail::MAX_BIT_WIDTH<SCALAR>);
+        SCALAR comparison_mask = detail::MAX_MASK<SCALAR> << (candidate.GetNodePostfixLen() + 1);
         auto& key = candidate.GetKey();
         for (dimension_t dim = 0; dim < DIM; ++dim) {
             SCALAR in = key[dim] & comparison_mask;
@@ -202,7 +202,7 @@ class NodeIterator {
     EntriesT* entries_;
     hc_pos_t mask_lower_;
     hc_pos_t mask_upper_;
-    bit_width_t postfix_len_;
+    detail::bit_width_t postfix_len_;
 };
 }  // namespace
 }  // namespace improbable::phtree::v16

@@ -31,6 +31,7 @@ namespace improbable::phtree {
  */
 template <dimension_t DIM, typename T, typename CONVERTER = ConverterNoOp<DIM, scalar_64_t>>
 class PhTree {
+    //bit_width_t t;
     friend PhTreeDebugHelper;
     using Key = typename CONVERTER::KeyExternal;
     static constexpr dimension_t DimInternal = CONVERTER::DimInternal;

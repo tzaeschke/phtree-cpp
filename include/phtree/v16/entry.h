@@ -36,6 +36,7 @@ class Node;
  */
 template <dimension_t DIM, typename T, typename SCALAR>
 class Entry {
+    using bit_width_t = detail::bit_width_t;
     using KeyT = PhPoint<DIM, SCALAR>;
     using ValueT = std::remove_const_t<T>;
     using NodeT = Node<DIM, T, SCALAR>;
@@ -131,10 +132,10 @@ class Entry {
         // This is required for window queries which would otherwise need to calculate the
         // center each time they traverse a node.
         assert(union_type_ == NODE);
-        bit_mask_t<SCALAR> maskHcBit = bit_mask_t<SCALAR>(1) << postfix_len_;
-        bit_mask_t<SCALAR> maskVT = MAX_MASK<SCALAR> << postfix_len_;
+        detail::bit_mask_t<SCALAR> maskHcBit = detail::bit_mask_t<SCALAR>(1) << postfix_len_;
+        detail::bit_mask_t<SCALAR> maskVT = detail::MAX_MASK<SCALAR> << postfix_len_;
         // to prevent problems with signed long when using 64 bit
-        if (postfix_len_ < MAX_BIT_WIDTH<SCALAR> - 1) {
+        if (postfix_len_ < detail::MAX_BIT_WIDTH<SCALAR> - 1) {
             for (dimension_t i = 0; i < DIM; ++i) {
                 kd_key_[i] = (kd_key_[i] | maskHcBit) & maskVT;
             }

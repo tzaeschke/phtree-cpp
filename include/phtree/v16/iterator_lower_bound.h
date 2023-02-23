@@ -166,7 +166,7 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
 
     std::array<
         std::pair<EntryIteratorC<DIM, EntryT>, EntryIteratorC<DIM, EntryT>>,
-        MAX_BIT_WIDTH<SCALAR>>
+        detail::MAX_BIT_WIDTH<SCALAR>>
         stack_;
     size_t stack_size_;
 };

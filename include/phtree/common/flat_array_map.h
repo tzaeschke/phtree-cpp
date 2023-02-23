@@ -29,13 +29,12 @@
  * This file contains the array_map implementation, which is used in low-dimensional nodes in the
  * PH-Tree.
  */
-namespace improbable::phtree {
-using namespace detail;
+namespace improbable::phtree::detail {
 
 template <typename Key, typename Value, Key SIZE>
 class flat_array_map;
 
-namespace detail {
+namespace {
 
 template <typename Key, typename Value>
 using flat_map_pair = std::pair<Key, Value>;

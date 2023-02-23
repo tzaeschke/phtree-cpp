@@ -96,11 +96,11 @@ class FilterSphereLegacy {
     [[nodiscard]] bool IsNodeValid(const KeyInternal& prefix, std::uint32_t bits_to_ignore) const {
         // we always want to traverse the root node (bits_to_ignore == 64)
 
-        if (bits_to_ignore >= (MAX_BIT_WIDTH<ScalarInternal> - 1)) {
+        if (bits_to_ignore >= (detail::MAX_BIT_WIDTH<ScalarInternal> - 1)) {
             return true;
         }
 
-        ScalarInternal node_min_bits = MAX_MASK<ScalarInternal> << bits_to_ignore;
+        ScalarInternal node_min_bits = detail::MAX_MASK<ScalarInternal> << bits_to_ignore;
         ScalarInternal node_max_bits = ~node_min_bits;
 
         KeyInternal closest_in_bounds;

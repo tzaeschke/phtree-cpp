@@ -27,7 +27,7 @@ TEST(PhTreeFlatArrayMapTest, SmokeTest) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        array_map<size_t, size_t, max_size> test_map;
+        detail::array_map<size_t, size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -61,7 +61,7 @@ TEST(PhTreeFlatArrayMapTest, SmokeTestWithTryEmplace) {
     std::uniform_int_distribution<> cube_distribution(0, max_size - 1);
 
     for (int i = 0; i < 10; i++) {
-        array_map<size_t, size_t, max_size> test_map;
+        detail::array_map<size_t, size_t, max_size> test_map;
         std::map<size_t, size_t> reference_map;
         for (int j = 0; j < 2 * max_size; j++) {
             size_t val = cube_distribution(random_engine);
@@ -91,7 +91,7 @@ TEST(PhTreeFlatArrayMapTest, SmokeTestWithTryEmplace) {
 TEST(PhTreeFlatArrayMapTest, IteratorPostIncrementTest) {
     const int num_entries = 3;
 
-    array_map<size_t, size_t, 8> test_map;
+    detail::array_map<size_t, size_t, 8> test_map;
     for (int j = 0; j < num_entries; j++) {
         size_t val = j * 2;
         bool hasVal = test_map.find(val) != test_map.end();

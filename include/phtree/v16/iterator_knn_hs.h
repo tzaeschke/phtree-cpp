@@ -130,8 +130,8 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     }
 
     double DistanceToNode(const KeyInternal& prefix, std::uint32_t bits_to_ignore) {
-        assert(bits_to_ignore < MAX_BIT_WIDTH<SCALAR>);
-        SCALAR mask_min = MAX_MASK<SCALAR> << bits_to_ignore;
+        assert(bits_to_ignore < detail::MAX_BIT_WIDTH<SCALAR>);
+        SCALAR mask_min = detail::MAX_MASK<SCALAR> << bits_to_ignore;
         SCALAR mask_max = ~mask_min;
         KeyInternal buf;
         // The following calculates the point inside the node that is closest to center_.

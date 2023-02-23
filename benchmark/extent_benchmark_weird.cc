@@ -115,11 +115,11 @@ class FilterBoxIntersection {
 
     [[nodiscard]] bool IsNodeValid(const PhPoint<DIM>& prefix, int bits_to_ignore) const {
         // skip this for root node (bitsToIgnore == 64)
-        if (bits_to_ignore >= (MAX_BIT_WIDTH<SCALAR> - 1)) {
+        if (bits_to_ignore >= (detail::MAX_BIT_WIDTH<SCALAR> - 1)) {
             return true;
         }
-        bit_mask_t<SCALAR> mask_min = MAX_MASK<SCALAR> << bits_to_ignore;
-        bit_mask_t<SCALAR> mask_max = ~mask_min;
+        detail::bit_mask_t<SCALAR> mask_min = detail::MAX_MASK<SCALAR> << bits_to_ignore;
+        detail::bit_mask_t<SCALAR> mask_max = ~mask_min;
 
         for (size_t i = 0; i < prefix.size(); ++i) {
             if ((prefix[i] | mask_max) < min_include_bits[i] ||

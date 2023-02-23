@@ -17,8 +17,8 @@
 #include "logging.h"
 #include <benchmark/benchmark.h>
 
-using namespace improbable;
 using namespace improbable::phtree;
+using namespace improbable::phtree::detail;
 using namespace improbable::phtree::phbenchmark;
 
 namespace {

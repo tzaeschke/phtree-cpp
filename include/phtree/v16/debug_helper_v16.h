@@ -56,7 +56,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
             ToStringPlain(os, root_);
             break;
         case Enum::tree:
-            ToStringTree(os, 0, root_, MAX_BIT_WIDTH<SCALAR>, true);
+            ToStringTree(os, 0, root_, detail::MAX_BIT_WIDTH<SCALAR>, true);
             break;
         }
         return os.str();
@@ -96,12 +96,12 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
 
     void ToStringTree(
         std::ostringstream& sb,
-        bit_width_t current_depth,
+        detail::bit_width_t current_depth,
         const EntryT& entry,
-        const bit_width_t parent_postfix_len,
+        const detail::bit_width_t parent_postfix_len,
         bool print_value) const {
         std::string ind = "*";
-        for (bit_width_t i = 0; i < current_depth; ++i) {
+        for (detail::bit_width_t i = 0; i < current_depth; ++i) {
             ind += "-";
         }
         const auto& node = entry.GetNode();
@@ -112,11 +112,11 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
 
         // for a leaf node, the existence of a sub just indicates that the value exists.
         if (infix_len > 0) {
-            bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << infix_len;
+            detail::bit_mask_t<SCALAR> mask = detail::MAX_MASK<SCALAR> << infix_len;
             mask = ~mask;
             mask <<= (std::uint64_t)postfix_len + 1;
             for (dimension_t i = 0; i < DIM; ++i) {
-                sb << ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
+                sb << detail::ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
             }
         }
         current_depth += infix_len;
@@ -133,7 +133,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
                 ToStringTree(sb, current_depth + 1, child, postfix_len, print_value);
             } else {
                 // post-fix
-                sb << ind << ToBinary(child.GetKey());
+                sb << ind << detail::ToBinary(child.GetKey());
                 sb << "  hcPos=" << hc_pos;
                 if (print_value) {
                     sb << "  v=" << (child.IsValue() ? "T" : "null");

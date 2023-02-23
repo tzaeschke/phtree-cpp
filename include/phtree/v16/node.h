@@ -43,11 +43,11 @@ template <dimension_t DIM, typename Entry>
 // using EntryMap = std::map<hc_pos_dim_t<DIM>, Entry>;
 using EntryMap = typename std::conditional_t<
     DIM <= 3,
-    array_map<hc_pos_dim_t<DIM>, Entry, (size_t(1) << DIM)>,
+    detail::array_map<detail::hc_pos_dim_t<DIM>, Entry, (size_t(1) << DIM)>,
     typename std::conditional_t<
         DIM <= 8,
-        sparse_map<hc_pos_dim_t<DIM>, Entry>,
-        b_plus_tree_map<hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
+        detail::sparse_map<detail::hc_pos_dim_t<DIM>, Entry>,
+        b_plus_tree_map<detail::hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;
@@ -75,9 +75,10 @@ using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
  */
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node {
+    using bit_width_t = detail::bit_width_t;
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
-    using hc_pos_t = hc_pos_dim_t<DIM>;
+    using hc_pos_t = detail::hc_pos_dim_t<DIM>;
 
   public:
     Node() : entries_{} {}
@@ -121,7 +122,7 @@ class Node {
      */
     template <typename... Args>
     EntryT& Emplace(bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto emplace_result = entries_.try_emplace(hc_pos, key, std::forward<Args>(args)...);
         auto& entry = emplace_result.first->second;
         // Return if emplace succeed, i.e. there was no entry.
@@ -135,7 +136,8 @@ class Node {
     template <typename IterT, typename... Args>
     EntryT& Emplace(
         IterT iter, bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);  // TODO pass in -> should be known!
+        hc_pos_t hc_pos =
+            detail::CalcPosInArray(key, postfix_len);  // TODO pass in -> should be known!
         if (iter == entries_.end() || iter->first != hc_pos) {
             auto emplace_result =
                 entries_.try_emplace(iter, hc_pos, key, std::forward<Args>(args)...);
@@ -154,7 +156,7 @@ class Node {
      * @return The sub node or null.
      */
     EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
             return &iter->second;
@@ -167,13 +169,13 @@ class Node {
     }
 
     auto LowerBound(const KeyT& key, bit_width_t postfix_len, bool& found) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto iter = entries_.lower_bound(hc_pos);
         found =
             (iter != entries_.end() && iter->first == hc_pos &&
              DoesEntryMatch(iter->second, key, postfix_len));
         if (!found && iter != entries_.end() && iter->first == hc_pos &&
-            KeyLess(iter->second.GetKey(), key)) {
+            detail::KeyLess(iter->second.GetKey(), key)) {
             // There is an entry in the same slot as key would go. However it is not equal to
             // key. We need to figure out whether "key" goes before the existing entry or not.
             ++iter;
@@ -196,7 +198,7 @@ class Node {
     auto FindPrefix(
         const KeyT& prefix, bit_width_t prefix_post_len, bit_width_t node_postfix_len) const {
         assert(prefix_post_len <= node_postfix_len);
-        hc_pos_t hc_pos = CalcPosInArray(prefix, node_postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(prefix, node_postfix_len);
         const auto iter = entries_.find(hc_pos);
         if (iter == entries_.end() || iter->second.IsValue() ||
             iter->second.GetNodePostfixLen() < prefix_post_len) {
@@ -224,7 +226,7 @@ class Node {
      */
     EntryT* Erase(const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
         auto postfix_len = parent_entry->GetNodePostfixLen();
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto it = entries_.find(hc_pos);
         if (it != entries_.end() && DoesEntryMatch(it->second, key, postfix_len)) {
             if (it->second.IsNode()) {
@@ -257,7 +259,7 @@ class Node {
 
         ++stats.n_nodes_;
         ++stats.node_depth_hist_[current_depth];
-        ++stats.node_size_log_hist_[32 - CountLeadingZeros(std::uint32_t(num_children))];
+        ++stats.node_size_log_hist_[32 - detail::CountLeadingZeros(std::uint32_t(num_children))];
         stats.n_total_children_ += num_children;
         stats.q_total_depth_ += current_depth;
 
@@ -298,7 +300,7 @@ class Node {
 
         // Check node center
         auto post_len = current_entry.GetNodePostfixLen();
-        if (post_len == MAX_BIT_WIDTH<SCALAR> - 1) {
+        if (post_len == detail::MAX_BIT_WIDTH<SCALAR> - 1) {
             for (auto d : current_entry.GetKey()) {
                 assert(d == 0);
             }
@@ -357,7 +359,7 @@ class Node {
             return entry;
         }
 
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(new_key, entry.GetKey());
+        bit_width_t max_conflicting_bits = detail::NumberOfDivergingBits(new_key, entry.GetKey());
         auto split_len = is_node ? entry.GetNodePostfixLen() + 1 : 0;
         if (max_conflicting_bits <= split_len) {
             // perfect match -> return existing
@@ -375,8 +377,8 @@ class Node {
         bit_width_t max_conflicting_bits,
         Args&&... args) {
         bit_width_t new_postfix_len = max_conflicting_bits - 1;
-        hc_pos_t pos_sub_1 = CalcPosInArray(new_key, new_postfix_len);
-        hc_pos_t pos_sub_2 = CalcPosInArray(current_entry.GetKey(), new_postfix_len);
+        hc_pos_t pos_sub_1 = detail::CalcPosInArray(new_key, new_postfix_len);
+        hc_pos_t pos_sub_2 = detail::CalcPosInArray(current_entry.GetKey(), new_postfix_len);
 
         // Move key/value into subnode
         Node new_sub_node{};
@@ -400,7 +402,7 @@ class Node {
         const EntryT& entry, const KeyT& key, const bit_width_t parent_postfix_len) const {
         if (entry.IsNode()) {
             if (entry.HasNodeInfix(parent_postfix_len)) {
-                return KeyEquals(entry.GetKey(), key, entry.GetNodePostfixLen() + 1);
+                return detail::KeyEquals(entry.GetKey(), key, entry.GetNodePostfixLen() + 1);
             }
             return true;
         }

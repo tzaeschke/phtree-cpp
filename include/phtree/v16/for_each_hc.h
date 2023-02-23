@@ -22,7 +22,6 @@
 #include "phtree/common/common.h"
 
 namespace improbable::phtree::v16 {
-using namespace detail;
 
 /*
  * The HC (hyper cube) iterator uses `hypercube navigation`, ie. filtering of quadrants by their
@@ -41,7 +40,7 @@ class ForEachHC {
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = Entry<DIM, T, SCALAR>;
-    using hc_pos_t = hc_pos_dim_t<DIM>;
+    using hc_pos_t = detail::hc_pos_dim_t<DIM>;
 
   public:
     template <typename CB, typename F>
@@ -61,7 +60,7 @@ class ForEachHC {
         assert(entry.IsNode());
         hc_pos_t mask_lower = 0;
         hc_pos_t mask_upper = 0;
-        CalcLimits(entry.GetNodePostfixLen(), min_, max_, entry.GetKey(), mask_lower, mask_upper);
+        detail::CalcLimits(entry.GetNodePostfixLen(), min_, max_, entry.GetKey(), mask_lower, mask_upper);
         auto& entries = entry.GetNode().Entries();
         auto postfix_len = entry.GetNodePostfixLen();
         auto end = entries.end();
@@ -79,7 +78,7 @@ class ForEachHC {
                     }
                 } else {
                     T& value = child.GetValue();
-                    if (IsInRange(child_key, min_, max_) &&
+                    if (detail::IsInRange(child_key, min_, max_) &&
                         filter_.IsEntryValid(child_key, value)) {
                         callback_(converter_->post(child_key), value);
                     }
@@ -89,7 +88,7 @@ class ForEachHC {
     }
 
   private:
-    bool CheckNode(const EntryT& entry, bit_width_t parent_postfix_len) {
+    bool CheckNode(const EntryT& entry, detail::bit_width_t parent_postfix_len) {
         const KeyInternal& key = entry.GetKey();
         // Check if the node overlaps with the query box.
         // An infix with len=0 implies that at least part of the child node overlaps with the query,
@@ -98,8 +97,8 @@ class ForEachHC {
         bool mismatch = false;
         if (entry.HasNodeInfix(parent_postfix_len)) {
             // Mask for comparing the prefix with the query boundaries.
-            assert(entry.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
-            SCALAR comparison_mask = MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
+            assert(entry.GetNodePostfixLen() + 1 < detail::MAX_BIT_WIDTH<SCALAR>);
+            SCALAR comparison_mask = detail::MAX_MASK<SCALAR> << (entry.GetNodePostfixLen() + 1);
             for (dimension_t dim = 0; dim < DIM; ++dim) {
                 SCALAR prefix = key[dim] & comparison_mask;
                 mismatch |= (prefix > max_[dim] || prefix < (min_[dim] & comparison_mask));
