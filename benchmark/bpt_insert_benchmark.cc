@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Improbable Worlds Limited
+* Copyright 2022-2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,8 @@
 #include "phtree/common/b_plus_tree_multimap.h"
 #include <benchmark/benchmark.h>
 
-using namespace improbable;
-using namespace improbable::phtree;
 using namespace improbable::phtree::phbenchmark;
+using namespace phtree::bptree;
 
 namespace {
 
@@ -38,6 +37,8 @@ enum Scenario {
 
 using payload_t = int;
 using key_t = uint32_t;
+template <size_t DIM>
+using TestPoint = std::array<double, DIM>;
 
 template <Scenario SCENARIO, size_t MAX_SIZE>
 using TestIndex = typename std::conditional_t<
@@ -60,7 +61,7 @@ using TestIndex = typename std::conditional_t<
 /*
  * Benchmark for adding entries to the index.
  */
-template <dimension_t DIM, Scenario TYPE>
+template <size_t DIM, Scenario TYPE>
 class IndexBenchmark {
     using Index = TestIndex<TYPE, (1 << DIM)>;
 
@@ -75,10 +76,10 @@ class IndexBenchmark {
     const TestGenerator data_type_;
     const size_t num_entities_;
     const double fraction_of_duplicates_;
-    std::vector<PhPoint<1>> points_;
+    std::vector<TestPoint<1>> points_;
 };
 
-template <dimension_t DIM, Scenario TYPE>
+template <size_t DIM, Scenario TYPE>
 IndexBenchmark<DIM, TYPE>::IndexBenchmark(benchmark::State& state, double fraction_of_duplicates)
 : data_type_{static_cast<TestGenerator>(state.range(1))}
 , num_entities_(state.range(0))
@@ -88,7 +89,7 @@ IndexBenchmark<DIM, TYPE>::IndexBenchmark(benchmark::State& state, double fracti
     SetupWorld(state);
 }
 
-template <dimension_t DIM, Scenario TYPE>
+template <size_t DIM, Scenario TYPE>
 void IndexBenchmark<DIM, TYPE>::Benchmark(benchmark::State& state) {
     for (auto _ : state) {
         state.PauseTiming();
@@ -104,7 +105,7 @@ void IndexBenchmark<DIM, TYPE>::Benchmark(benchmark::State& state) {
     }
 }
 
-template <dimension_t DIM, Scenario TYPE>
+template <size_t DIM, Scenario TYPE>
 void IndexBenchmark<DIM, TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("Creating {} entities with DIM={}.", num_entities_, 1);
     CreatePointData<1>(points_, data_type_, num_entities_, 0, GLOBAL_MAX, fraction_of_duplicates_);
@@ -114,7 +115,7 @@ void IndexBenchmark<DIM, TYPE>::SetupWorld(benchmark::State& state) {
     logging::info("World setup complete.");
 }
 
-template <dimension_t DIM, Scenario TYPE>
+template <size_t DIM, Scenario TYPE>
 void IndexBenchmark<DIM, TYPE>::Insert(benchmark::State& state, Index& tree) {
     switch (TYPE) {
     default: {

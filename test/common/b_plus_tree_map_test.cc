@@ -18,7 +18,7 @@
 #include <include/gtest/gtest.h>
 #include <random>
 
-using namespace improbable::phtree;
+using namespace phtree::bptree;
 
 using KeyT = std::uint64_t;
 

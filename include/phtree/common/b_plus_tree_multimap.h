@@ -29,7 +29,7 @@
  * This file contains the B+tree multimap implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
-namespace improbable::phtree {
+namespace phtree::bptree {
 
 /*
  * The b_plus_tree_multimap is a B+tree implementation that uses a hierarchy of horizontally
@@ -82,8 +82,8 @@ class b_plus_tree_multimap {
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = ::phtree::bptree::detail::bpt_node_inner<KeyT, NLeafT>;
-    using NodeT = ::phtree::bptree::detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
+    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT>;
+    using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_multimap<KeyT, ValueT>;
 
   public:
@@ -272,8 +272,7 @@ class b_plus_tree_multimap {
     }
 
   private:
-    using bpt_leaf_super =
-        ::phtree::bptree::detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true>;
+    using bpt_leaf_super = detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -314,8 +313,8 @@ class b_plus_tree_multimap {
         }
     };
 
-    class bpt_iterator : public ::phtree::bptree::detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
-        using SuperT = ::phtree::bptree::detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -347,6 +346,6 @@ class b_plus_tree_multimap {
     NodeT* root_;
     size_t size_;
 };
-}  // namespace improbable::phtree
+}  // namespace phtree::bptree
 
 #endif  // PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H

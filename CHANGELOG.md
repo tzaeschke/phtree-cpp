@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
-  and [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
+- Moved B+trees into own namespace. [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
 
 ## [1.5.0] - 2023-02-09
 ### Added

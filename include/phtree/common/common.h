@@ -17,7 +17,6 @@
 #ifndef PHTREE_COMMON_COMMON_H
 #define PHTREE_COMMON_COMMON_H
 
-#include "b_plus_tree_map.h"
 #include "base_types.h"
 #include "bits.h"
 #include "flat_array_map.h"

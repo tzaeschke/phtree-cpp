@@ -29,7 +29,7 @@
  * This file contains the B+tree implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
-namespace improbable::phtree {
+namespace phtree::bptree {
 
 /*
  * The b_plus_tree_map is a B+tree implementation that uses a hierarchy of horizontally
@@ -82,15 +82,15 @@ class b_plus_tree_map {
     constexpr static size_t INNER_MIN = 2;  // std::max((size_t)2, M_inner >> 2);
     constexpr static size_t LEAF_INIT = std::min(size_t(2), LEAF_MAX);
     constexpr static size_t INNER_INIT = std::min(size_t(4), INNER_MAX);
-    using LEAF_CFG = ::phtree::bptree::detail::bpt_config<LEAF_MAX, LEAF_MIN, LEAF_INIT>;
-    using INNER_CFG = ::phtree::bptree::detail::bpt_config<INNER_MAX, INNER_MIN, INNER_INIT>;
+    using LEAF_CFG = detail::bpt_config<LEAF_MAX, LEAF_MIN, LEAF_INIT>;
+    using INNER_CFG = detail::bpt_config<INNER_MAX, INNER_MIN, INNER_INIT>;
 
     class bpt_node_leaf;
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = ::phtree::bptree::detail::bpt_node_inner<KeyT, NLeafT, INNER_CFG>;
-    using NodeT = ::phtree::bptree::detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
+    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, INNER_CFG>;
+    using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
 
   public:
@@ -290,8 +290,8 @@ class b_plus_tree_map {
         }
     };
 
-    class bpt_iterator : public ::phtree::bptree::detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
-        using SuperT = ::phtree::bptree::detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -323,6 +323,6 @@ class b_plus_tree_map {
     NodeT* root_;
     size_t size_;
 };
-}  // namespace improbable::phtree
+}  // namespace phtree::bptree
 
 #endif  // PHTREE_COMMON_B_PLUS_TREE_H

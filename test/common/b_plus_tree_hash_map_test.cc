@@ -19,7 +19,7 @@
 #include <random>
 #include <unordered_set>
 
-using namespace improbable::phtree;
+using namespace phtree::bptree;
 
 static int default_construct_count_ = 0;
 static int construct_count_ = 0;

@@ -19,6 +19,7 @@
 #define PHTREE_V16_NODE_H
 
 #include "entry.h"
+#include "phtree/common/b_plus_tree_map.h"
 #include "phtree/common/common.h"
 #include "phtree_v16.h"
 #include <map>
@@ -47,7 +48,7 @@ using EntryMap = typename std::conditional_t<
     typename std::conditional_t<
         DIM <= 8,
         detail::sparse_map<detail::hc_pos_dim_t<DIM>, Entry>,
-        b_plus_tree_map<detail::hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
+        ::phtree::bptree::b_plus_tree_map<detail::hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;

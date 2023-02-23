@@ -181,6 +181,9 @@ class IteratorKnn : public IteratorNormal<ITERATOR_PH, PHTREE> {
 
 }  // namespace
 
+template <typename T, typename HashT = std::hash<T>, typename EqualT = std::equal_to<T>>
+using b_plus_tree_hash_set = ::phtree::bptree::b_plus_tree_hash_set<T, HashT, EqualT>;
+
 /*
  * The PhTreeMultiMap class.
  */
