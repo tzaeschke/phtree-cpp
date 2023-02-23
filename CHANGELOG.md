@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [#124](https://github.com/tzaeschke/phtree-cpp/pull/124)
 
 ### Changed
-- Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
+- Changed `bpt_vectot` to use `std::destroy` i.o. default dstr. [#132](https://github.com/tzaeschke/phtree-cpp/pull/132)
 - Moved B+trees into own namespace. [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
+- Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
 
 ## [1.5.0] - 2023-02-09
 ### Added

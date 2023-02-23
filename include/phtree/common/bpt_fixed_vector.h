@@ -145,10 +145,11 @@ class bpt_vector {
     using const_iterator = const value_type*;
 
     ~bpt_vector() noexcept {
-        auto b = begin();
-        for (auto it = b; it < b + size_; ++it) {
-            it->~V();
-        }
+//        auto b = begin();
+        std::destroy_n(begin(), size_);
+//        for (auto it = b; it < b + size_; ++it) {
+//            it->~V();
+//        }
     }
 
     constexpr iterator begin() noexcept {
@@ -233,7 +234,7 @@ class bpt_vector {
     }
 
     iterator erase(const_iterator iter) noexcept {
-        iter->~V();
+        std::destroy_at(&*iter);
         pointer dst{const_cast<pointer>(&*iter)};
         move_to_front(dst, dst + 1, size_ - to_index(iter) - 1);
         --size_;
@@ -242,9 +243,10 @@ class bpt_vector {
 
     iterator erase(const_iterator first, const_iterator last) noexcept {
         auto ptr_last = &*last;
-        for (auto* ptr = &*first; ptr < ptr_last; ++ptr) {
-            ptr->~V();
-        }
+        std::destroy(first, last);
+//        for (auto* ptr = &*first; ptr < ptr_last; ++ptr) {
+//            ptr->~V();
+//        }
         auto length = last - first;
         pointer dst{const_cast<pointer>(&*first)};
         move_to_front(dst, dst + length, end_ptr() - &*last);
@@ -273,7 +275,7 @@ class bpt_vector {
         dst += count - 1;
         src += count - 1;
         for (size_t i = 0; i < count; ++i, --dst, --src) {
-            data(dst) = std::move(data(src));
+            data_ptr(dst) = std::move(data_ptr(src));
         }
     }
 
@@ -312,7 +314,7 @@ class bpt_vector {
         return iterator{&data(index)};
     }
 
-    reference data(pointer ptr) noexcept {
+    reference data_ptr(pointer ptr) noexcept {
         return *std::launder(ptr);
     }
 
