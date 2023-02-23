@@ -145,11 +145,7 @@ class bpt_vector {
     using const_iterator = const value_type*;
 
     ~bpt_vector() noexcept {
-//        auto b = begin();
         std::destroy_n(begin(), size_);
-//        for (auto it = b; it < b + size_; ++it) {
-//            it->~V();
-//        }
     }
 
     constexpr iterator begin() noexcept {
@@ -242,11 +238,7 @@ class bpt_vector {
     }
 
     iterator erase(const_iterator first, const_iterator last) noexcept {
-        auto ptr_last = &*last;
         std::destroy(first, last);
-//        for (auto* ptr = &*first; ptr < ptr_last; ++ptr) {
-//            ptr->~V();
-//        }
         auto length = last - first;
         pointer dst{const_cast<pointer>(&*first)};
         move_to_front(dst, dst + length, end_ptr() - &*last);
@@ -272,10 +264,12 @@ class bpt_vector {
 
     template <class V2 = V, typename std::enable_if_t<!std::is_trivially_copyable_v<V2>, int> = 0>
     void move_to_back(pointer dst, pointer src, size_t count) noexcept {
-        dst += count - 1;
-        src += count - 1;
-        for (size_t i = 0; i < count; ++i, --dst, --src) {
-            data_ptr(dst) = std::move(data_ptr(src));
+        if (count > 0) {
+            dst += count - 1;
+            src += count - 1;
+            for (size_t i = 0; i < count; ++i, --dst, --src) {
+                data_ptr(dst) = std::move(data_ptr(src));
+            }
         }
     }
 
