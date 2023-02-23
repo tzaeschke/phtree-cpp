@@ -30,11 +30,11 @@ template <dimension_t DIM>
 auto CreateDataCUBE = [](auto& points,
                          size_t num_entities,
                          std::uint32_t seed,
-                         double world_mininum,
+                         double world_minimum,
                          double world_maximum,
                          auto set_coordinate) {
     std::default_random_engine random_engine{seed};
-    std::uniform_real_distribution<> distribution(world_mininum, world_maximum);
+    std::uniform_real_distribution<> distribution(world_minimum, world_maximum);
     for (size_t i = 0; i < num_entities; ++i) {
         auto& p = points[i];
         for (dimension_t d = 0; d < DIM; ++d) {
