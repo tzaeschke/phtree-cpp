@@ -463,7 +463,7 @@ class b_plus_tree_heap {
     }
 
   private:
-    b_plus_tree_multimap<Key, Value, Compare> data_;  // The heap array.
+    ::phtree::bptree::b_plus_tree_multimap<Key, Value, Compare> data_;  // The heap array.
 };
 
 namespace detail {
