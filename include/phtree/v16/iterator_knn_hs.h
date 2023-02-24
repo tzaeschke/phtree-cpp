@@ -19,8 +19,8 @@
 
 #include "iterator_base.h"
 #include "phtree/common/common.h"
-#include <queue>
 #include <iostream>
+#include <queue>
 
 namespace improbable::phtree::v16 {
 
@@ -79,10 +79,11 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
         FindNextElement();
         ++N_CREATE;
         if (N_CREATE % 10000 == 0) {
-            std::cout << "KNN1: " << MAX_DEPTH << " N_Q=" << N_CREATE << " N_PR=" << N_PROCESSED/N_CREATE
-                      << " N_PR_R=" << N_PR_RESULT/N_CREATE << " N_PR_N=" << N_PR_NODES/N_CREATE
-                      << " N_Q_R=" << N_Q_RESULT/N_CREATE << " N_Q_N=" << N_Q_NODES/N_CREATE
-                      << " N_Q_N=" << N_Q_NODES_0/N_CREATE << " avg_D=" << (TOTAL_DEPTH/N_CREATE) << std::endl;
+            std::cout << "KNN1: " << MAX_DEPTH << " N_Q=" << N_CREATE
+                      << " N_PR=" << N_PROCESSED / N_CREATE << " N_PR_R=" << N_PR_RESULT / N_CREATE
+                      << " N_PR_N=" << N_PR_NODES / N_CREATE << " N_Q_R=" << N_Q_RESULT / N_CREATE
+                      << " N_Q_N=" << N_Q_NODES / N_CREATE << " N_Q_N=" << N_Q_NODES_0 / N_CREATE
+                      << " avg_D=" << (TOTAL_DEPTH / N_CREATE) << std::endl;
             MAX_DEPTH = 0;
             N_CREATE = 0;
             N_PROCESSED = 0;
