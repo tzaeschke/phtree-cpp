@@ -24,6 +24,7 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
+#include "iterator_knn_hs2.h"
 #include "iterator_lower_bound.h"
 #include "iterator_with_parent.h"
 #include "node.h"
@@ -734,7 +735,7 @@ class PhTreeV16 {
         const KeyT& center,
         DISTANCE&& distance_function = DISTANCE(),
         FILTER&& filter = FILTER()) const {
-        return IteratorKnnHS<T, CONVERT, DISTANCE, FILTER>(
+        return IteratorKnnHS2<T, CONVERT, DISTANCE, FILTER>(
             root_,
             min_results,
             center,

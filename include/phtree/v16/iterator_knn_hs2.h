@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_QUERY_KNN_HS_H
-#define PHTREE_V16_QUERY_KNN_HS_H
+#ifndef PHTREE_V16_QUERY_KNN_HS2_H
+#define PHTREE_V16_QUERY_KNN_HS2_H
 
 #include "iterator_base.h"
 #include "phtree/common/common.h"
 #include <queue>
-#include <iostream>
+#include "phtree/common/b_plus_tree_heap.h"
 
 namespace improbable::phtree::v16 {
 
@@ -34,10 +34,10 @@ namespace improbable::phtree::v16 {
 
 namespace {
 template <dimension_t DIM, typename T, typename SCALAR>
-using EntryDist = std::pair<double, const Entry<DIM, T, SCALAR>*>;
+using EntryDist2 = std::pair<double, Entry<DIM, T, SCALAR>*>;  // TODO const pointer?!?!
 
 template <typename ENTRY>
-struct CompareEntryDistByDistance {
+struct CompareEntryDistByDistance2 {
     bool operator()(const ENTRY& left, const ENTRY& right) const {
         return left.first > right.first;
     };
@@ -45,17 +45,17 @@ struct CompareEntryDistByDistance {
 }  // namespace
 
 template <typename T, typename CONVERT, typename DISTANCE, typename FILTER>
-class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
+class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyExternal = typename CONVERT::KeyExternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
-    using EntryDistT = EntryDist<DIM, T, SCALAR>;
+    using EntryDistT = EntryDist2<DIM, T, SCALAR>;
 
   public:
     template <typename DIST, typename F>
-    explicit IteratorKnnHS(
+    explicit IteratorKnnHS2(
         const EntryT& root,
         size_t min_results,
         const KeyInternal& center,
@@ -75,15 +75,19 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
         }
 
         // Initialize queue, use d=0 because every imaginable point lies inside the root Node
-        queue_.emplace(0, &root);
+        assert(root.IsNode());
+        queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});   // TODO remove const_casts etc
+
         FindNextElement();
         ++N_CREATE;
-        if (N_CREATE % 10000 == 0) {
-            std::cout << "KNN1: " << MAX_DEPTH << " N_Q=" << N_CREATE << " N_PR=" << N_PROCESSED/N_CREATE
-                      << " N_PR_R=" << N_PR_RESULT/N_CREATE << " N_PR_N=" << N_PR_NODES/N_CREATE
-                      << " N_Q_R=" << N_Q_RESULT/N_CREATE << " N_Q_N=" << N_Q_NODES/N_CREATE
-                      << " N_Q_N=" << N_Q_NODES_0/N_CREATE << " avg_D=" << (TOTAL_DEPTH/N_CREATE) << std::endl;
-            MAX_DEPTH = 0;
+        if (N_CREATE % 100000 == 0) {
+            std::cout << "KNN1: " << MAX_DEPTH_N << "/" << MAX_DEPTH_V << " N_Q=" << N_CREATE
+                      << " N_PR=" << N_PROCESSED / N_CREATE << " N_PR_R=" << N_PR_RESULT / N_CREATE
+                      << " N_PR_N=" << N_PR_NODES / N_CREATE << " N_Q_R=" << N_Q_RESULT / N_CREATE
+                      << " N_Q_N=" << N_Q_NODES / N_CREATE << " N_Q_N_D0=" << N_Q_NODES_0 / N_CREATE
+                      << " avg_D=" << (TOTAL_DEPTH / N_CREATE) << std::endl;
+            MAX_DEPTH_N = 0;
+            MAX_DEPTH_V = 0;
             N_CREATE = 0;
             N_PROCESSED = 0;
             N_PR_RESULT = 0;
@@ -95,7 +99,8 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
         }
     }
 
-    inline static size_t MAX_DEPTH{0};
+    inline static size_t MAX_DEPTH_N{0};
+    inline static size_t MAX_DEPTH_V{0};
     inline static long N_CREATE{0};
     inline static long N_PROCESSED{0};
     inline static long N_PR_RESULT{0};
@@ -109,64 +114,106 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
         return current_distance_;
     }
 
-    IteratorKnnHS& operator++() noexcept {
+    IteratorKnnHS2& operator++() noexcept {
         FindNextElement();
         return *this;
     }
 
-    IteratorKnnHS operator++(int) noexcept {
-        IteratorKnnHS iterator(*this);
+    IteratorKnnHS2 operator++(int) noexcept {
+        IteratorKnnHS2 iterator(*this);
         ++(*this);
         return iterator;
     }
 
   private:
     void FindNextElement() {
-        while (num_found_results_ < num_requested_results_ && !queue_.empty()) {
-            auto& candidate = queue_.top();
-            auto* o = candidate.second;
+        while (num_found_results_ < num_requested_results_ &&
+               !(queue_n_.empty() && queue_v_.empty())) {
+            bool use_v = !queue_v_.empty();
+            if (use_v && !queue_n_.empty()) {
+                use_v = queue_n_.top() >= queue_v_.top();
+            }
             ++N_PROCESSED;
-            if (!o->IsNode()) {
+            if (use_v) {
                 ++N_PR_RESULT;
                 // data entry
+                auto& cand_v = queue_v_.top();
                 ++num_found_results_;
-                this->SetCurrentResult(o);
-                current_distance_ = candidate.first;
+                this->SetCurrentResult(cand_v.second);
+                current_distance_ = cand_v.first;
                 // We need to pop() AFTER we processed the value, otherwise the reference is
                 // overwritten.
-                queue_.pop();
+                queue_v_.pop();
                 return;
             } else {
                 ++N_PR_NODES;
                 // inner node
-                auto& node = o->GetNode();
-                queue_.pop();
+                auto& node = queue_n_.top().second->GetNode();
+                auto d_node = queue_n_.top().first; // TODO merge with previous
+                queue_n_.pop();
+
+                if (queue_v_.size() >= num_requested_results_ && d_node >max_node_dist_) {
+                    // ignore this node
+                    continue;
+                }
+                // TODO
+                //  - Improve bpt pop()/top() and top_max()/pop_max()
+                //  - THIS works only if FILTER=true:
+                //     Get a_max_dist from first k nodes (plus found entries) and use as max_node_dist_
+                //     Repeat this!
+                //  - Consider rebuilding queue_n once queue_v is full.
+                //  - Heuristic: Consider rebuild queue_n when
+                //    -- new max_node_dist is a lot smaller than the previous one (
+                //       wont work for high dim....
+                //    -- size() > 2*k -> this depends on DIM!
+                //       We could just do it, and depending on how much gets removed we wait
+                //       longer/shorter for next rebuild.
+
+
                 for (auto& entry : node.Entries()) {
-                    auto& e2 = entry.second;
+                    auto& e2 = const_cast<EntryT&>(entry.second);
                     if (this->ApplyFilter(e2)) {
                         if (e2.IsNode()) {
                             ++N_Q_NODES;
                             double d = DistanceToNode(e2.GetKey(), e2.GetNodePostfixLen() + 1);
                             N_Q_NODES_0 += d <= 0.0001;
-                            queue_.emplace(d, &e2);
+                            if (d <= max_node_dist_) {
+                                queue_n_.emplace(d, &e2);
+                            }
                         } else {
                             ++N_Q_RESULT;
                             double d = distance_(center_post_, this->post(e2.GetKey()));
-                            queue_.emplace(d, &e2);
+                            if (queue_v_.size() < num_requested_results_) {
+                                queue_v_.emplace(d, &e2);
+                            } else if (d < queue_v_.top_max().first) {
+                                queue_v_.pop_max();
+                                queue_v_.emplace(d, &e2);
+                            }
+                            if (queue_v_.size() >= num_requested_results_) {
+                                // TODO adjust with 10th value in queue i.o. last value?
+                                //   -> in case we allow more than 10...
+                                max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+                            }
                         }
                     }
                 }
-                MAX_DEPTH = std::max(MAX_DEPTH, queue_.size());
+                // TODO this should work...! -> It doesn´t help thoujgh, removing entries
+                //  one by one is as costly (or even more?) as leaving them in.
+//                while (!queue_n_.empty() && queue_n_.top_max().first > max_node_dist_) {
+//                    queue_n_.pop_max();
+//                }
+                MAX_DEPTH_N = std::max(MAX_DEPTH_N, queue_n_.size());
+                MAX_DEPTH_V = std::max(MAX_DEPTH_V, queue_v_.size());
             }
         }
-        TOTAL_DEPTH += queue_.size();
+        TOTAL_DEPTH += queue_v_.size() + queue_n_.size();
         this->SetFinished();
         current_distance_ = std::numeric_limits<double>::max();
     }
 
     double DistanceToNode(const KeyInternal& prefix, std::uint32_t bits_to_ignore) {
-        assert(bits_to_ignore < detail::MAX_BIT_WIDTH<SCALAR>);
-        SCALAR mask_min = detail::MAX_MASK<SCALAR> << bits_to_ignore;
+        assert(bits_to_ignore < MAX_BIT_WIDTH<SCALAR>);
+        SCALAR mask_min = MAX_MASK<SCALAR> << bits_to_ignore;
         SCALAR mask_max = ~mask_min;
         KeyInternal buf;
         // The following calculates the point inside the node that is closest to center_.
@@ -185,13 +232,22 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     // center after post processing == the external representation
     const KeyExternal center_post_;
     double current_distance_;
-    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance<EntryDistT>>
-        queue_;
+//    std::
+//        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
+//            queue_n_;
+//    std::
+//        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
+//            queue_v_;
+//    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+//    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+    b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
+    b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
     size_t num_found_results_;
     size_t num_requested_results_;
     DISTANCE distance_;
+    double max_node_dist_ = std::numeric_limits<double>::max();
 };
 
 }  // namespace improbable::phtree::v16
 
-#endif  // PHTREE_V16_QUERY_KNN_HS_H
+#endif  // PHTREE_V16_QUERY_KNN_HS2_H

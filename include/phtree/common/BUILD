@@ -5,6 +5,7 @@ cc_library(
     hdrs = [
         "b_plus_tree_base.h",
         "b_plus_tree_hash_map.h",
+        "b_plus_tree_heap.h",
         "b_plus_tree_map.h",
         "b_plus_tree_multimap.h",
         "base_types.h",

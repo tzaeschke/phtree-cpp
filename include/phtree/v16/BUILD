@@ -13,6 +13,7 @@ cc_library(
         "iterator_full.h",
         "iterator_hc.h",
         "iterator_knn_hs.h",
+        "iterator_knn_hs2.h",
         "iterator_lower_bound.h",
         "iterator_with_parent.h",
         "node.h",

@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H
-#define PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H
+#ifndef PHTREE_COMMON_B_PLUS_TREE_HEAP_H
+#define PHTREE_COMMON_B_PLUS_TREE_HEAP_H
 
 #include "b_plus_tree_base.h"
+#include "b_plus_tree_multimap.h"
 #include "bits.h"
 #include <cassert>
+#include <map>
 #include <tuple>
 #include <vector>
 
@@ -29,7 +31,8 @@
  * This file contains the B+tree multimap implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
-namespace phtree::bptree {
+namespace improbable::phtree {
+using namespace ::phtree::bptree::detail;
 
 /*
  * The b_plus_tree_multimap is a B+tree implementation that uses a hierarchy of horizontally
@@ -74,34 +77,33 @@ namespace phtree::bptree {
  *
  */
 template <typename KeyT, typename ValueT, typename Compare = std::less<KeyT>>
-class b_plus_tree_multimap {
-    // static_assert(std::is_integral<KeyT>() && "Key type must be integer");
-    // static_assert(std::is_unsigned<KeyT>() && "Key type must unsigned");
-    static_assert(std::is_arithmetic<KeyT>() && "Key type must integral or floating point");
+class b_plus_tree_multimap2 {
+    static_assert(std::is_integral<KeyT>() && "Key type must be integer");
+    static_assert(std::is_unsigned<KeyT>() && "Key type must unsigned");
 
     class bpt_node_leaf;
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, Compare>;
-    using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
-    using TreeT = b_plus_tree_multimap<KeyT, ValueT, Compare>;
+    using NInnerT = bpt_node_inner<KeyT, NLeafT, Compare>;
+    using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
+    using TreeT = b_plus_tree_multimap2<KeyT, ValueT, Compare>;
 
   public:
-    explicit b_plus_tree_multimap() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
+    explicit b_plus_tree_multimap2() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
-    b_plus_tree_multimap(const b_plus_tree_multimap& other) : size_{other.size_} {
+    b_plus_tree_multimap2(const b_plus_tree_multimap2& other) : size_{other.size_} {
         root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
                                        : (NodeT*)new NInnerT(*other.root_->as_inner());
     }
 
-    b_plus_tree_multimap(b_plus_tree_multimap&& other) noexcept
+    b_plus_tree_multimap2(b_plus_tree_multimap2&& other) noexcept
     : root_{other.root_}, size_{other.size_} {
         other.root_ = nullptr;
         other.size_ = 0;
     }
 
-    b_plus_tree_multimap& operator=(const b_plus_tree_multimap& other) {
+    b_plus_tree_multimap2& operator=(const b_plus_tree_multimap2& other) {
         assert(this != &other);
         delete root_;
         root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
@@ -110,7 +112,7 @@ class b_plus_tree_multimap {
         return *this;
     }
 
-    b_plus_tree_multimap& operator=(b_plus_tree_multimap&& other) noexcept {
+    b_plus_tree_multimap2& operator=(b_plus_tree_multimap2&& other) noexcept {
         delete root_;
         root_ = other.root_;
         other.root_ = nullptr;
@@ -119,7 +121,7 @@ class b_plus_tree_multimap {
         return *this;
     }
 
-    ~b_plus_tree_multimap() noexcept {
+    ~b_plus_tree_multimap2() noexcept {
         delete root_;
     }
 
@@ -129,20 +131,20 @@ class b_plus_tree_multimap {
     }
 
     [[nodiscard]] auto find(const KeyT key) const {
-        return const_cast<b_plus_tree_multimap&>(*this).find(key);
+        return const_cast<b_plus_tree_multimap2&>(*this).find(key);
     }
 
     [[nodiscard]] size_t count(const KeyT key) const {
-        return const_cast<b_plus_tree_multimap&>(*this).find(key) != end();
+        return const_cast<b_plus_tree_multimap2&>(*this).find(key) != end();
     }
 
     [[nodiscard]] auto lower_bound(const KeyT key) {
         auto leaf = lower_bound_leaf(key, root_);
-        return leaf != nullptr ? leaf->template lower_bound_as_iter<IterT>(key) : IterT{};
+        return leaf != nullptr ? leaf->lower_bound_as_iter(key) : IterT{};
     }
 
     [[nodiscard]] auto lower_bound(const KeyT key) const {
-        return const_cast<b_plus_tree_multimap&>(*this).lower_bound(key);
+        return const_cast<b_plus_tree_multimap2&>(*this).lower_bound(key);
     }
 
     [[nodiscard]] auto begin() noexcept {
@@ -174,10 +176,10 @@ class b_plus_tree_multimap {
     }
 
     [[nodiscard]] auto& front() const noexcept {
-        return const_cast<b_plus_tree_multimap&>(*this).back();
+        return const_cast<b_plus_tree_multimap2&>(*this).back();
     }
 
-    [[nodiscard]] auto& back() noexcept {
+    [[nodiscard]] auto back() noexcept {
         NodeT* node = root_;
         while (!node->is_leaf()) {
             node = node->as_inner()->data_.back().second;
@@ -185,8 +187,8 @@ class b_plus_tree_multimap {
         return node->as_leaf()->data_.back();
     }
 
-    [[nodiscard]] auto& back() const noexcept {
-        return const_cast<b_plus_tree_multimap&>(*this).back();
+    [[nodiscard]] auto back() const noexcept {
+        return const_cast<b_plus_tree_multimap2&>(*this).back();
     }
 
     void pop_back() noexcept {
@@ -236,13 +238,7 @@ class b_plus_tree_multimap {
 
     size_t erase(const KeyT key) {
         auto begin = lower_bound(key);
-        static_assert(std::is_integral_v<KeyT>);
-        IterT end;
-        if constexpr (Compare{}(0, 1)) {
-            end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
-        } else {
-            end = key == std::numeric_limits<KeyT>::min() ? IterT() : lower_bound(key - 1);
-        }
+        auto end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
         if (begin == end) {
             return 0;
         }
@@ -256,7 +252,7 @@ class b_plus_tree_multimap {
         --size_;
         auto result = iterator.node_->erase_entry(iterator.iter_, root_);
         if (result.node_) {
-            return IterT(result.node_->as_leaf(), result.iter_);
+            return IterT(static_cast<NLeafT*>(result.node_), result.iter_);
         }
         return IterT();
     }
@@ -307,16 +303,16 @@ class b_plus_tree_multimap {
         return size_ == 0;
     }
 
-    void _check() const {
+    void _check() {
         size_t count = 0;
-        const NLeafT* prev_leaf = nullptr;
+        NLeafT* prev_leaf = nullptr;
         KeyT known_min = std::numeric_limits<KeyT>::max();
         root_->_check(count, nullptr, prev_leaf, known_min, 0);
         assert(count == size());
     }
 
   private:
-    using bpt_leaf_super = detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, Compare>;
+    using bpt_leaf_super = bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, Compare>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -343,11 +339,7 @@ class b_plus_tree_multimap {
         }
 
         void _check(
-            size_t& count,
-            const NInnerT* parent,
-            const NLeafT*& prev_leaf,
-            KeyT& known_min,
-            KeyT known_max) const {
+            size_t& count, NInnerT* parent, NLeafT*& prev_leaf, KeyT& known_min, KeyT known_max) {
             this->_check_data(parent, known_max);
 
             assert(prev_leaf == this->prev_node_);
@@ -363,8 +355,8 @@ class b_plus_tree_multimap {
         }
     };
 
-    class bpt_iterator : public detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
-        using SuperT = detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
@@ -396,6 +388,153 @@ class b_plus_tree_multimap {
     NodeT* root_;
     size_t size_;
 };
-}  // namespace phtree::bptree
 
-#endif  // PHTREE_COMMON_B_PLUS_TREE_MULTIMAP_H
+namespace detail {
+template <typename Value>
+struct DefaultGetKey1 {
+    double operator()(const Value& v) const {
+        return v.first;
+    }
+};
+}  // namespace detail
+
+// TODO clean this up -> double?
+template <
+    typename Value,
+    typename Compare = std::less<double>,
+    typename GetKey = detail::DefaultGetKey1<Value>>
+class b_plus_tree_heap {
+    using Key = decltype(GetKey{}(Value{}));
+    struct SwapComp {
+        Compare comp;
+        // template<class T>
+        bool operator()(Key const& x, Key const& y) const {
+            return !comp(x, y);
+        }
+    };
+
+  public:
+    const Value& top() const {
+        return data_.back().second;
+    }
+
+    const Value& top_max() const {
+        return data_.begin()->second;
+    }
+
+    Value& top_max() {
+        return data_.begin()->second;
+    }
+
+    template <typename... Args>
+    void emplace(Args&&... args) {
+        Value v{std::forward<Args>(args)...};
+        Key key = GetKey{}(v);
+        data_.emplace(key, std::move(v));
+        //        data_.emplace(std::forward<Args>(args)...);
+    }
+
+    void pop() {
+        data_.pop_back();
+    }
+
+    void pop_max() {
+        data_.erase(data_.begin());
+    }
+
+    // pop_max() + emplace()
+    template <typename... Args>
+    void replace_max(Args&&... args) {
+        pop_max();
+        emplace(std::forward<Args>(args)...);
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return data_.empty();
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        return data_.size();
+    }
+
+    // TODO Simple hack: just negate the key to a negative value?
+    void _check() {
+        data_._check();
+    }
+
+  private:
+    b_plus_tree_multimap<Key, Value, Compare> data_;  // The heap array.
+};
+
+namespace detail {
+template <typename Value>
+struct DefaultGetKey2 {
+    double operator()(const Value& v) const {
+        return v.first;
+    }
+};
+}  // namespace detail
+
+// TODO clean this up -> double?
+template <
+    typename Value,
+    typename Compare = std::less<double>,
+    typename GetKey = detail::DefaultGetKey2<Value>>
+class b_plus_tree_heap2 {
+    using Key = decltype(GetKey{}(Value{}));  // TODO remove?!?!?
+
+  public:
+    const Value& top() const {
+        return data_.rbegin()->second;
+    }
+
+    const Value& top_max() const {
+        return data_.begin()->second;
+    }
+
+    Value& top_max() {
+        return data_.begin()->second;
+    }
+
+    template <typename... Args>
+    void emplace(Args&&... args) {
+        Value v{std::forward<Args>(args)...};
+        Key key = GetKey{}(v);
+        data_.emplace(key, std::move(v));
+    }
+
+    void pop() {
+        data_.erase(--data_.end());
+    }
+
+    void pop_max() {
+        data_.erase(data_.begin());
+    }
+
+    // pop_max() + emplace()
+    template <typename... Args>
+    void replace_max(Key& key, Args&&... args) {
+        pop_max();
+        emplace(key, std::forward<Args>(args)...);
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return data_.empty();
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        return data_.size();
+    }
+
+    // TODO  Simple hack: just negate the key to a negative value?
+    void _check() {
+        //       data_._check();
+    }
+
+  private:
+    std::multimap<Key, Value, Compare> data_;
+};
+
+}  // namespace improbable::phtree
+
+#endif  // PHTREE_COMMON_B_PLUS_TREE_HEAP_H

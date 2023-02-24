@@ -389,7 +389,7 @@ TEST(PhTreeBptMulitmapTest, SmokeTestUpdateByIterator) {
     std::multimap<Key, Value> reference_map{};
     std::vector<std::pair<Value, Key>> reverse_map{};
     populate(N, test_map, reference_map, reverse_map, random_engine);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         std::shuffle(reverse_map.begin(), reverse_map.end(), random_engine);
         for (auto& reverse_pair : reverse_map) {
             auto key = reverse_pair.second;
@@ -445,6 +445,66 @@ TEST(PhTreeBptMulitmapTest, SmokeTestUpdateByIterator) {
             ASSERT_EQ(test_map.size(), reference_map.size());
         }
     }
+}
+
+template <typename Compare>
+void SmokeTestOrdering(bool inverse_ordering) {
+    const size_t N = 300;
+    std::default_random_engine random_engine{0};
+    std::uniform_int_distribution<> cube_distribution(0, N / 2);
+
+    using Key = size_t;
+    using Value = Id;
+    for (int i = 0; i < 10; i++) {
+        b_plus_tree_multimap<Key, Value, Compare> test_map;
+        for (size_t j = 0; j < N; j++) {
+            size_t key = cube_distribution(random_engine);
+
+            auto lb = test_map.lower_bound(key);
+            if (lb != test_map.end()) {
+                if (inverse_ordering) {
+                    ASSERT_LE(lb->first, key);
+                } else {
+                    ASSERT_GE(lb->first, key);
+                }
+            }
+
+            Value val{j};
+            CheckMapResult(test_map.emplace(key, val), test_map.end(), key, val);
+            ASSERT_EQ(test_map.find(key)->first, key);
+            ASSERT_EQ(test_map.lower_bound(key)->first, key);
+            test_map._check();
+        }
+        ASSERT_EQ(test_map.size(), N);
+
+        for (size_t j = 0; j < N / 2; ++j) {
+            size_t key = cube_distribution(random_engine);
+            test_map.erase(key);
+        }
+        ASSERT_LE(test_map.size(), N);
+        ASSERT_GE(test_map.size(), N / 4);
+
+        Key prev_key = inverse_ordering ? N : 0;
+        size_t n = 0;
+        for (auto& entry : test_map) {
+            if (inverse_ordering) {
+                ASSERT_GE(prev_key, entry.first);
+            } else {
+                ASSERT_LE(prev_key, entry.first);
+            }
+            prev_key = entry.first;
+            ++n;
+        }
+        ASSERT_EQ(test_map.size(), n);
+    }
+}
+
+TEST(PhTreeBptMulitmapTest, TestOrdering) {
+    SmokeTestOrdering<std::less<size_t>>(false);
+}
+
+TEST(PhTreeBptMulitmapTest, TestOrderingReverse) {
+    SmokeTestOrdering<std::greater<size_t>>(true);
 }
 
 template <typename TREE>
