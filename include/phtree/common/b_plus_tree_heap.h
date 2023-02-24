@@ -31,8 +31,7 @@
  * This file contains the B+tree multimap implementation which is used in high-dimensional nodes in
  * the PH-Tree.
  */
-namespace improbable::phtree {
-using namespace ::phtree::bptree::detail;
+namespace phtree::bptree {
 
 /*
  * The b_plus_tree_multimap is a B+tree implementation that uses a hierarchy of horizontally
@@ -85,8 +84,8 @@ class b_plus_tree_multimap2 {
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = bpt_node_inner<KeyT, NLeafT, Compare>;
-    using NodeT = bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
+    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, Compare>;
+    using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_multimap2<KeyT, ValueT, Compare>;
 
   public:
@@ -140,7 +139,7 @@ class b_plus_tree_multimap2 {
 
     [[nodiscard]] auto lower_bound(const KeyT key) {
         auto leaf = lower_bound_leaf(key, root_);
-        return leaf != nullptr ? leaf->lower_bound_as_iter(key) : IterT{};
+        return leaf != nullptr ? leaf->template lower_bound_as_iter<IterT>(key) : IterT{};
     }
 
     [[nodiscard]] auto lower_bound(const KeyT key) const {
@@ -179,7 +178,7 @@ class b_plus_tree_multimap2 {
         return const_cast<b_plus_tree_multimap2&>(*this).back();
     }
 
-    [[nodiscard]] auto back() noexcept {
+    [[nodiscard]] auto& back() noexcept {
         NodeT* node = root_;
         while (!node->is_leaf()) {
             node = node->as_inner()->data_.back().second;
@@ -238,7 +237,13 @@ class b_plus_tree_multimap2 {
 
     size_t erase(const KeyT key) {
         auto begin = lower_bound(key);
-        auto end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
+        static_assert(std::is_integral_v<KeyT>);
+        IterT end;
+        if constexpr (Compare{}(0, 1)) {
+            end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
+        } else {
+            end = key == std::numeric_limits<KeyT>::min() ? IterT() : lower_bound(key - 1);
+        }
         if (begin == end) {
             return 0;
         }
@@ -252,7 +257,7 @@ class b_plus_tree_multimap2 {
         --size_;
         auto result = iterator.node_->erase_entry(iterator.iter_, root_);
         if (result.node_) {
-            return IterT(static_cast<NLeafT*>(result.node_), result.iter_);
+            return IterT(result.node_->as_leaf(), result.iter_);
         }
         return IterT();
     }
@@ -312,7 +317,7 @@ class b_plus_tree_multimap2 {
     }
 
   private:
-    using bpt_leaf_super = bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, Compare>;
+    using bpt_leaf_super = detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, Compare>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -355,8 +360,8 @@ class b_plus_tree_multimap2 {
         }
     };
 
-    class bpt_iterator : public bpt_iterator_base<NLeafT, NodeT, TreeT> {
-        using SuperT = bpt_iterator_base<NLeafT, NodeT, TreeT>;
+    class bpt_iterator : public detail::bpt_iterator_base<NLeafT, NodeT, TreeT> {
+        using SuperT = detail::bpt_iterator_base<NLeafT, NodeT, TreeT>;
 
       public:
         using iterator_category = std::forward_iterator_tag;
