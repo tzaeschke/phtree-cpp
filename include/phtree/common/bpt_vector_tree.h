@@ -145,6 +145,9 @@ class bpt_vector_tree_iterator {
     parent_iter_t parent_iter_;
     leaf_iter_t leaf_iter_;
 };
+}  // namespace phtree::bptree::detail
+
+namespace phtree::bptree {
 
 template <typename V, size_t SIZE = 32>
 class vector_tree {
@@ -167,8 +170,8 @@ class vector_tree {
     using const_pointer = const value_type*;  //	Allocator::const_pointer 	(until C++11)
     //             std::allocator_traits<Allocator>::const_pointer 	(since C++11)
     // TODO LegacyContiguousIterator ?!!?!?!?
-    using iterator = bpt_vector_tree_iterator<value_type, SIZE>;  // LegacyRandomAccessIterator
-    using const_iterator = bpt_vector_tree_iterator<const value_type, SIZE>;
+    using iterator = detail::bpt_vector_tree_iterator<value_type, SIZE>;  // LegacyRandomAccessIterator
+    using const_iterator = detail::bpt_vector_tree_iterator<const value_type, SIZE>;
     // using iterator = value_type*;  // LegacyRandomAccessIterator
     // using const_iterator = const value_type*;
 
@@ -297,6 +300,6 @@ class vector_tree {
     size_t size_;
 };
 
-}  // namespace phtree::bptree::detail
+}  // namespace phtree::bptree
 
 #endif  // PHTREE_COMMON_BPT_VECTOR_TREE_H
