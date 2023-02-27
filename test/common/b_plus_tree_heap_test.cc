@@ -359,3 +359,12 @@ TEST(PhTreeBptMulitmapTest, TestMoveAssign) {
     tree = std::move(tree1);
     test_tree(tree);
 }
+
+TEST(PhTreeBptHeapTest, FuzzTest1) {
+    using Key = std::uint8_t;
+    using Value = std::uint8_t;
+    b_plus_tree_heap<Key, Value> tree{};
+    tree.emplace(251, 255);
+    tree.emplace(101, 101);
+    auto x = tree.top_max();
+}

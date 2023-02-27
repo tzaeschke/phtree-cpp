@@ -18,6 +18,7 @@
 #define PHTREE_V16_QUERY_KNN_HS2_H
 
 #include "iterator_base.h"
+#include "min_max_heap.h"
 #include "phtree/common/common.h"
 #include <queue>
 #include "phtree/common/b_plus_tree_heap.h"
@@ -34,7 +35,7 @@ namespace improbable::phtree::v16 {
 
 namespace {
 template <dimension_t DIM, typename T, typename SCALAR>
-using EntryDist2 = std::pair<double, Entry<DIM, T, SCALAR>*>;  // TODO const pointer?!?!
+using EntryDist2 = std::pair<double, const Entry<DIM, T, SCALAR>*>;  // TODO const pointer?!?!
 
 template <typename ENTRY>
 struct CompareEntryDistByDistance2 {
@@ -119,6 +120,7 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
         return *this;
     }
 
+    [[deprecated]] // This iterator is MUCH slower!
     IteratorKnnHS2 operator++(int) noexcept {
         IteratorKnnHS2 iterator(*this);
         ++(*this);
@@ -169,9 +171,17 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
                 //       We could just do it, and depending on how much gets removed we wait
                 //       longer/shorter for next rebuild.
 
+                // TODO
+                //  - queue_v should be decreased in size as num_found_results_ increases!
+
+                // TODO test/handle/assert case when tree.size() < n
+
+               // CC=clang bazel test //test:phtree_test --config=ubsan
+
 
                 for (auto& entry : node.Entries()) {
-                    auto& e2 = const_cast<EntryT&>(entry.second);
+                    //auto& e2 = const_cast<EntryT&>(entry.second);
+                    const auto& e2 = entry.second;
                     if (this->ApplyFilter(e2)) {
                         if (e2.IsNode()) {
                             ++N_Q_NODES;
@@ -238,10 +248,10 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
 //    std::
 //        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
 //            queue_v_;
-//    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
-//    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
-    b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
-    b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
+    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+    min_max_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+//    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
+//    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
     size_t num_found_results_;
     size_t num_requested_results_;
     DISTANCE distance_;
