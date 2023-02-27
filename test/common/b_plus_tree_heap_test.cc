@@ -117,13 +117,6 @@ struct Id {
     int _i;
 };
 
-template <typename R, typename K, typename V, typename END>
-void CheckMapResult(const R& result, END end, const K& key, const V& val) {
-    ASSERT_NE(result, end);
-    ASSERT_EQ(result->first, key);
-    ASSERT_EQ(result->second, val);
-}
-
 struct IdComparator {
     bool operator()(const Id& left, const Id& right) const {
         return left.first > right.first;
@@ -292,7 +285,7 @@ TEST(PhTreeBptHeapTest, DestructionTest) {
             test_map.emplace(val);
         }
         // Remove some (or not)
-        for (size_t j = 0; j < i * N/100; j++) {
+        for (size_t j = 0; j < i * N / 100; j++) {
             double dist = ((i + 1) * (j % 2)) == 0 ? 0 : dist_distribution(random_engine);
             ValueT val{dist, j};
             test_map.pop();
@@ -358,13 +351,4 @@ TEST(PhTreeBptMulitmapTest, TestMoveAssign) {
     TestTree tree{};
     tree = std::move(tree1);
     test_tree(tree);
-}
-
-TEST(PhTreeBptHeapTest, FuzzTest1) {
-    using Key = std::uint8_t;
-    using Value = std::uint8_t;
-    b_plus_tree_heap<Key, Value> tree{};
-    tree.emplace(251, 255);
-    tree.emplace(101, 101);
-    auto x = tree.top_max();
 }

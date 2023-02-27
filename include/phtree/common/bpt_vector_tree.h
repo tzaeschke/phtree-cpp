@@ -25,21 +25,14 @@
 
 namespace phtree::bptree::detail {
 
-template <typename T, size_t SIZE = 64>
-class vector_tree;
-
 template <typename V, size_t SIZE>
 class bpt_vector_tree_iterator {
   private:
     using V2 = std::remove_cv_t<V>;
-    using tree_t = vector_tree<V2, SIZE>;
     using leaf_t = std::vector<V2>;
     using parent_t = std::vector<leaf_t>;
     using leaf_iter_t = std::remove_cv_t<decltype(std::declval<leaf_t>().begin())>;
     using parent_iter_t = std::remove_cv_t<decltype(std::declval<parent_t>().begin())>;
-    //  using BucketIterType = decltype(std::declval<BUCKET>().begin());
-    // using EndType = decltype(std::declval<v16::PhTreeV16<DimInternal, BUCKET,
-    // CONVERTER>>().end());
 
     using normal_iterator = bpt_vector_tree_iterator<V, SIZE>;
 
@@ -51,10 +44,10 @@ class bpt_vector_tree_iterator {
     using reference = value_type&;
 
     bpt_vector_tree_iterator() noexcept
-    : tree_{nullptr}, parent_iter_{nullptr}, leaf_iter_{nullptr} {}
+    : parent_{nullptr}, parent_iter_{nullptr}, leaf_iter_{nullptr} {}
     explicit bpt_vector_tree_iterator(
-        tree_t* tree, parent_iter_t parent_iter, leaf_iter_t leaf_iter) noexcept
-    : tree_{tree}, parent_iter_{parent_iter}, leaf_iter_{leaf_iter} {}
+        parent_t* parent, parent_iter_t parent_iter, leaf_iter_t leaf_iter) noexcept
+    : parent_{parent}, parent_iter_{parent_iter}, leaf_iter_{leaf_iter} {}
 
     reference operator*() const noexcept {
         return (*leaf_iter_);
@@ -67,8 +60,10 @@ class bpt_vector_tree_iterator {
     constexpr bpt_vector_tree_iterator& operator++() noexcept {
         ++leaf_iter_;
         if (leaf_iter_ == parent_iter_->end()) {
-            ++parent_iter_;
-            leaf_iter_ = parent_iter_->begin();
+            if (parent_iter_ + 1 != parent_->end()) {
+                ++parent_iter_;
+                leaf_iter_ = parent_iter_->begin();
+            }
         }
         return *this;
     }
@@ -146,12 +141,12 @@ class bpt_vector_tree_iterator {
     }
 
   private:
-    tree_t* tree_;
+    parent_t* parent_;
     parent_iter_t parent_iter_;
     leaf_iter_t leaf_iter_;
 };
 
-template <typename V, size_t SIZE>
+template <typename V, size_t SIZE = 32>
 class vector_tree {
     // using node_t = std::array<T, SIZE>;
     using node_t = std::vector<V>;
@@ -178,6 +173,26 @@ class vector_tree {
     // using const_iterator = const value_type*;
 
   public:
+    vector_tree() noexcept : data_{}, size_{0} {}
+
+    vector_tree(const vector_tree& rhs) noexcept : data_(rhs.data_), size_{rhs.size_} {}
+
+    vector_tree(vector_tree&& rhs) noexcept : data_{std::move(rhs.data_)}, size_{rhs.size_} {}
+
+    vector_tree& operator=(const vector_tree& rhs) noexcept {
+        data_ = rhs.data_;
+        size_ = rhs.size_;
+        return *this;
+    }
+
+    vector_tree& operator=(vector_tree&& rhs) noexcept {
+        data_ = std::move(rhs.data_);
+        size_ = rhs.size_;
+        return *this;
+    }
+
+    ~vector_tree() noexcept = default;
+
     V& operator[](size_t index) noexcept {
         assert(index < size_);
         return node(index)[index % SIZE];
@@ -197,13 +212,11 @@ class vector_tree {
     void emplace_back(V&& x) {
         reserve(++size_);
         back_node().emplace_back(std::move(x));
-        ++size_;
     }
 
     void emplace_back(const V& x) {
         reserve(++size_);
         back_node().emplace_back(x);
-        ++size_;
     }
 
     void erase_back() {
@@ -224,7 +237,7 @@ class vector_tree {
     }
 
     void reserve(size_t index) noexcept {
-        while (index >= data_.size() * SIZE) {
+        while (index > data_.size() * SIZE) {
             data_.emplace_back();
         }
     }
@@ -241,30 +254,30 @@ class vector_tree {
         return data_.front().front();
     }
 
-     constexpr reference back() noexcept {
-         return data_.back().back();
-     }
+    constexpr reference back() noexcept {
+        return data_.back().back();
+    }
 
-     constexpr const_reference back() const noexcept {
-         return data_.back().back();
-     }
+    constexpr const_reference back() const noexcept {
+        return data_.back().back();
+    }
 
     constexpr iterator begin() noexcept {
-        return iterator(this, data_.begin(), data_.front().begin());
+        return iterator(&data_, data_.begin(), data_.front().begin());
     }
 
     constexpr const_iterator begin() const noexcept {
-        return const_iterator(this, data_.begin(), data_.front().begin());
+        return const_iterator(&data_, data_.begin(), data_.front().begin());
     }
 
     constexpr iterator end() noexcept {
         // TODO end of empty iterator???
-        return iterator(this, data_.end() - 1, data_.back().end());
+        return iterator(&data_, data_.end() - 1, data_.back().end());
     }
 
     constexpr const_iterator end() const noexcept {
         // TODO end of empty iterator???
-        return const_iterator(this, data_.end() - 1, data_.back().end());
+        return const_iterator(&data_, data_.end() - 1, data_.back().end());
     }
 
   private:
@@ -281,7 +294,7 @@ class vector_tree {
     }
 
     std::vector<node_t> data_;
-    size_t size_{0};
+    size_t size_;
 };
 
 }  // namespace phtree::bptree::detail

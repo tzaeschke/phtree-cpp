@@ -1,5 +1,5 @@
 /*
-* Copyright 2022-2023 Tilmann Zäschke
+ * Copyright 2022-2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,10 +58,7 @@ using TestIndex = typename std::conditional_t<
                 typename std::conditional_t<
                     SCENARIO == STD_MULTIMAP,
                     std::multimap<key_t, payload_t>,
-                    typename std::conditional_t<
-                        SCENARIO == MULTIMAP2,
-                        b_plus_tree_multimap2<key_t, payload_t>,
-                        void>>>>>>;
+                    void>>>>>;
 
 /*
  * Benchmark for adding entries to the index.
@@ -183,12 +180,6 @@ void BPT_MM_INS(benchmark::State& state, Arguments&&... arguments) {
 }
 
 template <typename... Arguments>
-void BPT_MM2_INS(benchmark::State& state, Arguments&&... arguments) {
-    IndexBenchmark<3, MULTIMAP2> benchmark{state, arguments...};
-    benchmark.Benchmark(state);
-}
-
-template <typename... Arguments>
 void BPT_HM_INS(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, HASH_MAP> benchmark{state, arguments...};
     benchmark.Benchmark(state);
@@ -228,11 +219,6 @@ BENCHMARK_CAPTURE(BPT_MAP_INS, MAP, 0.0)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_CAPTURE(BPT_MM_INS, MULTIMAP, 0.0)
-    ->RangeMultiplier(10)
-    ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
-    ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_CAPTURE(BPT_MM2_INS, MULTIMAP2, 0.0)
     ->RangeMultiplier(10)
     ->Ranges({{100, 100 * 1000}, {TestGenerator::CLUSTER, TestGenerator::CUBE}})
     ->Unit(benchmark::kMillisecond);
