@@ -198,16 +198,35 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
                         } else {
                             ++N_Q_RESULT;
                             double d = distance_(center_post_, this->post(e2.GetKey()));
-                            if (queue_v_.size() < num_requested_results_) {
+//                            if (queue_v_.size() < num_requested_results_) {
+//                                queue_v_.emplace(d, &e2);
+//                            } else if (d < queue_v_.top_max().first) {
+//                                queue_v_.pop_max();
+//                                queue_v_.emplace(d, &e2);
+//                            }
+//                            if (queue_v_.size() >= num_requested_results_) {
+//                                // TODO adjust with 10th value in queue i.o. last value?
+//                                //   -> in case we allow more than 10...
+//                                max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+//                            }
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            if (d < max_node_dist_) {
                                 queue_v_.emplace(d, &e2);
-                            } else if (d < queue_v_.top_max().first) {
-                                queue_v_.pop_max();
-                                queue_v_.emplace(d, &e2);
-                            }
-                            if (queue_v_.size() >= num_requested_results_) {
-                                // TODO adjust with 10th value in queue i.o. last value?
-                                //   -> in case we allow more than 10...
-                                max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+                                if (queue_v_.size() > num_requested_results_ - num_found_results_) {
+                                    queue_v_.pop_max();
+                                }
+                                if (queue_v_.size() >= num_requested_results_ - num_found_results_) {
+                                    // TODO adjust with 10th value in queue i.o. last value?
+                                    //   -> in case we allow more than 10...
+                                    max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+                                }
                             }
                         }
                     }
@@ -253,10 +272,10 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
 //    std::
 //        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
 //            queue_v_;
-//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
-//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
-    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
-    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+//    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+//    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
 //    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
 //    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
     size_t num_found_results_;
