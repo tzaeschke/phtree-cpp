@@ -25,6 +25,11 @@
 
 namespace phtree::bptree::detail {
 
+/**
+ *
+ * @tparam V
+ * @tparam SIZE
+ */
 template <typename V, size_t SIZE>
 class bpt_vector_tree_iterator {
   private:
@@ -146,9 +151,18 @@ class bpt_vector_tree_iterator {
     leaf_iter_t leaf_iter_;
 };
 
+/**
+ * A vector_tree acts consists of a vector of vectors.
+ * The idea is that it has almost the same execution speed as vector for the following operations:
+ * - Access via [] operator
+ * - emplace_back
+ * - erase last entry (via erase_back)
+ *
+ * At the same time it scales much better when the vector grows because only the parent vector needs
+ * resizing.
+ */
 template <typename V, size_t SIZE = 32>
 class vector_tree {
-    // using node_t = std::array<T, SIZE>;
     using node_t = std::vector<V>;
 
   public:
@@ -237,15 +251,17 @@ class vector_tree {
         return size_;
     }
 
+  private:
     void reserve(size_t index) noexcept {
         while (index > data_.size() * SIZE) {
             data_.emplace_back();
         }
     }
 
-    size_t capacity() {
-        return data_.size() * SIZE;
-    }
+//    size_t capacity() {
+//        return data_.size() * SIZE;
+//    }
+  public:
 
     constexpr reference front() noexcept {
         return data_.front().front();
@@ -263,23 +279,23 @@ class vector_tree {
         return data_.back().back();
     }
 
-    constexpr iterator begin() noexcept {
-        return iterator(&data_, data_.begin(), data_.front().begin());
-    }
-
-    constexpr const_iterator begin() const noexcept {
-        return const_iterator(&data_, data_.begin(), data_.front().begin());
-    }
-
-    constexpr iterator end() noexcept {
-        // TODO end of empty iterator???
-        return iterator(&data_, data_.end() - 1, data_.back().end());
-    }
-
-    constexpr const_iterator end() const noexcept {
-        // TODO end of empty iterator???
-        return const_iterator(&data_, data_.end() - 1, data_.back().end());
-    }
+//    constexpr iterator begin() noexcept {
+//        return iterator(&data_, data_.begin(), data_.front().begin());
+//    }
+//
+//    constexpr const_iterator begin() const noexcept {
+//        return const_iterator(&data_, data_.begin(), data_.front().begin());
+//    }
+//
+//    constexpr iterator end() noexcept {
+//        // TODO end of empty iterator???
+//        return iterator(&data_, data_.end() - 1, data_.back().end());
+//    }
+//
+//    constexpr const_iterator end() const noexcept {
+//        // TODO end of empty iterator???
+//        return const_iterator(&data_, data_.end() - 1, data_.back().end());
+//    }
 
   private:
     node_t& node(size_t index) noexcept {

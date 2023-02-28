@@ -62,6 +62,10 @@ More information about PH-Trees (including a Java implementation) is available [
 
 * [Theory](#theory)
 
+## License
+
+
+
 ----------------------------------
 
 ## API Usage
@@ -673,4 +677,16 @@ The PH-Tree is discussed in the following publications and reports:
   "The PH-Tree -- A Space-Efficient Storage Structure and Multi-Dimensional Index", (SIGMOD 2014)
 - T. Zaeschke: "The PH-Tree Revisited", (2015)
 - T. Zaeschke, M.C. Norrie: "Efficient Z-Ordered Traversal of Hypercube Indexes" (BTW 2017).
+
+## License
+
+<a id="license"></a>
+
+The PH-tree is licensed under [Apache APL 2.0](LICENSE), except for code in 
+[include/phtree/aux](include/phtree/aux).
+
+The code in [include/phtree/aux](include/phtree/aux) is based on code by
+Malte Skarupke (Copyright 2020) and is licensed under the 
+[Boost Software License 1.0](https://www.boost.org/LICENSE_1_0.txt).
+
 

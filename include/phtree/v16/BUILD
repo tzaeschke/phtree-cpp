@@ -23,6 +23,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
+        "//include/phtree/aux",
         "//include/phtree/common",
     ],
 )
