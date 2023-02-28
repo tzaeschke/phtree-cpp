@@ -19,7 +19,7 @@
 #include <map>
 #include <random>
 
-using namespace phtree::bptree;
+using namespace phtree::bptree::detail;
 
 static int default_construct_count_ = 0;
 static int construct_count_ = 0;
@@ -320,4 +320,20 @@ TEST(PhTreeBptVectorTreeTest, TestMoveAssign) {
     TestTree tree{};
     tree = std::move(tree1);
     test_tree(tree);
+}
+
+TEST(PhTreeBptHeapTest, FuzzTest1) {
+    using Id = std::pair<uint8_t, uint8_t>;
+    vector_tree<Id, 8> tree{};
+    std::vector<Id> ref{};
+    tree.emplace_back(42, 11);
+    ref.emplace_back(42, 11);
+    tree.erase_back();
+    ref.erase(ref.end() - 1);
+
+    for (size_t i = 0; i < tree.size(); ++i) {
+        ASSERT_EQ(tree[i].first, ref[i].first);
+        ASSERT_EQ(tree[i].second, ref[i].second);
+    }
+    ASSERT_EQ(tree.size(), ref.size());
 }
