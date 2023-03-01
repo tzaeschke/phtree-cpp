@@ -220,17 +220,17 @@ class vector_tree {
 
     template <typename... Args>
     void emplace_back(Args&&... args) {
-        reserve(++size_);
+        ensure_capacity(++size_);
         back_node().emplace_back(std::forward<Args>(args)...);
     }
 
     void emplace_back(V&& x) {
-        reserve(++size_);
+        ensure_capacity(++size_);
         back_node().emplace_back(std::move(x));
     }
 
     void emplace_back(const V& x) {
-        reserve(++size_);
+        ensure_capacity(++size_);
         back_node().emplace_back(x);
     }
 
@@ -251,17 +251,16 @@ class vector_tree {
         return size_;
     }
 
-  private:
-    void reserve(size_t index) noexcept {
-        while (index > data_.size() * SIZE) {
+    /**
+     * Reserves capacity for min(size, SIZE) entries.
+     * @param size
+     */
+    void reserve(size_t size) noexcept {
+        if (data_.empty()) {
             data_.emplace_back();
         }
+        data_[0].reserve(std::min(size, SIZE));
     }
-
-//    size_t capacity() {
-//        return data_.size() * SIZE;
-//    }
-  public:
 
     constexpr reference front() noexcept {
         return data_.front().front();
@@ -279,23 +278,23 @@ class vector_tree {
         return data_.back().back();
     }
 
-//    constexpr iterator begin() noexcept {
-//        return iterator(&data_, data_.begin(), data_.front().begin());
-//    }
-//
-//    constexpr const_iterator begin() const noexcept {
-//        return const_iterator(&data_, data_.begin(), data_.front().begin());
-//    }
-//
-//    constexpr iterator end() noexcept {
-//        // TODO end of empty iterator???
-//        return iterator(&data_, data_.end() - 1, data_.back().end());
-//    }
-//
-//    constexpr const_iterator end() const noexcept {
-//        // TODO end of empty iterator???
-//        return const_iterator(&data_, data_.end() - 1, data_.back().end());
-//    }
+    //    constexpr iterator begin() noexcept {
+    //        return iterator(&data_, data_.begin(), data_.front().begin());
+    //    }
+    //
+    //    constexpr const_iterator begin() const noexcept {
+    //        return const_iterator(&data_, data_.begin(), data_.front().begin());
+    //    }
+    //
+    //    constexpr iterator end() noexcept {
+    //        // TODO end of empty iterator???
+    //        return iterator(&data_, data_.end() - 1, data_.back().end());
+    //    }
+    //
+    //    constexpr const_iterator end() const noexcept {
+    //        // TODO end of empty iterator???
+    //        return const_iterator(&data_, data_.end() - 1, data_.back().end());
+    //    }
 
   private:
     node_t& node(size_t index) noexcept {
@@ -308,6 +307,12 @@ class vector_tree {
 
     node_t& back_node() noexcept {
         return data_.back();
+    }
+
+    void ensure_capacity(size_t index) noexcept {
+        if (index > data_.size() * SIZE) {
+            data_.emplace_back();
+        }
     }
 
     std::vector<node_t> data_;

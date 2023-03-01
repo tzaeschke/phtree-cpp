@@ -436,97 +436,173 @@ template <int D, typename It>
 void pop_dary_heap(It begin, It end) {
     return pop_dary_heap<D>(begin, end, std::less<>{});
 }
-}  // namespace phtree::aux::vector_heap
+}  // namespace vector_heap
 
 template <typename T, typename Compare>
 class min_max_vector_heap {
     // TODO
     //   - reserve()
-    //   - remove size() ?
-
+    //   - reverse min_max?
 
     struct SwapComp {
         Compare comp;
-        bool operator()(T const& x, T const& y) const {
+        constexpr bool operator()(T const& x, T const& y) const noexcept {
             return !comp(x, y);
         }
     };
 
   public:
-    min_max_vector_heap() {
-        size_ = 0;
-        arr.reserve(16);
+    explicit min_max_vector_heap(size_t reserve = 16) noexcept {
+        data_.reserve(reserve);
     }
 
-    const T& top() const {
-        return arr[0];
+    const T& top() const noexcept {
+        assert(!data_.empty());
+        return data_[0];
     }
 
-    const T& top_max() const {
-        uint64_t index = 1 + !!cmp(arr[1], arr[2]);
-        return arr[index];
+    T& top_max() noexcept {
+        uint64_t index;
+        if (data_.size() >= 3) {
+            index = 1 + cmp(data_[1], data_[2]);
+            return data_[index];
+        } else if (data_.size() == 2) {
+            return data_[1];
+        } else if (data_.size() == 1) {
+            return data_[0];
+        }
+        assert(!data_.empty());
+//        switch (data_.size()) {
+//        case 1:
+//            return data_[0];
+//        case 2:
+//            return data_[1];
+//        default: {
+//            uint64_t index = 1 + !!cmp(data_[1], data_[2]);
+//            return data_[index];
+//        }
+//        }
     }
 
-    T& top_max() {
-        uint64_t index = 1 + !!cmp(arr[1], arr[2]);
-        return arr[index];
+    const T& top_max() const noexcept {
+        return const_cast<decltype(this)>(this)->top_max();
     }
 
     template <typename... Args>
     void emplace(Args&&... args) {
         reserve();
-        arr.emplace_back(std::forward<Args>(args)...);
-        vector_heap::push_minmax_heap(arr.begin(), arr.end(), cmp);
-        ++size_;
+        data_.emplace_back(std::forward<Args>(args)...);
+        vector_heap::push_minmax_heap(data_.begin(), data_.end(), cmp);
     }
 
     void emplace(T&& x) {
         reserve();
-        arr.emplace_back(std::move(x));
-        vector_heap::push_minmax_heap(arr.begin(), arr.end(), cmp);
-        ++size_;
+        data_.emplace_back(std::move(x));
+        vector_heap::push_minmax_heap(data_.begin(), data_.end(), cmp);
     }
 
     void emplace(const T& x) {
         reserve();
-        arr.emplace_back(x);
-        vector_heap::push_minmax_heap(arr.begin(), arr.end(), cmp);
-        ++size_;
+        data_.emplace_back(x);
+        vector_heap::push_minmax_heap(data_.begin(), data_.end(), cmp);
     }
 
-    void pop() {
-        assert(!arr.empty());
-        vector_heap::pop_minmax_heap_min(arr.begin(), arr.end(), cmp);
-        --size_;
-        arr.erase(arr.end() - 1);
+    void pop() noexcept {
+        assert(!data_.empty());
+        vector_heap::pop_minmax_heap_min(data_.begin(), data_.end(), cmp);
+        data_.erase(data_.end() - 1);
     }
 
-    void pop_max() {
-        assert(!arr.empty());
-        vector_heap::pop_minmax_heap_max(arr.begin(), arr.end(), cmp);
-        --size_;
-        arr.erase(arr.end() - 1);
+    void pop_max() noexcept {
+        assert(!data_.empty());
+        vector_heap::pop_minmax_heap_max(data_.begin(), data_.end(), cmp);
+        data_.erase(data_.end() - 1);
     }
 
-    [[nodiscard]] bool empty() const {
-        return !size_;
+    [[nodiscard]] bool empty() const noexcept {
+        return data_.empty();
     }
 
-    [[nodiscard]] size_t size() const {
-        return size_;
+    [[nodiscard]] size_t size() const noexcept {
+        return data_.size();
     }
 
   private:
-    void reserve() {
-        if (arr.capacity() == arr.size()) {
-            arr.reserve(arr.capacity() * 2);
+    void reserve() noexcept {
+        if (data_.capacity() == data_.size()) {
+            data_.reserve(data_.capacity() * 2);
         }
     }
-    size_t size_;
-    std::vector<T> arr;  // The heap array.
+    std::vector<T> data_;  // The heap array.
+    SwapComp cmp{};        // TODO create on the fly only?
+};
+
+template <typename T, typename Compare, int D = 4>
+class min_vector_heap {
+    // TODO
+    //   - reserve()
+
+    struct SwapComp {
+        Compare comp;
+        constexpr bool operator()(T const& x, T const& y) const noexcept {
+            return !comp(x, y);
+        }
+    };
+
+  public:
+    explicit min_vector_heap(size_t reserve = 16) noexcept {
+        data_.reserve(reserve);
+    }
+
+    const T& top() const noexcept {
+        assert(!data_.empty());
+        return data_[0];
+    }
+
+    template <typename... Args>
+    void emplace(Args&&... args) {
+        reserve();
+        data_.emplace_back(std::forward<Args>(args)...);
+        vector_heap::push_dary_heap<D>(data_.begin(), data_.end(), cmp);
+    }
+
+    void emplace(T&& x) {
+        reserve();
+        data_.emplace_back(std::move(x));
+        vector_heap::push_dary_heap<D>(data_.begin(), data_.end(), cmp);
+    }
+
+    void emplace(const T& x) {
+        reserve();
+        data_.emplace_back(x);
+        vector_heap::push_dary_heap<D>(data_.begin(), data_.end(), cmp);
+    }
+
+    void pop() noexcept {
+        assert(!data_.empty());
+        vector_heap::pop_dary_heap<D>(data_.begin(), data_.end(), cmp);
+        data_.erase(data_.end() - 1);
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return data_.empty();
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        return data_.size();
+    }
+
+  private:
+    void reserve() noexcept {
+        if (data_.capacity() == data_.size()) {
+            data_.reserve(data_.capacity() * 2);
+        }
+    }
+    std::vector<T> data_;  // The heap array.
     // Compare cmp{};
     SwapComp cmp{};  // TODO create on the fly only?
 };
+
 }  // namespace phtree::aux
 
 #endif  // PHTREE_AUX_MIN_MAX_VECTOR_HEAP_H

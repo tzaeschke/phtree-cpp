@@ -203,82 +203,93 @@ template <typename T, typename Compare>
 class min_max_tree_heap {
     // TODO
     //   - reserve()
-    //   - remove size() ?
 
     struct SwapComp {
+        // TODO template?
         Compare comp;
-        // template<class T>
-        bool operator()(T const& x, T const& y) const {
+        constexpr bool operator()(T const& x, T const& y) const noexcept {
             return !comp(x, y);
         }
     };
 
   public:
-    const T& top() const {
-        return arr[0];
+    explicit min_max_tree_heap(size_t reserve = 16) noexcept {
+        data_.reserve(reserve);
     }
 
-    const T& top_max() const {
-        assert(arr.size() >= 3);
-        uint64_t index = 1 + !!cmp(arr[1], arr[2]);
-        return arr[index];
+    const T& top() const noexcept {
+        assert(!data_.empty());
+        return data_[0];
     }
 
-    T& top_max() {
-        assert(arr.size() >= 3);
-        uint64_t index = 1 + !!cmp(arr[1], arr[2]);
-        return arr[index];
+    T& top_max() noexcept {
+        assert(!data_.empty());
+        switch (data_.size()) {
+        case 1:
+            return data_[0];
+        case 2:
+            return data_[1];
+        default: {
+            uint64_t index = 1 + cmp(data_[1], data_[2]);
+            return data_[index];
+        }
+        }
     }
+
+    // TODO do some output and show what it returns, why is it so much faster????
+    // TODO Also, some kNN tests STILL fail
+    // TODO fix q++ vs ++q  (update tests but also fix implementation!
+        //    const T& top_max() const noexcept {
+//        assert(data_.size() >= 3);  // TODO
+//        uint64_t index = 1 + !!cmp(data_[1], data_[2]);
+//        return data_[index];
+//    }
+//
+//    T& top_max() noexcept {
+//        assert(data_.size() >= 3);  // TODO
+//        uint64_t index = 1 + !!cmp(data_[1], data_[2]);
+//        return data_[index];
+//    }
 
     template <typename... Args>
     void emplace(Args&&... args) {
-        reserve();
-        arr.emplace_back(std::forward<Args>(args)...);
-        tree_heap::push_minmax_heap(arr, cmp);
+        data_.emplace_back(std::forward<Args>(args)...);
+        tree_heap::push_minmax_heap(data_, cmp);
     }
 
     void emplace(T&& x) {
-        reserve();
-        arr.emplace_back(std::move(x));
-        tree_heap::push_minmax_heap(arr, cmp);
+        data_.emplace_back(std::move(x));
+        tree_heap::push_minmax_heap(data_, cmp);
     }
 
     void emplace(const T& x) {
-        reserve();
-        arr.emplace_back(x);
-        tree_heap::push_minmax_heap(arr, cmp);
+        data_.emplace_back(x);
+        tree_heap::push_minmax_heap(data_, cmp);
     }
 
-    void pop() {
-        assert(!arr.empty());
-        tree_heap::pop_minmax_heap_min(arr, cmp);
-        arr.erase_back();
+    void pop() noexcept {
+        assert(!data_.empty());
+        tree_heap::pop_minmax_heap_min(data_, cmp);
+        data_.erase_back();
     }
 
-    void pop_max() {
-        assert(!arr.empty());
-        tree_heap::pop_minmax_heap_max(arr, cmp);
-        arr.erase_back();
+    void pop_max() noexcept {
+        assert(!data_.empty());
+        tree_heap::pop_minmax_heap_max(data_, cmp);
+        data_.erase_back();
     }
 
-    [[nodiscard]] bool empty() const {
-        return arr.empty();
+    [[nodiscard]] bool empty() const noexcept {
+        return data_.empty();
     }
 
-    [[nodiscard]] size_t size() const {
-        return arr.size();
+    [[nodiscard]] size_t size() const noexcept {
+        return data_.size();
     }
 
   private:
-    void reserve() {
-        //        if (arr.capacity() == arr.size()) {
-        //            arr.reserve(arr.capacity() * 2);
-        //        }
-    }
-    // std::vector<T> arr;  // The heap array.
-    ::phtree::bptree::detail::vector_tree<T, 64> arr;  // The heap array.
-    // Compare cmp{};
-    SwapComp cmp{};  // TODO create on the fly only?
+    ::phtree::bptree::detail::vector_tree<T, 64> data_;  // The heap array.
+    SwapComp cmp{};                                      // TODO create on the fly only?
 };
 }  // namespace phtree::aux
 

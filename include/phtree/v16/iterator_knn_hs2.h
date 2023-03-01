@@ -81,36 +81,8 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
         queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});   // TODO remove const_casts etc
 
         FindNextElement();
-        ++N_CREATE;
-        if (N_CREATE % 1000000 == 0) {
-            std::cout << "KNN1: " << MAX_DEPTH_N << "/" << MAX_DEPTH_V << " N_Q=" << N_CREATE
-                      << " N_PR=" << N_PROCESSED / N_CREATE << " N_PR_R=" << N_PR_RESULT / N_CREATE
-                      << " N_PR_N=" << N_PR_NODES / N_CREATE << " N_Q_R=" << N_Q_RESULT / N_CREATE
-                      << " N_Q_N=" << N_Q_NODES / N_CREATE << " N_Q_N_D0=" << N_Q_NODES_0 / N_CREATE
-                      << " avg_D=" << (TOTAL_DEPTH / N_CREATE) << std::endl;
-            MAX_DEPTH_N = 0;
-            MAX_DEPTH_V = 0;
-            N_CREATE = 0;
-            N_PROCESSED = 0;
-            N_PR_RESULT = 0;
-            N_PR_NODES = 0;
-            N_Q_RESULT = 0;
-            N_Q_NODES = 0;
-            N_Q_NODES_0 = 0;
-            TOTAL_DEPTH = 0;
-        }
     }
 
-    inline static size_t MAX_DEPTH_N{0};
-    inline static size_t MAX_DEPTH_V{0};
-    inline static long N_CREATE{0};
-    inline static long N_PROCESSED{0};
-    inline static long N_PR_RESULT{0};
-    inline static long N_PR_NODES{0};
-    inline static long N_Q_RESULT{0};
-    inline static long N_Q_NODES{0};
-    inline static long N_Q_NODES_0{0};
-    inline static double TOTAL_DEPTH{0};
 
     [[nodiscard]] double distance() const {
         return current_distance_;
@@ -136,9 +108,7 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
             if (use_v && !queue_n_.empty()) {
                 use_v = queue_n_.top() >= queue_v_.top();
             }
-            ++N_PROCESSED;
             if (use_v) {
-                ++N_PR_RESULT;
                 // data entry
                 auto& cand_v = queue_v_.top();
                 ++num_found_results_;
@@ -149,7 +119,6 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
                 queue_v_.pop();
                 return;
             } else {
-                ++N_PR_NODES;
                 // inner node
                 auto& node = queue_n_.top().second->GetNode();
                 auto d_node = queue_n_.top().first; // TODO merge with previous
@@ -189,14 +158,11 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
                     const auto& e2 = entry.second;
                     if (this->ApplyFilter(e2)) {
                         if (e2.IsNode()) {
-                            ++N_Q_NODES;
                             double d = DistanceToNode(e2.GetKey(), e2.GetNodePostfixLen() + 1);
-                            N_Q_NODES_0 += d <= 0.0001;
                             if (d <= max_node_dist_) {
                                 queue_n_.emplace(d, &e2);
                             }
                         } else {
-                            ++N_Q_RESULT;
                             double d = distance_(center_post_, this->post(e2.GetKey()));
 //                            if (queue_v_.size() < num_requested_results_) {
 //                                queue_v_.emplace(d, &e2);
@@ -231,16 +197,8 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
                         }
                     }
                 }
-                // TODO this should work...! -> It doesn´t help thoujgh, removing entries
-                //  one by one is as costly (or even more?) as leaving them in.
-//                while (!queue_n_.empty() && queue_n_.top_max().first > max_node_dist_) {
-//                    queue_n_.pop_max();
-//                }
-                MAX_DEPTH_N = std::max(MAX_DEPTH_N, queue_n_.size());
-                MAX_DEPTH_V = std::max(MAX_DEPTH_V, queue_v_.size());
             }
         }
-        TOTAL_DEPTH += queue_v_.size() + queue_n_.size();
         this->SetFinished();
         current_distance_ = std::numeric_limits<double>::max();
     }
@@ -272,10 +230,10 @@ class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
 //    std::
 //        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
 //            queue_v_;
-    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
-    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
-//    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
-//    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
 //    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
 //    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
     size_t num_found_results_;
