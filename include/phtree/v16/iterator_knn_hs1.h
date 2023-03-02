@@ -1,7 +1,7 @@
 /*
  * Copyright 2020 Improbable Worlds Limited
  * Copyright 2023 Tilmann Zäschke
-*
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -78,7 +78,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
 
         // Initialize queue, use d=0 because every imaginable point lies inside the root Node
         assert(root.IsNode());
-        queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});   // TODO remove const_casts etc
+        queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});  // TODO remove const_casts etc
 
         FindNextElement();
         ++N_CREATE;
@@ -119,8 +119,9 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
         return *this;
     }
 
-    [[deprecated]] // This iterator is MUCH slower!
-    IteratorKnnHS1 operator++(int) noexcept {
+    [[deprecated]]  // This iterator is MUCH slower!
+    IteratorKnnHS1
+    operator++(int) noexcept {
         IteratorKnnHS1 iterator(*this);
         ++(*this);
         return iterator;
@@ -149,17 +150,18 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
             } else {
                 ++N_PR_NODES;
                 // inner node
-                auto& node = queue_n_.top().second->GetNode();
-                auto d_node = queue_n_.top().first; // TODO merge with previous
+                auto top = queue_n_.top();
+                auto& node = top.second->GetNode();
+                auto d_node = top.first;
                 queue_n_.pop();
 
-                if (queue_v_.size() >= num_requested_results_ && d_node >max_node_dist_) {
+                if (queue_v_.size() >= num_requested_results_ && d_node > max_node_dist_) {
                     // ignore this node
                     continue;
                 }
 
                 for (auto& entry : node.Entries()) {
-                    //auto& e2 = const_cast<EntryT&>(entry.second);
+                    // auto& e2 = const_cast<EntryT&>(entry.second);
                     const auto& e2 = entry.second;
                     if (this->ApplyFilter(e2)) {
                         if (e2.IsNode()) {
@@ -174,17 +176,35 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
                             double d = distance_(center_post_, this->post(e2.GetKey()));
                             if (d < max_node_dist_) {
                                 queue_v_.emplace(d, &e2);
-                                if (queue_v_.size() > num_requested_results_ - num_found_results_) {
-                                    // TODO
-                                    queue_v_.pop_max();
-                                    // TODO do not pop, instead get max_node_dist from
-                                    //  queue_v_[num_requested_results_ - num_found_results_ - 1];
-                                }
-                                if (queue_v_.size() >= num_requested_results_ - num_found_results_) {
-                                    // TODO adjust with 10th value in queue i.o. last value?
-                                    //   -> in case we allow more than 10...
-                                    // TODO !!!!!!!!!!!!!!
-                                    max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+                                //                                if (queue_v_.size() >
+                                //                                num_requested_results_ -
+                                //                                num_found_results_) {
+                                //                                    // TODO
+                                //                                    queue_v_.pop_max();
+                                //                                    // TODO do not pop, instead
+                                //                                    get max_node_dist from
+                                //                                    //
+                                //                                    queue_v_[num_requested_results_
+                                //                                    - num_found_results_ - 1];
+                                //                                }
+                                //                                if (queue_v_.size() >=
+                                //                                num_requested_results_ -
+                                //                                num_found_results_) {
+                                //                                    // TODO adjust with 10th value
+                                //                                    in queue i.o. last value?
+                                //                                    //   -> in case we allow more
+                                //                                    than 10...
+                                //                                    // TODO !!!!!!!!!!!!!!
+                                //                                    max_node_dist_ =
+                                //                                    std::min(max_node_dist_,
+                                //                                    queue_v_.top_max().first);
+                                //                                }
+                                if (queue_v_.size() >=
+                                    num_requested_results_ - num_found_results_) {
+                                    auto pos_max = queue_v_.size() - num_requested_results_ +
+                                        num_found_results_;
+                                    double d_max = queue_v_[pos_max].first;
+                                    max_node_dist_ = std::min(max_node_dist_, d_max);
                                 }
                             }
                         }
@@ -219,12 +239,15 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     // center after post processing == the external representation
     const KeyExternal center_post_;
     double current_distance_;
-    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
-        queue_n_;
-//    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
-//        queue_v_;
-//    ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDistByDistance1<EntryDistT>>
-//        queue_n_;
+    std::
+        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
+            queue_n_;
+    //    std::priority_queue<EntryDistT, std::vector<EntryDistT>,
+    //    CompareEntryDistByDistance1<EntryDistT>>
+    //        queue_v_;
+    //    ::phtree::bptree::detail::priority_queue<EntryDistT,
+    //    CompareEntryDistByDistance1<EntryDistT>>
+    //        queue_n_;
     ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDistByDistance1<EntryDistT>>
         queue_v_;
     size_t num_found_results_;
