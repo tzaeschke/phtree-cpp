@@ -11,6 +11,7 @@ cc_library(
         "base_types.h",
         "bits.h",
         "bpt_fixed_vector.h",
+        "bpt_priority_queue.h",
         "bpt_vector_tree.h",
         "common.h",
         "debug_helper.h",

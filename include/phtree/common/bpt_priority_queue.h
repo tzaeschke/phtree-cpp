@@ -14,24 +14,29 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_COMMON_BPT_VECTOR_TREE_H
-#define PHTREE_COMMON_BPT_VECTOR_TREE_H
+#ifndef PHTREE_COMMON_BPT_PRIORITY_QUEUE_H
+#define PHTREE_COMMON_BPT_PRIORITY_QUEUE_H
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <deque>
 #include <vector>
 
 namespace phtree::bptree::detail {
+
+// TODO also implement bounded_queue based on std::array...?
+//   -> auto-drops highest element on overflow
 
 /**
  *
  * @tparam V
  * @tparam SIZE
  */
-template <typename V, size_t SIZE>
-class bpt_vector_tree_iterator {
+ // TODO do we need Compare?
+template <typename V, typename Compare>
+class bpt_priority_queue_iterator {
   private:
     using V2 = std::remove_cv_t<V>;
     using leaf_t = std::vector<V2>;
@@ -39,7 +44,7 @@ class bpt_vector_tree_iterator {
     using leaf_iter_t = std::remove_cv_t<decltype(std::declval<leaf_t>().begin())>;
     using parent_iter_t = std::remove_cv_t<decltype(std::declval<parent_t>().begin())>;
 
-    using normal_iterator = bpt_vector_tree_iterator<V, SIZE>;
+    using normal_iterator = bpt_priority_queue_iterator<V, Compare>;
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -48,9 +53,9 @@ class bpt_vector_tree_iterator {
     using pointer = value_type*;
     using reference = value_type&;
 
-    bpt_vector_tree_iterator() noexcept
+    bpt_priority_queue_iterator() noexcept
     : parent_{nullptr}, parent_iter_{nullptr}, leaf_iter_{nullptr} {}
-    explicit bpt_vector_tree_iterator(
+    explicit bpt_priority_queue_iterator(
         parent_t* parent, parent_iter_t parent_iter, leaf_iter_t leaf_iter) noexcept
     : parent_{parent}, parent_iter_{parent_iter}, leaf_iter_{leaf_iter} {}
 
@@ -62,7 +67,7 @@ class bpt_vector_tree_iterator {
         return &*leaf_iter_;
     }
 
-    constexpr bpt_vector_tree_iterator& operator++() noexcept {
+    constexpr bpt_priority_queue_iterator& operator++() noexcept {
         ++leaf_iter_;
         if (leaf_iter_ == parent_iter_->end()) {
             if (parent_iter_ + 1 != parent_->end()) {
@@ -73,24 +78,24 @@ class bpt_vector_tree_iterator {
         return *this;
     }
 
-    //    constexpr bpt_vector_tree_iterator operator++(int) noexcept {
+    //    constexpr bpt_priority_queue_iterator operator++(int) noexcept {
     //        return bpt_vector_iterator(ptr_++);
     //    }
 
-    constexpr bool operator<(const bpt_vector_tree_iterator<V, SIZE>& right) const noexcept {
+    constexpr bool operator<(const bpt_priority_queue_iterator<V, Compare>& right) const noexcept {
         return parent_iter_ < right.parent_iter_ ||
             (parent_iter_ == right.parent_iter_ && leaf_iter_ < right.leaf_iter_);
     }
 
     friend bool operator==(
-        const bpt_vector_tree_iterator<V, SIZE>& left,
-        const bpt_vector_tree_iterator<V, SIZE>& right) noexcept {
+        const bpt_priority_queue_iterator<V, Compare>& left,
+        const bpt_priority_queue_iterator<V, Compare>& right) noexcept {
         return left.leaf_iter_ == right.leaf_iter_;
     }
 
     friend bool operator!=(
-        const bpt_vector_tree_iterator<V, SIZE>& left,
-        const bpt_vector_tree_iterator<V, SIZE>& right) noexcept {
+        const bpt_priority_queue_iterator<V, Compare>& left,
+        const bpt_priority_queue_iterator<V, Compare>& right) noexcept {
         return left.leaf_iter_ != right.leaf_iter_;
     }
 
@@ -141,8 +146,8 @@ class bpt_vector_tree_iterator {
     //    }
 
     // implicit conversion to const iterator
-    operator bpt_vector_tree_iterator<const V, SIZE>() {
-        return bpt_vector_tree_iterator<const V, SIZE>{parent_iter_, leaf_iter_};
+    operator bpt_priority_queue_iterator<const V, Compare>() {
+        return bpt_priority_queue_iterator<const V, Compare>{parent_iter_, leaf_iter_};
     }
 
   private:
@@ -161,10 +166,8 @@ class bpt_vector_tree_iterator {
  * At the same time it scales much better when the vector grows because only the parent vector needs
  * resizing.
  */
-template <typename V, size_t SIZE = 32>
-class vector_tree {
-    using node_t = std::vector<V>;
-
+template <typename V, typename Compare = std::less<>>
+class priority_queue {
     // TODO implement "Member types":  https://en.cppreference.com/w/cpp/container/vector
   public:
     // Member types
@@ -180,100 +183,136 @@ class vector_tree {
     //             std::allocator_traits<Allocator>::const_pointer 	(since C++11)
     // TODO LegacyContiguousIterator ?!!?!?!?
     using iterator =
-        detail::bpt_vector_tree_iterator<value_type, SIZE>;  // LegacyRandomAccessIterator
-    using const_iterator = detail::bpt_vector_tree_iterator<const value_type, SIZE>;
+        detail::bpt_priority_queue_iterator<value_type, Compare>;  // LegacyRandomAccessIterator
+    using const_iterator = detail::bpt_priority_queue_iterator<const value_type, Compare>;
     // using iterator = value_type*;  // LegacyRandomAccessIterator
     // using const_iterator = const value_type*;
 
   public:
-    vector_tree() noexcept : data_{}, size_{0} {}
+    priority_queue() noexcept : data_{}, comp_{} {}
 
-    vector_tree(const vector_tree& rhs) noexcept : data_(rhs.data_), size_{rhs.size_} {}
+    priority_queue(const priority_queue& rhs) noexcept : data_(rhs.data_), comp_{} {}
 
-    vector_tree(vector_tree&& rhs) noexcept : data_{std::move(rhs.data_)}, size_{rhs.size_} {}
+    priority_queue(priority_queue&& rhs) noexcept : data_{std::move(rhs.data_)}, comp_{} {}
 
-    vector_tree& operator=(const vector_tree& rhs) noexcept {
+    // TODO use default functions?
+    // TODO ommit comp_? -> check std::priority_queue
+    priority_queue& operator=(const priority_queue& rhs) noexcept {
         data_ = rhs.data_;
-        size_ = rhs.size_;
+        comp_ = rhs.comp_;
         return *this;
     }
 
-    vector_tree& operator=(vector_tree&& rhs) noexcept {
+    priority_queue& operator=(priority_queue&& rhs) noexcept {
         data_ = std::move(rhs.data_);
-        size_ = rhs.size_;
+        comp_ = std::move(rhs.comp_);
         return *this;
     }
 
-    ~vector_tree() noexcept = default;
+    ~priority_queue() noexcept = default;
+
+    const V& top() const {
+        assert(!data_.empty());
+        return data_.back();
+    }
+
+    // TODO rename bottom()
+    const V& top_max() const {
+        assert(!data_.empty());
+        return data_.front();
+    }
+
+    V& top_max() {
+        assert(!data_.empty());
+        return data_.front();
+    }
+
+//    template <typename... Args>
+//    void emplace(Args&&... args) {
+//        Value v{std::forward<Args>(args)...};
+//        Key key = GetKey{}(v);
+//        data_.emplace(key, std::move(v));
+//        //        data_.emplace(std::forward<Args>(args)...);
+//    }
+
+    void pop() {
+        assert(!data_.empty());
+        data_.pop_back();
+    }
+
+    void pop_max() {
+        assert(!data_.empty());
+        data_.erase(data_.begin());
+        //data_.pop_front();
+    }
 
     V& operator[](size_t index) noexcept {
-        assert(index < size_);
-        return node(index)[index % SIZE];
+        assert(index < data_.size());
+        return data_[index];
     }
 
     const V& operator[](size_t index) const noexcept {
-        assert(index < size_);
-        return node(index)[index % SIZE];
+        assert(index < data_.size());
+        return data_[index];
     }
 
     template <typename... Args>
-    void emplace_back(Args&&... args) {
-        ensure_capacity(++size_);
-        back_node().emplace_back(std::forward<Args>(args)...);
+    void emplace(Args&&... args) {
+//        data_.emplace_back(std::forward<Args>(args)...);
+//        std::push_heap(data_.begin(), data_.end(), comp_);
+        V v{std::forward<Args>(args)...};
+        // TODO this is bad!!! We should ask for key/value separately.... and avoid "first"
+        auto pos = std::lower_bound(data_.begin(), data_.end(), v, comp_);
+        //data_.emplace_back(std::forward<Args>(args)...);
+        data_.emplace(pos, std::move(v));
     }
 
-    void emplace_back(V&& x) {
-        ensure_capacity(++size_);
-        back_node().emplace_back(std::move(x));
+    // TODO remove from other collections
+//    void emplace_back(V&& x) {
+//        ensure_capacity(data_.size() + 1);
+//        data_.emplace_back(std::move(x));
+//    }
+
+    void emplace_back(const V& v) {
+        // TODO this is bad!!! We should ask for key/value separately.... and avoid "first"
+        auto pos = std::lower_bound(data_.begin(), data_.end(), v, comp_);
+        //data_.emplace_back(std::forward<Args>(args)...);
+        data_.emplace(pos, std::move(v));
+//        ensure_capacity(data_.size() + 1);
+//        data_.emplace_back(x);
     }
 
-    void emplace_back(const V& x) {
-        ensure_capacity(++size_);
-        back_node().emplace_back(x);
-    }
-
-    void erase_back() {
-        assert(!empty());
-        --size_;
-        back_node().erase(back_node().end() - 1);
-        if (back_node().empty() && data_.size() > 1) {
-            data_.erase(data_.end() - 1);
-        }
-    }
+//    void erase_back() {
+//        assert(!empty());
+//        data_.erase(data_.end() - 1);
+//    }
 
     [[nodiscard]] bool empty() const noexcept {
-        return size_ == 0;
+        return data_.empty();
     }
 
     [[nodiscard]] size_t size() const noexcept {
-        return size_;
+        return data_.size();
     }
 
-    /**
-     * Reserves capacity for min(size, SIZE) entries.
-     * @param size
-     */
     void reserve(size_t size) noexcept {
-        if (data_.empty()) {
-            data_.emplace_back();
-        }
-        data_[0].reserve(std::min(size, SIZE));
+        data_.reserve(size);
     }
 
     constexpr reference front() noexcept {
-        return data_.front().front();
+        return data_.front();
     }
 
     constexpr const_reference front() const noexcept {
-        return data_.front().front();
+        return data_.front();
     }
 
     constexpr reference back() noexcept {
-        return data_.back().back();
+        return data_.back();
     }
 
     constexpr const_reference back() const noexcept {
-        return data_.back().back();
+        return data_.back();
     }
 
     //    constexpr iterator begin() noexcept {
@@ -295,28 +334,17 @@ class vector_tree {
     //    }
 
   private:
-    node_t& node(size_t index) noexcept {
-        return data_[index / SIZE];
-    }
-
-    const node_t& node(size_t index) const noexcept {
-        return data_[index / SIZE];
-    }
-
-    node_t& back_node() noexcept {
-        return data_.back();
-    }
-
     void ensure_capacity(size_t index) noexcept {
-        if (index > data_.size() * SIZE) {
-            data_.emplace_back();
-        }
+//        if (index > data_.size() * SIZE) {
+//            data_.emplace_back();
+//        }
     }
 
-    std::vector<node_t> data_;
-    size_t size_;
+    std::vector<V> data_;
+    //std::deque<V> data_;
+    Compare comp_;
 };
 
 }  // namespace phtree::bptree::detail
 
-#endif  // PHTREE_COMMON_BPT_VECTOR_TREE_H
+#endif  // PHTREE_COMMON_BPT_PRIORITY_QUEUE_H
