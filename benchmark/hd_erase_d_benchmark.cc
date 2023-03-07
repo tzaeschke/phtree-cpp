@@ -34,7 +34,7 @@ using payload_t = std::uint32_t;
 template <dimension_t DIM>
 class IndexBenchmark {
   public:
-    IndexBenchmark(benchmark::State& state);
+    explicit IndexBenchmark(benchmark::State& state);
     void Benchmark(benchmark::State& state);
 
   private:

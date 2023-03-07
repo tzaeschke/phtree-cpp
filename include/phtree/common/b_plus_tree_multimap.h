@@ -73,18 +73,17 @@ namespace phtree::bptree {
  * - The tree is not balanced
  *
  */
-template <typename KeyT, typename ValueT>
+template <typename KeyT, typename ValueT, typename Compare = std::less<KeyT>>
 class b_plus_tree_multimap {
-    static_assert(std::is_integral<KeyT>() && "Key type must be integer");
-    static_assert(std::is_unsigned<KeyT>() && "Key type must unsigned");
+    static_assert(std::is_arithmetic<KeyT>() && "Key type must integral or floating point");
 
     class bpt_node_leaf;
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT>;
+    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, Compare>;
     using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
-    using TreeT = b_plus_tree_multimap<KeyT, ValueT>;
+    using TreeT = b_plus_tree_multimap<KeyT, ValueT, Compare>;
 
   public:
     explicit b_plus_tree_multimap() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
@@ -164,6 +163,42 @@ class b_plus_tree_multimap {
         return IterT();
     }
 
+    [[nodiscard]] auto& front() noexcept {
+        NodeT* node = root_;
+        while (!node->is_leaf()) {
+            node = node->as_inner()->data_[0].second;
+        }
+        return node->as_leaf()->data_[0];
+    }
+
+    [[nodiscard]] auto& front() const noexcept {
+        return const_cast<b_plus_tree_multimap&>(*this).back();
+    }
+
+    [[nodiscard]] auto& back() noexcept {
+        NodeT* node = root_;
+        while (!node->is_leaf()) {
+            node = node->as_inner()->data_.back().second;
+        }
+        return node->as_leaf()->data_.back();
+    }
+
+    [[nodiscard]] auto& back() const noexcept {
+        return const_cast<b_plus_tree_multimap&>(*this).back();
+    }
+
+    void pop_back() noexcept {
+        assert(!empty());
+        NodeT* node = root_;
+        while (!node->is_leaf()) {
+            node = node->as_inner()->data_.back().second;
+        }
+        // TODO use pop_back() in erase_entry...?
+        // node->as_leaf()->erase_entry(node->as_leaf()->data_.rbegin(), root_);
+        node->as_leaf()->pop_back(root_);
+        --size_;
+    }
+
     template <typename... Args>
     auto emplace(KeyT key, Args&&... args) {
         auto leaf = lower_bound_or_last_leaf(key, root_);
@@ -185,7 +220,8 @@ class b_plus_tree_multimap {
         auto node = hint.node_->as_leaf();
 
         // The following may drop a valid hint but is easy to check.
-        if (node->data_.begin()->first > key || (node->data_.end() - 1)->first < key) {
+        if (Compare{}(key, node->data_.begin()->first) ||
+            Compare{}((node->data_.end() - 1)->first, key)) {
             return emplace(key, std::forward<Args>(args)...);
         }
         return node->try_emplace(key, root_, size_, std::forward<Args>(args)...);
@@ -198,7 +234,13 @@ class b_plus_tree_multimap {
 
     size_t erase(const KeyT key) {
         auto begin = lower_bound(key);
-        auto end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
+        static_assert(std::is_integral_v<KeyT>);
+        IterT end;
+        if constexpr (Compare{}(0, 1)) {
+            end = key == std::numeric_limits<KeyT>::max() ? IterT() : lower_bound(key + 1);
+        } else {
+            end = key == std::numeric_limits<KeyT>::min() ? IterT() : lower_bound(key - 1);
+        }
         if (begin == end) {
             return 0;
         }
@@ -272,7 +314,7 @@ class b_plus_tree_multimap {
     }
 
   private:
-    using bpt_leaf_super = detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true>;
+    using bpt_leaf_super = detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, Compare>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept
@@ -308,8 +350,8 @@ class b_plus_tree_multimap {
 
             assert(prev_leaf == this->prev_node_);
             for (auto& e : this->data_) {
-                assert(count == 0 || e.first >= known_min);
-                assert(this->parent_ == nullptr || e.first <= known_max);
+                assert(count == 0 || !Compare{}(e.first, known_min));
+                assert(this->parent_ == nullptr || !Compare{}(known_max, e.first));
                 ++count;
                 known_min = e.first;
             }

@@ -140,6 +140,12 @@ BENCHMARK_CAPTURE(PhTree3D, KNN_CU_10_of_10K, TestGenerator::CUBE, 10000, 10)
 BENCHMARK_CAPTURE(PhTree3D, KNN_CU_10_of_1M, TestGenerator::CUBE, 1000000, 10)
     ->Unit(benchmark::kMillisecond);
 
+BENCHMARK_CAPTURE(PhTree3D, KNN_CU_100_of_10K, TestGenerator::CUBE, 10000, 100)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CU_100_of_1M, TestGenerator::CUBE, 1000000, 100)
+    ->Unit(benchmark::kMillisecond);
+
 // index type, scenario name, data_type, num_entities, query_result_size
 // PhTree 3D CLUSTER
 BENCHMARK_CAPTURE(PhTree3D, KNN_CL_1_of_10K, TestGenerator::CLUSTER, 10000, 1)
@@ -152,6 +158,12 @@ BENCHMARK_CAPTURE(PhTree3D, KNN_CL_10_of_10K, TestGenerator::CLUSTER, 10000, 10)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_CAPTURE(PhTree3D, KNN_CL_10_of_1M, TestGenerator::CLUSTER, 1000000, 10)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CL_100_of_10K, TestGenerator::CLUSTER, 10000, 100)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CL_100_of_1M, TestGenerator::CLUSTER, 1000000, 100)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

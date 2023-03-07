@@ -1,5 +1,5 @@
 /*
-* Copyright 2022-2023 Tilmann Zäschke
+ * Copyright 2022-2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 #include "benchmark_util.h"
 #include "logging.h"
 #include "phtree/common/b_plus_tree_hash_map.h"
+#include "phtree/common/b_plus_tree_heap.h"
 #include "phtree/common/b_plus_tree_map.h"
 #include "phtree/common/b_plus_tree_multimap.h"
 #include <benchmark/benchmark.h>
@@ -30,6 +31,7 @@ const int GLOBAL_MAX = 10000;
 enum Scenario {
     MAP,
     MULTIMAP,
+    MULTIMAP2,
     HASH_MAP,
     STD_MAP,
     STD_MULTIMAP,
@@ -118,7 +120,22 @@ void IndexBenchmark<DIM, TYPE>::SetupWorld(benchmark::State& state) {
 template <size_t DIM, Scenario TYPE>
 void IndexBenchmark<DIM, TYPE>::Insert(benchmark::State& state, Index& tree) {
     switch (TYPE) {
-    default: {
+    case MAP: {
+        for (size_t i = 0; i < num_entities_; ++i) {
+            tree.emplace(points_[i][0], (payload_t)i);
+        }
+        break;
+    }
+    case MULTIMAP:
+    case MULTIMAP2:
+    case STD_MULTIMAP: {
+        for (size_t i = 0; i < num_entities_; ++i) {
+            tree.emplace(points_[i][0], (payload_t)i);
+        }
+        break;
+    }
+    case HASH_MAP:
+    case STD_MAP: {
         for (size_t i = 0; i < num_entities_; ++i) {
             tree.emplace(points_[i][0], (payload_t)i);
         }

@@ -1,6 +1,7 @@
 include(scripts.cmake)
 
 package_add_test(b_plus_tree_hash_map_test b_plus_tree_hash_map_test.cc)
+package_add_test(b_plus_tree_heap_test b_plus_tree_heap_test.cc)
 package_add_test(b_plus_tree_map_test b_plus_tree_map_test.cc)
 package_add_test(b_plus_tree_multimap_test b_plus_tree_multimap_test.cc)
 package_add_test(base_types_test base_types_test.cc)

@@ -89,7 +89,7 @@ class b_plus_tree_map {
     class bpt_iterator;
     using IterT = bpt_iterator;
     using NLeafT = bpt_node_leaf;
-    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, INNER_CFG>;
+    using NInnerT = detail::bpt_node_inner<KeyT, NLeafT, std::less<KeyT>, INNER_CFG>;
     using NodeT = detail::bpt_node_base<KeyT, NInnerT, bpt_node_leaf>;
     using TreeT = b_plus_tree_map<KeyT, ValueT, COUNT_MAX>;
 
@@ -232,8 +232,8 @@ class b_plus_tree_map {
     }
 
   private:
-    using bpt_leaf_super =
-        ::phtree::bptree::detail::bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, LEAF_CFG>;
+    using bpt_leaf_super = ::phtree::bptree::detail::
+        bpt_node_data<KeyT, ValueT, NInnerT, NLeafT, true, std::less<KeyT>, LEAF_CFG>;
     class bpt_node_leaf : public bpt_leaf_super {
       public:
         explicit bpt_node_leaf(NInnerT* parent, NLeafT* prev, NLeafT* next) noexcept

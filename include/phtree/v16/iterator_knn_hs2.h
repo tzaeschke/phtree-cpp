@@ -1,0 +1,247 @@
+/*
+ * Copyright 2020 Improbable Worlds Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef PHTREE_V16_QUERY_KNN_HS2_H
+#define PHTREE_V16_QUERY_KNN_HS2_H
+
+#include "iterator_base.h"
+#include "phtree/aux/min_max_tree_heap.h"
+#include "phtree/aux/min_max_vector_heap.h"
+#include "phtree/common/b_plus_tree_heap.h"
+#include "phtree/common/common.h"
+#include <queue>
+
+namespace improbable::phtree::v16 {
+
+/*
+ * kNN query implementation that uses preprocessors and distance functions.
+ *
+ * Implementation after Hjaltason and Samet (with some deviations: no MinDist or MaxDist used).
+ * G. R. Hjaltason and H. Samet., "Distance browsing in spatial databases.", ACM TODS
+ * 24(2):265--318. 1999
+ */
+
+namespace {
+template <dimension_t DIM, typename T, typename SCALAR>
+using EntryDist2 = std::pair<double, const Entry<DIM, T, SCALAR>*>;  // TODO const pointer?!?!
+
+template <typename ENTRY>
+struct CompareEntryDistByDistance2 {
+    bool operator()(const ENTRY& left, const ENTRY& right) const {
+        return left.first > right.first;
+    };
+};
+}  // namespace
+
+template <typename T, typename CONVERT, typename DISTANCE, typename FILTER>
+class IteratorKnnHS2 : public IteratorWithFilter<T, CONVERT, FILTER> {
+    static constexpr dimension_t DIM = CONVERT::DimInternal;
+    using KeyExternal = typename CONVERT::KeyExternal;
+    using KeyInternal = typename CONVERT::KeyInternal;
+    using SCALAR = typename CONVERT::ScalarInternal;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
+    using EntryDistT = EntryDist2<DIM, T, SCALAR>;
+
+  public:
+    template <typename DIST, typename F>
+    explicit IteratorKnnHS2(
+        const EntryT& root,
+        size_t min_results,
+        const KeyInternal& center,
+        const CONVERT* converter,
+        DIST&& dist,
+        F&& filter)
+    : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
+    , center_{center}
+    , center_post_{converter->post(center)}
+    , current_distance_{std::numeric_limits<double>::max()}
+    , num_found_results_(0)
+    , num_requested_results_(min_results)
+    , distance_(std::forward<DIST>(dist)) {
+        if (min_results <= 0 || root.GetNode().GetEntryCount() == 0) {
+            this->SetFinished();
+            return;
+        }
+
+        // Initialize queue, use d=0 because every imaginable point lies inside the root Node
+        assert(root.IsNode());
+        queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});   // TODO remove const_casts etc
+
+        FindNextElement();
+    }
+
+
+    [[nodiscard]] double distance() const {
+        return current_distance_;
+    }
+
+    IteratorKnnHS2& operator++() noexcept {
+        FindNextElement();
+        return *this;
+    }
+
+    [[deprecated]] // This iterator is MUCH slower!
+    IteratorKnnHS2 operator++(int) noexcept {
+        IteratorKnnHS2 iterator(*this);
+        ++(*this);
+        return iterator;
+    }
+
+  private:
+    void FindNextElement() {
+        while (num_found_results_ < num_requested_results_ &&
+               !(queue_n_.empty() && queue_v_.empty())) {
+            bool use_v = !queue_v_.empty();
+            if (use_v && !queue_n_.empty()) {
+                use_v = queue_n_.top() >= queue_v_.top();
+            }
+            if (use_v) {
+                // data entry
+                auto& cand_v = queue_v_.top();
+                ++num_found_results_;
+                this->SetCurrentResult(cand_v.second);
+                current_distance_ = cand_v.first;
+                // We need to pop() AFTER we processed the value, otherwise the reference is
+                // overwritten.
+                queue_v_.pop();
+                return;
+            } else {
+                // inner node
+                auto& node = queue_n_.top().second->GetNode();
+                auto d_node = queue_n_.top().first; // TODO merge with previous
+                queue_n_.pop();
+
+                if (queue_v_.size() >= num_requested_results_ && d_node >max_node_dist_) {
+                    // ignore this node
+                    continue;
+                }
+                // TODO
+                //  - Improve bpt pop()/top() and top_max()/pop_max()
+                //  - THIS works only if FILTER=true:
+                //     Get a_max_dist from first k nodes (plus found entries) and use as max_node_dist_
+                //     Repeat this!
+                //  - Consider rebuilding queue_n once queue_v is full.
+                //  - Heuristic: Consider rebuild queue_n when
+                //    -- new max_node_dist is a lot smaller than the previous one (
+                //       wont work for high dim....
+                //    -- size() > 2*k -> this depends on DIM!
+                //       We could just do it, and depending on how much gets removed we wait
+                //       longer/shorter for next rebuild.
+
+                // TODO
+                //  - queue_v should be decreased in size as num_found_results_ increases!
+
+                // TODO test/handle/assert case when tree.size() < n
+
+                // TODO TODO TODO TODO TODO
+                // TODO Minmax tree.top-max() probably fails for k=2 and k=3!!
+                // TODO test copy/move of minmax and of kNN iterator!
+
+               // CC=clang bazel test //test:phtree_test --config=ubsan
+
+
+                for (auto& entry : node.Entries()) {
+                    //auto& e2 = const_cast<EntryT&>(entry.second);
+                    const auto& e2 = entry.second;
+                    if (this->ApplyFilter(e2)) {
+                        if (e2.IsNode()) {
+                            double d = DistanceToNode(e2.GetKey(), e2.GetNodePostfixLen() + 1);
+                            if (d <= max_node_dist_) {
+                                queue_n_.emplace(d, &e2);
+                            }
+                        } else {
+                            double d = distance_(center_post_, this->post(e2.GetKey()));
+//                            if (queue_v_.size() < num_requested_results_) {
+//                                queue_v_.emplace(d, &e2);
+//                            } else if (d < queue_v_.top_max().first) {
+//                                queue_v_.pop_max();
+//                                queue_v_.emplace(d, &e2);
+//                            }
+//                            if (queue_v_.size() >= num_requested_results_) {
+//                                // TODO adjust with 10th value in queue i.o. last value?
+//                                //   -> in case we allow more than 10...
+//                                max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+//                            }
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            // TODO num_found_results_ breaks because of pop_max() being wrong for n < 3!!!!
+                            if (d < max_node_dist_) {
+                                queue_v_.emplace(d, &e2);
+                                if (queue_v_.size() > num_requested_results_ - num_found_results_) {
+                                    queue_v_.pop_max();
+                                }
+                                if (queue_v_.size() >= num_requested_results_ - num_found_results_) {
+                                    // TODO adjust with 10th value in queue i.o. last value?
+                                    //   -> in case we allow more than 10...
+                                    max_node_dist_ = std::min(max_node_dist_, queue_v_.top_max().first);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        this->SetFinished();
+        current_distance_ = std::numeric_limits<double>::max();
+    }
+
+    double DistanceToNode(const KeyInternal& prefix, std::uint32_t bits_to_ignore) {
+        assert(bits_to_ignore < detail::MAX_BIT_WIDTH<SCALAR>);
+        SCALAR mask_min = detail::MAX_MASK<SCALAR> << bits_to_ignore;
+        SCALAR mask_max = ~mask_min;
+        KeyInternal buf;
+        // The following calculates the point inside the node that is closest to center_.
+        for (dimension_t i = 0; i < DIM; ++i) {
+            // if center_[i] is outside the node, return distance to the closest edge,
+            // otherwise return center_[i] itself (assume possible distance=0)
+            SCALAR min = prefix[i] & mask_min;
+            SCALAR max = prefix[i] | mask_max;
+            buf[i] = min > center_[i] ? min : (max < center_[i] ? max : center_[i]);
+        }
+        return distance_(center_post_, this->post(buf));
+    }
+
+  private:
+    const KeyInternal center_;
+    // center after post processing == the external representation
+    const KeyExternal center_post_;
+    double current_distance_;
+//    std::
+//        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
+//            queue_n_;
+//    std::
+//        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance2<EntryDistT>>
+//            queue_v_;
+//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+//    ::phtree::aux::min_max_tree_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_n_;
+    ::phtree::aux::min_max_vector_heap<EntryDistT, CompareEntryDistByDistance2<EntryDistT>> queue_v_;
+//    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_n_;
+//    ::phtree::bptree::b_plus_tree_heap<EntryDistT, std::greater<double>> queue_v_;
+    size_t num_found_results_;
+    size_t num_requested_results_;
+    DISTANCE distance_;
+    double max_node_dist_ = std::numeric_limits<double>::max();
+};
+
+}  // namespace improbable::phtree::v16
+
+#endif  // PHTREE_V16_QUERY_KNN_HS2_H

@@ -28,6 +28,7 @@ build:ci --announce_rc
 #build:linux --copt="-march=skylake"
 #build:linux --copt="-march=haswell"
 #build:linux --copt="-march=native"
+#build:linux --copt="-fno-inline"
 build:linux --copt="-fvisibility=hidden"
 build:linux --copt="-fno-omit-frame-pointer"  # for friendlier stack traces
 build:linux --copt="-Wno-error"

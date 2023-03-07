@@ -13,6 +13,8 @@ cc_library(
         "iterator_full.h",
         "iterator_hc.h",
         "iterator_knn_hs.h",
+        "iterator_knn_hs1.h",
+        "iterator_knn_hs2.h",
         "iterator_lower_bound.h",
         "iterator_with_parent.h",
         "node.h",
@@ -22,6 +24,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
+        "//include/phtree/aux",
         "//include/phtree/common",
     ],
 )

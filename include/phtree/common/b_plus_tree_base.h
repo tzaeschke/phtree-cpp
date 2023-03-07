@@ -77,6 +77,7 @@ template <
     typename NInnerT,
     typename NLeafT,
     bool IsLeaf,
+    typename Compare = std::less<KeyT>,
     typename CFG = bpt_config<16, 2, 2>>
 class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     // TODO This could be improved but requires a code change to move > 1 entry when merging.
@@ -106,7 +107,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     [[nodiscard]] auto lower_bound(KeyT key) noexcept {
         // If this doesn´t compile, check #include <algorithm> !!!
         return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const KeyT key) {
-            return left.first < key;
+            return Compare{}(left.first, key);
         });
     }
 
@@ -129,6 +130,12 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
         auto max_key = data_.back().first;
         auto it_after_erased = data_.erase(it_to_erase);
         return check_merge(it_after_erased, max_key, root);
+    }
+
+    auto pop_back(NodeT*& root) {
+        auto max_key = data_.back().first;
+        data_.pop_back();
+        return check_merge(data_.end(), max_key, root);
     }
 
     auto check_merge(DataIteratorT iter_after_erased, KeyT max_key_old, NodeT*& root) {
@@ -225,12 +232,12 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     auto check_split_and_adjust_iterator(DataIteratorT it, KeyT key, NodeT*& root) {
         auto* dest = (ThisT*)this;
         bool is_split = this->check_split(root);
-        if (is_split && key > this->data_.back().first) {
+        if (is_split && Compare{}(this->data_.back().first, key)) {
             dest = this->next_node_;
             it = dest->lower_bound(key);
         }
 
-        if (dest->parent_ != nullptr && key > dest->data_.back().first) {
+        if (dest->parent_ != nullptr && Compare{}(dest->data_.back().first, key)) {
             dest->parent_->update_key(dest->data_.back().first, key, dest);
         }
 
@@ -331,15 +338,26 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
 // This type is replaced with the proper type inside bpt_node_data
 using bpt_dummy = void;
 
-template <typename KeyT, typename NLeafT, typename CFG = bpt_config<16, 2, 2>>
-class bpt_node_inner
-: public bpt_node_data<KeyT, bpt_dummy, bpt_node_inner<KeyT, NLeafT, CFG>, NLeafT, false, CFG> {
-    using NInnerT = bpt_node_inner<KeyT, NLeafT, CFG>;
+template <
+    typename KeyT,
+    typename NLeafT,
+    typename Compare = std::less<KeyT>,
+    typename CFG = bpt_config<16, 2, 2>>
+class bpt_node_inner : public bpt_node_data<
+                           KeyT,
+                           bpt_dummy,
+                           bpt_node_inner<KeyT, NLeafT, Compare, CFG>,
+                           NLeafT,
+                           false,
+                           Compare,
+                           CFG> {
+    using NInnerT = bpt_node_inner<KeyT, NLeafT, Compare, CFG>;
     using NodePtrT = bpt_node_base<KeyT, NInnerT, NLeafT>*;
 
   public:
     explicit bpt_node_inner(NInnerT* parent, NInnerT* prev, NInnerT* next) noexcept
-    : bpt_node_data<KeyT, bpt_dummy, NInnerT, NLeafT, false, CFG>(false, parent, prev, next) {}
+    : bpt_node_data<KeyT, bpt_dummy, NInnerT, NLeafT, false, Compare, CFG>(
+          false, parent, prev, next) {}
 
     ~bpt_node_inner() noexcept {
         for (auto& e : this->data_) {
@@ -376,9 +394,9 @@ class bpt_node_inner
         auto prev_key = this->data_[0].first;
         size_t n = 0;
         for (auto& e : this->data_) {
-            assert(n == 0 || e.first >= prev_key);
+            assert(n == 0 || !Compare{}(e.first, prev_key));
             e.second->_check(count, this, prev_leaf, known_min, e.first);
-            assert(this->parent_ == nullptr || e.first <= known_max);
+            assert(this->parent_ == nullptr || !Compare{}(known_max, e.first));
             prev_key = e.first;
             ++n;
         }
@@ -409,17 +427,17 @@ class bpt_node_inner
 
         // splits are always "forward", i.e. creating a "next" node. How about rebalance()?
         auto* dest = this;
-        if (has_split && key1_old > this->data_.back().first) {
+        if (has_split && Compare{}(this->data_.back().first, key1_old)) {
             dest = this->next_node_;
         }
 
         // update child1
         auto it = dest->lower_bound_node(key1_old, child1);
-        assert(key1_old >= key1_new && it != dest->data_.end());
+        assert(!Compare{}(key1_old, key1_new) && it != dest->data_.end());
         it->first = key1_new;
 
         if (dest == this && this->next_node_ != nullptr) {
-            assert(this->next_node_->data_.front().first >= key1_new);
+            assert(!Compare{}(this->next_node_->data_.front().first, key1_new));
         }
         ++it;
         // key_1_old is the max_key of child2
@@ -445,7 +463,7 @@ template <typename NLeafT, typename NodeT, typename F1>
 class bpt_iterator_base {
     using IterT = bpt_iterator_base<NLeafT, NodeT, F1>;
 
-    template <typename A, typename B, typename C, typename D, bool E, typename F>
+    template <typename A, typename B, typename C, typename D, bool E, typename F, typename G>
     friend class bpt_node_data;
     friend F1;
     friend NLeafT;
