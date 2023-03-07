@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Changed `bpt_vectot` to use `std::destroy` i.o. default dstr. [#132](https://github.com/tzaeschke/phtree-cpp/pull/132)
 - Moved B+trees into own namespace. [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
 - Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
+- Improved kNN search implementation. [#118](https://github.com/tzaeschke/phtree-cpp/issues/118)
 
 ### Fixed
 - Replaced deprecated `<assert.h>` imports with `<cassert>`. [#134](https://github.com/tzaeschke/phtree-cpp/pull/134)
