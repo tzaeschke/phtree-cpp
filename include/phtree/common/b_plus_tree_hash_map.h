@@ -172,7 +172,7 @@ class b_plus_tree_hash_set {
     template <typename... Args>
     auto emplace(Args&&... args) {
         T t(std::forward<Args>(args)...);
-        hash_t hash = (hash_t)HashT{}(t);
+        auto hash = (hash_t)HashT{}(t);
         auto leaf = lower_bound_or_last_leaf(hash, root_);
         return leaf->try_emplace(hash, root_, size_, std::move(t));
     }
@@ -229,9 +229,9 @@ class b_plus_tree_hash_set {
         return size_ == 0;
     }
 
-    void _check() {
+    void _check() const {
         size_t count = 0;
-        NLeafT* prev_leaf = nullptr;
+        const NLeafT* prev_leaf = nullptr;
         hash_t known_min = std::numeric_limits<hash_t>::max();
         root_->_check(count, nullptr, prev_leaf, known_min, 0);
         assert(count == size());
@@ -292,10 +292,10 @@ class b_plus_tree_hash_set {
 
         void _check(
             size_t& count,
-            NInnerT* parent,
-            NLeafT*& prev_leaf,
+            const NInnerT* parent,
+            const NLeafT*& prev_leaf,
             hash_t& known_min,
-            hash_t known_max) {
+            hash_t known_max) const {
             this->_check_data(parent, known_max);
 
             assert(prev_leaf == this->prev_node_);
@@ -425,7 +425,7 @@ class b_plus_tree_hash_map {
         return map_.empty();
     }
 
-    void _check() {
+    void _check() const {
         map_._check();
     }
 

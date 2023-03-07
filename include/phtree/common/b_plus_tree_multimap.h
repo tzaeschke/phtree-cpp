@@ -212,7 +212,7 @@ class b_plus_tree_multimap {
         --size_;
         auto result = iterator.node_->erase_entry(iterator.iter_, root_);
         if (result.node_) {
-            return IterT(static_cast<NLeafT*>(result.node_), result.iter_);
+            return IterT(result.node_->as_leaf(), result.iter_);
         }
         return IterT();
     }
@@ -263,9 +263,9 @@ class b_plus_tree_multimap {
         return size_ == 0;
     }
 
-    void _check() {
+    void _check() const {
         size_t count = 0;
-        NLeafT* prev_leaf = nullptr;
+        const NLeafT* prev_leaf = nullptr;
         KeyT known_min = std::numeric_limits<KeyT>::max();
         root_->_check(count, nullptr, prev_leaf, known_min, 0);
         assert(count == size());
@@ -299,7 +299,11 @@ class b_plus_tree_multimap {
         }
 
         void _check(
-            size_t& count, NInnerT* parent, NLeafT*& prev_leaf, KeyT& known_min, KeyT known_max) {
+            size_t& count,
+            const NInnerT* parent,
+            const NLeafT*& prev_leaf,
+            KeyT& known_min,
+            KeyT known_max) const {
             this->_check_data(parent, known_max);
 
             assert(prev_leaf == this->prev_node_);
