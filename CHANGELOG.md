@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Replaced deprecated `<assert.h>` imports with `<cassert>`. [#134](https://github.com/tzaeschke/phtree-cpp/pull/134)
+- Fixes undefined behavior in debug method. [#135](https://github.com/tzaeschke/phtree-cpp/pull/135)
 
 ## [1.5.0] - 2023-02-09
 ### Added
