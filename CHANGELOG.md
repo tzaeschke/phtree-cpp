@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Moved B+trees into own namespace. [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
 - Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
 
+### Fixed
+- Replaced deprecated `<assert.h>` imports with `<cassert>`. [#134](https://github.com/tzaeschke/phtree-cpp/pull/134)
+
 ## [1.5.0] - 2023-02-09
 ### Added
 - Added B+tree multimap for internal (future) use. [#93](https://github.com/tzaeschke/phtree-cpp/issues/93)
@@ -51,7 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 - bazel version requirement file `.bazelversion`. [#89](https://github.com/tzaeschke/phtree-cpp/issues/89)
 
-###
+### Fixed
 - Fixed copy cstr/assignment of B+trees, see also #102. [#119](https://github.com/tzaeschke/phtree-cpp/pull/119) 
 - Fixed numerous warnings when compiling with MSVC. [#120](https://github.com/tzaeschke/phtree-cpp/issues/120)
 
