@@ -37,20 +37,9 @@ namespace improbable::phtree::v16 {
 namespace {
 template <dimension_t DIM, typename T, typename SCALAR>
 using EntryDist1 = std::pair<double, const Entry<DIM, T, SCALAR>*>;
-//struct EntryDist1 {
-//
-//    EntryDist1(double f, const Entry<DIM, T, SCALAR>* s) noexcept : first{f}, second{const_cast<Entry<DIM, T, SCALAR>*>(s)} {}
-//
-//    constexpr bool operator<(const EntryDist1& other) const noexcept {
-//        return first < other.first;
-//    }
-//
-//    double first;
-//    Entry<DIM, T, SCALAR>* second;
-//};
 
 template <typename ENTRY>
-struct CompareEntryDistByDistance1 {
+struct CompareEntryDist1 {
     bool operator()(const ENTRY& left, const ENTRY& right) const {
         return left.first > right.first;
     };
@@ -66,9 +55,9 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
     using EntryDistT = EntryDist1<DIM, T, SCALAR>;
 
-//    static_assert(std::is_trivially_copyable<EntryDistT>());
-//    static_assert(std::is_trivially_move_assignable<EntryDistT>());
-    static_assert(std::is_trivially_move_constructible<EntryDistT>());
+    //    static_assert(std::is_trivially_copyable<EntryDistT>::value);
+    //    static_assert(std::is_trivially_move_assignable<EntryDistT>::value);
+    //    static_assert(std::is_trivially_move_constructible<EntryDistT>::value);
 
   public:
     template <typename DIST, typename F>
@@ -148,7 +137,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
                !(queue_n_.empty() && queue_v_.empty())) {
             bool use_v = !queue_v_.empty();
             if (use_v && !queue_n_.empty()) {
-                use_v = queue_v_.top() < queue_n_.top(); // TODO "<=" ???
+                use_v = queue_v_.top() < queue_n_.top();  // TODO "<=" ???
             }
             ++N_PROCESSED;
             if (use_v) {
@@ -195,7 +184,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
                                 if (queue_v_.size() >=
                                     num_requested_results_ - num_found_results_) {
                                     if (queue_v_.size() >
-                                           num_requested_results_ - num_found_results_) {
+                                        num_requested_results_ - num_found_results_) {
                                         queue_v_.pop_max();
                                     }
                                     double d_max = queue_v_.top_max().first;
@@ -239,7 +228,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     double current_distance_;
     size_t num_found_results_;
     size_t num_requested_results_;
-    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
+    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDist1<EntryDistT>>
         queue_n_;
     //    std::priority_queue<EntryDistT, std::vector<EntryDistT>,
     //    CompareEntryDistByDistance1<EntryDistT>>
@@ -247,8 +236,8 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     //    ::phtree::bptree::detail::priority_queue<EntryDistT,
     //    CompareEntryDistByDistance1<EntryDistT>>
     //        queue_n_;
-    ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDistByDistance1<EntryDistT>>
-        queue_v_{num_requested_results_};
+    ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDist1<EntryDistT>> queue_v_{
+        num_requested_results_};
     DISTANCE distance_;
     double max_node_dist_ = std::numeric_limits<double>::max();
 };
