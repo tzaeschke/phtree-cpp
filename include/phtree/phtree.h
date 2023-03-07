@@ -209,7 +209,7 @@ class PhTree {
      * @param new_key The new position
      * @return '1' if the 'value' was moved, otherwise '0'.
      */
-    auto relocate(const Key& old_key, const Key& new_key) {
+    size_t relocate(const Key& old_key, const Key& new_key) {
         return tree_.relocate_if(
             converter_.pre(old_key), converter_.pre(new_key), [](const T&) { return true; });
     }
@@ -224,7 +224,7 @@ class PhTree {
      * @return '1' if the 'value' was moved, otherwise '0'.
      */
     template <typename PRED>
-    auto relocate_if(const Key& old_key, const Key& new_key, PRED&& predicate) {
+    size_t relocate_if(const Key& old_key, const Key& new_key, PRED&& predicate) {
         return tree_.relocate_if(
             converter_.pre(old_key), converter_.pre(new_key), std::forward<PRED>(predicate));
     }

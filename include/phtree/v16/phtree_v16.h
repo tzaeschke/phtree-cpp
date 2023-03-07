@@ -347,7 +347,7 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    auto relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
+    size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
         EntryT* current_entry = &root_;           // An entry.
