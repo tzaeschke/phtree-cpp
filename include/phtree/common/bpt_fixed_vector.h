@@ -306,7 +306,7 @@ class bpt_vector {
     }
 
     const_iterator to_iter_c(size_t index) const noexcept {
-        return iterator{&data(index)};
+        return const_iterator{&data_c(index)};
     }
 
     iterator to_iter(size_t index) noexcept {
