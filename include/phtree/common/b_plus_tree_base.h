@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Tilmann Zäschke
+ * Copyright 2022-2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ class bpt_node_base {
         return static_cast<NLeafT*>(this);
     }
 
-    virtual void _check(size_t&, NInnerT*, NLeafT*&, KeyT&, KeyT) = 0;
+    virtual void _check(size_t&, const NInnerT*, const NLeafT*&, KeyT&, KeyT) const = 0;
 
   private:
     const bool is_leaf_;
@@ -237,7 +237,7 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
         return IterT(dest, it);
     }
 
-    void _check_data(NInnerT* parent, KeyT known_max) {
+    void _check_data(const NInnerT* parent, KeyT known_max) const {
         (void)parent;
         (void)known_max;
         // assert(parent_ == nullptr || data_.size() >= CFG::MIN);
@@ -365,7 +365,11 @@ class bpt_node_inner
     }
 
     void _check(
-        size_t& count, NInnerT* parent, NLeafT*& prev_leaf, KeyT& known_min, KeyT known_max) {
+        size_t& count,
+        const NInnerT* parent,
+        const NLeafT*& prev_leaf,
+        KeyT& known_min,
+        KeyT known_max) const {
         this->_check_data(parent, known_max);
 
         assert(this->parent_ == nullptr || known_max == this->data_.back().first);

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "phtree/common/b_plus_tree_base.h"
+#include "phtree/common/bpt_fixed_vector.h"
 #include <include/gtest/gtest.h>
 #include <map>
 #include <random>
@@ -104,13 +104,6 @@ struct IdTriviallyCopyable {
 
     int i_;
 };
-
-template <typename R, typename K, typename V, typename END>
-void CheckMapResult(const R& result, END end, const K& key, const V& val) {
-    ASSERT_NE(result, end);
-    ASSERT_EQ(result->first, key);
-    ASSERT_EQ(result->second, val);
-}
 
 TEST(PhTreeBptFixedVectorTest, SmokeTest0) {
     const size_t N = 100;
