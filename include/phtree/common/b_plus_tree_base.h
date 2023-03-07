@@ -107,7 +107,6 @@ class bpt_node_data : public bpt_node_base<KeyT, NInnerT, NLeafT> {
     [[nodiscard]] auto lower_bound(KeyT key) noexcept {
         // If this doesn´t compile, check #include <algorithm> !!!
         return std::lower_bound(data_.begin(), data_.end(), key, [](EntryT& left, const KeyT key) {
-            // return left.first < key;
             return Compare{}(left.first, key);
         });
     }
@@ -397,7 +396,6 @@ class bpt_node_inner : public bpt_node_data<
         for (auto& e : this->data_) {
             assert(n == 0 || !Compare{}(e.first, prev_key));
             e.second->_check(count, this, prev_leaf, known_min, e.first);
-            // assert(this->parent_ == nullptr || e.first <= known_max);
             assert(this->parent_ == nullptr || !Compare{}(known_max, e.first));
             prev_key = e.first;
             ++n;
@@ -435,12 +433,10 @@ class bpt_node_inner : public bpt_node_data<
 
         // update child1
         auto it = dest->lower_bound_node(key1_old, child1);
-        // assert(key1_old >= key1_new && it != dest->data_.end());
         assert(!Compare{}(key1_old, key1_new) && it != dest->data_.end());
         it->first = key1_new;
 
         if (dest == this && this->next_node_ != nullptr) {
-            // assert(this->next_node_->data_.front().first >= key1_new);
             assert(!Compare{}(this->next_node_->data_.front().first, key1_new));
         }
         ++it;

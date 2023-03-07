@@ -75,8 +75,6 @@ namespace phtree::bptree {
  */
 template <typename KeyT, typename ValueT, typename Compare = std::less<KeyT>>
 class b_plus_tree_multimap {
-    // static_assert(std::is_integral<KeyT>() && "Key type must be integer");
-    // static_assert(std::is_unsigned<KeyT>() && "Key type must unsigned");
     static_assert(std::is_arithmetic<KeyT>() && "Key type must integral or floating point");
 
     class bpt_node_leaf;
@@ -352,9 +350,7 @@ class b_plus_tree_multimap {
 
             assert(prev_leaf == this->prev_node_);
             for (auto& e : this->data_) {
-                // assert(count == 0 || e.first >= known_min);
                 assert(count == 0 || !Compare{}(e.first, known_min));
-                // assert(this->parent_ == nullptr || e.first <= known_max);
                 assert(this->parent_ == nullptr || !Compare{}(known_max, e.first));
                 ++count;
                 known_min = e.first;
