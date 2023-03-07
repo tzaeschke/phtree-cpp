@@ -86,8 +86,6 @@ void IndexBenchmark<DIM>::SetupWorld(benchmark::State& state) {
         tree_.emplace(points_[i], (int)i);
     }
 
-    state.counters["total_result_count"] = benchmark::Counter(0);
-    state.counters["total_query_count"] = benchmark::Counter(0);
     state.counters["query_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["result_rate"] = benchmark::Counter(0, benchmark::Counter::kIsRate);
     state.counters["avg_result_count"] = benchmark::Counter(0, benchmark::Counter::kAvgIterations);
@@ -104,8 +102,6 @@ void IndexBenchmark<DIM>::QueryWorld(benchmark::State& state, PhPointD<DIM>& cen
         ++n;
     }
 
-    state.counters["total_query_count"] += 1;
-    state.counters["total_result_count"] += n;
     state.counters["query_rate"] += 1;
     state.counters["result_rate"] += n;
     state.counters["avg_result_count"] += n;
@@ -140,6 +136,12 @@ BENCHMARK_CAPTURE(PhTree3D, KNN_CU_10_of_10K, TestGenerator::CUBE, 10000, 10)
 BENCHMARK_CAPTURE(PhTree3D, KNN_CU_10_of_1M, TestGenerator::CUBE, 1000000, 10)
     ->Unit(benchmark::kMillisecond);
 
+BENCHMARK_CAPTURE(PhTree3D, KNN_CU_100_of_10K, TestGenerator::CUBE, 10000, 100)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CU_100_of_1M, TestGenerator::CUBE, 1000000, 100)
+    ->Unit(benchmark::kMillisecond);
+
 // index type, scenario name, data_type, num_entities, query_result_size
 // PhTree 3D CLUSTER
 BENCHMARK_CAPTURE(PhTree3D, KNN_CL_1_of_10K, TestGenerator::CLUSTER, 10000, 1)
@@ -152,6 +154,12 @@ BENCHMARK_CAPTURE(PhTree3D, KNN_CL_10_of_10K, TestGenerator::CLUSTER, 10000, 10)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_CAPTURE(PhTree3D, KNN_CL_10_of_1M, TestGenerator::CLUSTER, 1000000, 10)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CL_100_of_10K, TestGenerator::CLUSTER, 10000, 100)
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTree3D, KNN_CL_100_of_1M, TestGenerator::CLUSTER, 1000000, 100)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

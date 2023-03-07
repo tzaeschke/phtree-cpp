@@ -1262,7 +1262,7 @@ TEST(PhTreeTest, TestKnnQueryFilterAndDistanceL1) {
             // entries with the same distance but with different ordering than sorted_data.
             ASSERT_GE(q.distance(), prevDist);
             prevDist = q.distance();
-            q++;
+            ++q;
             n++;
         }
         ASSERT_EQ(Nq, n);
@@ -1288,9 +1288,9 @@ TEST(PhTreeTest, TestKnnQueryIterator) {
         ASSERT_NE(q1, tree.end());
         ASSERT_NE(q2, tree.end());
         ASSERT_EQ(q1, q2);
-        q1++;
+        ++q1;
         ASSERT_NE(q1, q2);
-        q2++;
+        ++q2;
         n++;
     }
     ASSERT_EQ(Nq, n);
