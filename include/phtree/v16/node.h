@@ -308,7 +308,9 @@ class Node {
         } else {
             for (auto d : current_entry.GetKey()) {
                 assert(((d >> post_len) & 0x1) == 1 && "Last bit of node center must be `1`");
-                assert(((d >> post_len) << post_len) == d && "postlen bits must all be `0`");
+                using us_t = std::make_unsigned_t<decltype(d)>;
+                us_t d2 = static_cast<us_t>(d);
+                assert(((d2 >> post_len) << post_len) == d2 && "postlen bits must all be `0`");
             }
         }
 
