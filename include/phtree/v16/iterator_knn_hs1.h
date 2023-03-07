@@ -37,6 +37,17 @@ namespace improbable::phtree::v16 {
 namespace {
 template <dimension_t DIM, typename T, typename SCALAR>
 using EntryDist1 = std::pair<double, const Entry<DIM, T, SCALAR>*>;
+//struct EntryDist1 {
+//
+//    EntryDist1(double f, const Entry<DIM, T, SCALAR>* s) noexcept : first{f}, second{const_cast<Entry<DIM, T, SCALAR>*>(s)} {}
+//
+//    constexpr bool operator<(const EntryDist1& other) const noexcept {
+//        return first < other.first;
+//    }
+//
+//    double first;
+//    Entry<DIM, T, SCALAR>* second;
+//};
 
 template <typename ENTRY>
 struct CompareEntryDistByDistance1 {
@@ -54,6 +65,10 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
     using EntryDistT = EntryDist1<DIM, T, SCALAR>;
+
+//    static_assert(std::is_trivially_copyable<EntryDistT>());
+//    static_assert(std::is_trivially_move_assignable<EntryDistT>());
+    static_assert(std::is_trivially_move_constructible<EntryDistT>());
 
   public:
     template <typename DIST, typename F>
@@ -133,7 +148,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
                !(queue_n_.empty() && queue_v_.empty())) {
             bool use_v = !queue_v_.empty();
             if (use_v && !queue_n_.empty()) {
-                use_v = queue_n_.top() >= queue_v_.top();
+                use_v = queue_v_.top() < queue_n_.top(); // TODO "<=" ???
             }
             ++N_PROCESSED;
             if (use_v) {
@@ -176,34 +191,17 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
                             double d = distance_(center_post_, this->post(e2.GetKey()));
                             if (d < max_node_dist_) {
                                 queue_v_.emplace(d, &e2);
-                                //                                if (queue_v_.size() >
-                                //                                num_requested_results_ -
-                                //                                num_found_results_) {
-                                //                                    // TODO
-                                //                                    queue_v_.pop_max();
-                                //                                    // TODO do not pop, instead
-                                //                                    get max_node_dist from
-                                //                                    //
-                                //                                    queue_v_[num_requested_results_
-                                //                                    - num_found_results_ - 1];
-                                //                                }
-                                //                                if (queue_v_.size() >=
-                                //                                num_requested_results_ -
-                                //                                num_found_results_) {
-                                //                                    // TODO adjust with 10th value
-                                //                                    in queue i.o. last value?
-                                //                                    //   -> in case we allow more
-                                //                                    than 10...
-                                //                                    // TODO !!!!!!!!!!!!!!
-                                //                                    max_node_dist_ =
-                                //                                    std::min(max_node_dist_,
-                                //                                    queue_v_.top_max().first);
-                                //                                }
+                                MAX_DEPTH = std::max(MAX_DEPTH, queue_n_.size());
                                 if (queue_v_.size() >=
                                     num_requested_results_ - num_found_results_) {
-                                    auto pos_max = queue_v_.size() - num_requested_results_ +
-                                        num_found_results_;
-                                    double d_max = queue_v_[pos_max].first;
+                                    if (queue_v_.size() >
+                                           num_requested_results_ - num_found_results_) {
+                                        queue_v_.pop_max();
+                                    }
+                                    double d_max = queue_v_.top_max().first;
+//                                    auto pos_max = queue_v_.size() - num_requested_results_ +
+//                                        num_found_results_;
+//                                    double d_max = queue_v_[pos_max].first;
                                     max_node_dist_ = std::min(max_node_dist_, d_max);
                                 }
                             }
@@ -239,9 +237,10 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     // center after post processing == the external representation
     const KeyExternal center_post_;
     double current_distance_;
-    std::
-        priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
-            queue_n_;
+    size_t num_found_results_;
+    size_t num_requested_results_;
+    std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDistByDistance1<EntryDistT>>
+        queue_n_;
     //    std::priority_queue<EntryDistT, std::vector<EntryDistT>,
     //    CompareEntryDistByDistance1<EntryDistT>>
     //        queue_v_;
@@ -249,9 +248,7 @@ class IteratorKnnHS1 : public IteratorWithFilter<T, CONVERT, FILTER> {
     //    CompareEntryDistByDistance1<EntryDistT>>
     //        queue_n_;
     ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDistByDistance1<EntryDistT>>
-        queue_v_;
-    size_t num_found_results_;
-    size_t num_requested_results_;
+        queue_v_{num_requested_results_};
     DISTANCE distance_;
     double max_node_dist_ = std::numeric_limits<double>::max();
 };

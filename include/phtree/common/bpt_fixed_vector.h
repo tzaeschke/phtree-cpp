@@ -246,6 +246,11 @@ class bpt_vector {
         return iterator{dst};
     }
 
+    void pop_back() noexcept {
+        assert(size_ > 0);
+        std::destroy_at(&data(--size_));
+    }
+
     [[nodiscard]] size_t size() const noexcept {
         return size_;
     }
