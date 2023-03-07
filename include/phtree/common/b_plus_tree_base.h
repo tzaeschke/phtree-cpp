@@ -365,7 +365,11 @@ class bpt_node_inner
     }
 
     void _check(
-        size_t& count, NInnerT* parent, NLeafT*& prev_leaf, KeyT& known_min, KeyT known_max) {
+        size_t& count,
+        const NInnerT* parent,
+        const NLeafT*& prev_leaf,
+        KeyT& known_min,
+        KeyT known_max) const {
         this->_check_data(parent, known_max);
 
         assert(this->parent_ == nullptr || known_max == this->data_.back().first);
