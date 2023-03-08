@@ -198,7 +198,7 @@ TEST(PhTreeBptHeapTest, SmokeTest) {
     SmokeTest();
 }
 
-void SmokeTestTop(bool reverse) {
+void SmokeTestTop() {
     const size_t N = 1000;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N / 2);
@@ -261,11 +261,7 @@ void SmokeTestTop(bool reverse) {
 }
 
 TEST(PhTreeBptHeapTest, SmokeTestTop) {
-    SmokeTestTop(false);
-}
-
-TEST(PhTreeBptHeapTest, SmokeTestTopReverse) {
-    SmokeTestTop(true);  // TODO
+    SmokeTestTop();
 }
 
 TEST(PhTreeBptHeapTest, DestructionTest) {

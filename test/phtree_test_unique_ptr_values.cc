@@ -147,7 +147,7 @@ void SmokeTestBasicOps(int N) {
         auto q = tree.begin_query({p, p});
         ASSERT_NE(q, tree.end());
         ASSERT_EQ(i, (*q)->_i);
-        q++;
+        ++q;
         ASSERT_EQ(q, tree.end());
     }
 

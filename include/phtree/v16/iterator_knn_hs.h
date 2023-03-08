@@ -136,7 +136,8 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
                             }
                         } else {
                             double d = distance_(center_post_, this->post(e2.GetKey()));
-                            if (d < max_node_dist_) {
+                            // Using '<=' allows dealing with infinite distances.
+                            if (d <= max_node_dist_) {
                                 queue_v_.emplace(d, &e2);
                                 if (queue_v_.size() >= remaining_) {
                                     if (queue_v_.size() > remaining_) {
@@ -180,7 +181,7 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDist<EntryDistT>> queue_n_;
     ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDist<EntryDistT>> queue_v_;
     DISTANCE distance_;
-    double max_node_dist_ = std::numeric_limits<double>::max();
+    double max_node_dist_ = std::numeric_limits<double>::infinity();
 };
 
 }  // namespace improbable::phtree::v16
