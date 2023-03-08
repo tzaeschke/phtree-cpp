@@ -14,47 +14,44 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ITERATOR_SIMPLE_H
-#define PHTREE_V16_ITERATOR_SIMPLE_H
+#ifndef PHTREE_V21_ITERATOR_KEY_H
+#define PHTREE_V21_ITERATOR_KEY_H
 
 #include "phtree/common/common.h"
 #include "iterator_base.h"
 
-namespace improbable::phtree::v16 {
-
-// TODO .... ?!?!?
-template <dimension_t DIM, typename T, typename CONVERT>
-class PhTreeV16;
+namespace improbable::phtree::v20 {
 
 template <dimension_t DIM, typename T, typename CONVERT>
-class PhTreeV20;
+class PhTreeV21;
 
 
 template <typename T, typename CONVERT>
-class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
+class IteratorWithKey : public IteratorWithFilter<T, CONVERT> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT>::EntryT;
-    friend PhTreeV16<DIM, T, CONVERT>;
-    friend PhTreeV20<DIM, T, CONVERT>; // TODO
+    using KeyT = typename CONVERT::KeyInternal;
+    friend PhTreeV21<DIM, T, CONVERT>; // TODO
 
   public:
-    explicit IteratorWithParent(
+    explicit IteratorWithKey(
+        const KeyT& key,
+        EntryIteratorC<DIM, EntryT> iter,
         const EntryT* current_result,
         const EntryT* current_node,
-        const EntryT* parent_node,
         const CONVERT* converter) noexcept
     : IteratorWithFilter<T, CONVERT>(current_result, converter)
-    , current_node_{current_node}
-    , parent_node_{parent_node} {}
+    , key_{key}
+    , iter_{iter} , current_node_{current_node} {}
 
-    IteratorWithParent& operator++() {
-        this->SetFinished();
+    IteratorWithKey& operator++() {
+        FindNextElement();
         return *this;
     }
 
-    IteratorWithParent operator++(int) {
-        IteratorWithParent iterator(*this);
+    IteratorWithKey operator++(int) {
+        IteratorWithKey iterator(*this);
         ++(*this);
         return iterator;
     }
@@ -63,10 +60,28 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
         return const_cast<EntryT*>(current_node_);
     }
 
-    EntryT* __GetParentNodeEntry() const {
-        return const_cast<EntryT*>(parent_node_);
-    }
+//    EntryT* __GetParentNodeEntry() const {
+//        return const_cast<EntryT*>(parent_node_);
+//    }
 
+  private:
+    void FindNextElement() noexcept {
+        assert(!this->IsEnd());
+        auto hc_pos = iter_->first;
+        ++iter_;
+        while (iter_ != current_node_->GetNode().Entries().end()) {
+            if (iter_->first != hc_pos) {
+                this->SetFinished();
+                return;
+            }
+            if (iter_->second.GetKey() == key_) {
+                this->SetCurrentResult(&iter_->second);
+                return;
+            }
+            ++iter_;
+        }
+        this->SetFinished();
+    }
 
   private:
     /*
@@ -77,14 +92,15 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
         return const_cast<EntryT*>(current_node_);
     }
 
-    EntryT* GetParentNodeEntry() const {
-        return const_cast<EntryT*>(parent_node_);
-    }
+//    EntryT* GetParentNodeEntry() const {
+//        return const_cast<EntryT*>(parent_node_);
+//    }
 
+    KeyT key_;
+    EntryIteratorC<DIM, EntryT> iter_;
     const EntryT* current_node_;
-    const EntryT* parent_node_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_ITERATOR_SIMPLE_H
+#endif  // PHTREE_V21_ITERATOR_KEY_H

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ITERATOR_BASE_H
-#define PHTREE_V16_ITERATOR_BASE_H
+#ifndef PHTREE_V21_ITERATOR_BASE_H
+#define PHTREE_V21_ITERATOR_BASE_H
 
 #include "phtree/common/common.h"
 #include "phtree/filter.h"
 
-namespace improbable::phtree::v16 {
+namespace improbable::phtree::v20 {
 
 /*
  * Base class for all PH-Tree iterators.
@@ -79,7 +79,7 @@ class IteratorBase {
 template <typename EntryT>
 using IteratorEnd = IteratorBase<EntryT>;
 
-template <typename T, typename CONVERT, typename FILTER_FN = FilterNoOp>
+template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
 class IteratorWithFilter
 : public IteratorBase<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
   protected:
@@ -94,7 +94,7 @@ class IteratorWithFilter
     : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_{std::forward<F>(filter)} {}
 
     explicit IteratorWithFilter(const EntryT* current_entry, const CONVERT* converter) noexcept
-    : IteratorBase<EntryT>(current_entry), converter_{converter}, filter_{FILTER_FN()} {}
+    : IteratorBase<EntryT>(current_entry), converter_{converter}, filter_{FILTER()} {}
 
     auto first() const {
         return converter_->post(this->current_entry_->GetKey());
@@ -116,9 +116,9 @@ class IteratorWithFilter
 
   private:
     const CONVERT* converter_;
-    FILTER_FN filter_;
+    FILTER filter_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_ITERATOR_BASE_H
+#endif  // PHTREE_V21_ITERATOR_BASE_H

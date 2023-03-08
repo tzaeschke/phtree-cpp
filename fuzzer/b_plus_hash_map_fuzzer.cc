@@ -24,8 +24,6 @@
 
 #include "include/phtree/common/b_plus_tree_hash_map.h"
 
-static volatile int Sink;
-
 using Instruction = std::uint8_t;
 using Key = std::uint8_t;
 using Value = std::uint8_t;
@@ -43,8 +41,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
         std::cout << "    using Value = std::uint8_t;" << std::endl;
         std::cout << "    b_plus_tree_map<Key, Value, 256> tree{};" << std::endl;
     }
-
-    auto scopeguard = []() { std::cout << "};" << std::endl; };
 
     improbable::phtree::b_plus_tree_hash_map<Key, Value> tree;
     std::map<Key, Value> map;

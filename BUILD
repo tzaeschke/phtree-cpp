@@ -86,6 +86,7 @@ cc_library(
         "include/phtree/filter.h",
         "include/phtree/phtree.h",
         "include/phtree/phtree_multimap.h",
+        "include/phtree/phtree_multimap2.h",
     ],
     includes = [
         "include",
@@ -97,5 +98,6 @@ cc_library(
     deps = [
         "//include/phtree/common",
         "//include/phtree/v16",
+        "//include/phtree/v20",
     ],
 )
