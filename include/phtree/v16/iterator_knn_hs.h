@@ -27,7 +27,7 @@ namespace improbable::phtree::v16 {
 /*
  * kNN query implementation that uses preprocessors and distance functions.
  *
- * Implementation after Hjaltason and Samet (with some deviations: no MinDist or MaxDist used).
+ * Implementation (roughly) after Hjaltason and Samet.
  * G. R. Hjaltason and H. Samet., "Distance browsing in spatial databases.", ACM TODS
  * 24(2):265--318. 1999
  */
@@ -108,10 +108,10 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
             }
             if (use_v) {
                 // data entry
-                auto& cand_v = queue_v_.top();
+                auto& result = queue_v_.top();
                 --remaining_;
-                this->SetCurrentResult(cand_v.second);
-                current_distance_ = cand_v.first;
+                this->SetCurrentResult(result.second);
+                current_distance_ = result.first;
                 queue_v_.pop();
                 return;
             } else {
