@@ -146,15 +146,15 @@ class Entry {
         }
     }
 
-    [[nodiscard]] const KeyT& GetKey() const {
+    [[nodiscard]] const KeyT& GetKey() const noexcept {
         return kd_key_;
     }
 
-    [[nodiscard]] bool IsValue() const {
+    [[nodiscard]] bool IsValue() const noexcept {
         return union_type_ == VALUE;
     }
 
-    [[nodiscard]] bool IsNode() const {
+    [[nodiscard]] bool IsNode() const noexcept {
         return union_type_ == NODE;
     }
 

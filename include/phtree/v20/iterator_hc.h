@@ -58,8 +58,8 @@ class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
         F&& filter)
     : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
     , stack_size_{0}
-    , range_min_{range_min}
-    , range_max_{range_max} {
+    , min_{range_min}
+    , max_{range_max} {
         stack_.reserve(8);
         PrepareAndPush(root);
         FindNextElement();
@@ -81,7 +81,7 @@ class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
         while (!IsEmpty()) {
             auto* p = &Peek();
             const EntryT* current_result;
-            while ((current_result = p->Increment(range_min_, range_max_))) {
+            while ((current_result = p->Increment(min_, max_))) {
                 if (this->ApplyFilter(*current_result)) {
                     if (current_result->IsNode()) {
                         p = &PrepareAndPush(*current_result);
@@ -104,7 +104,7 @@ class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
         }
         assert(stack_size_ < stack_.size());
         auto& ni = stack_[stack_size_++];
-        ni.Init(range_min_, range_max_, entry);
+        ni.Init(min_, max_, entry);
         return ni;
     }
 
@@ -124,8 +124,8 @@ class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
 
     std::vector<NodeIterator<DIM, T, SCALAR>> stack_;
     size_t stack_size_;
-    const KeyInternal range_min_;
-    const KeyInternal range_max_;
+    const KeyInternal min_;
+    const KeyInternal max_;
 };
 
 namespace {
@@ -134,14 +134,15 @@ class NodeIterator {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
     using EntriesT = const EntryMap<DIM, EntryT>;
-    using hc_pos_t = hc_pos_dim_t<DIM>;
+    using hc_pos_t = detail::hc_pos_dim_t<DIM>;
 
   public:
     NodeIterator() : iter_{}, entries_{nullptr}, mask_lower_{0}, mask_upper_{0}, postfix_len_{0} {}
 
-    void Init(const KeyT& range_min, const KeyT& range_max, const EntryT& entry) {
+    void Init(const KeyT& min, const KeyT& max, const EntryT& entry) {
         auto& node = entry.GetNode();
-        CalcLimits(entry.GetNodePostfixLen(), range_min, range_max, entry.GetKey());
+        detail::CalcLimits(
+            entry.GetNodePostfixLen(), min, max, entry.GetKey(), mask_lower_, mask_upper_);
         iter_ = node.Entries().lower_bound(mask_lower_);
         entries_ = &node.Entries();
         postfix_len_ = entry.GetNodePostfixLen();
@@ -167,7 +168,7 @@ class NodeIterator {
 
     bool CheckEntry(const EntryT& candidate, const KeyT& range_min, const KeyT& range_max) const {
         if (candidate.IsValue()) {
-            return IsInRange(candidate.GetKey(), range_min, range_max);
+            return detail::IsInRange(candidate.GetKey(), range_min, range_max);
         }
 
         // Check if node-prefix allows sub-node to contain any useful values.
@@ -178,8 +179,8 @@ class NodeIterator {
         }
 
         // Mask for comparing the prefix with the query boundaries.
-        assert(candidate.GetNodePostfixLen() + 1 < MAX_BIT_WIDTH<SCALAR>);
-        SCALAR comparison_mask = MAX_MASK<SCALAR> << (candidate.GetNodePostfixLen() + 1);
+        assert(candidate.GetNodePostfixLen() + 1 < detail::MAX_BIT_WIDTH<SCALAR>);
+        SCALAR comparison_mask = detail::MAX_MASK<SCALAR> << (candidate.GetNodePostfixLen() + 1);
         auto& key = candidate.GetKey();
         for (dimension_t dim = 0; dim < DIM; ++dim) {
             SCALAR in = key[dim] & comparison_mask;
@@ -195,67 +196,12 @@ class NodeIterator {
         return ((key | mask_lower_) & mask_upper_) == key;
     }
 
-    void CalcLimits(
-        bit_width_t postfix_len, const KeyT& range_min, const KeyT& range_max, const KeyT& prefix) {
-        // create limits for the local node. there is a lower and an upper limit. Each limit
-        // consists of a series of DIM bit, one for each dimension.
-        // For the lower limit, a '1' indicates that the 'lower' half of this dimension does
-        // not need to be queried.
-        // For the upper limit, a '0' indicates that the 'higher' half does not need to be
-        // queried.
-        //
-        //              ||  lower_limit=0 || lower_limit=1 || upper_limit = 0 || upper_limit = 1
-        // =============||======================================================================
-        // query lower  ||     YES              NO
-        // ============ || =====================================================================
-        // query higher ||                                       NO                  YES
-        //
-        assert(postfix_len < MAX_BIT_WIDTH<SCALAR>);
-        hc_pos_t lower_limit = 0;
-        hc_pos_t upper_limit = 0;
-        // to prevent problems with signed long when using 64 bit
-        if (postfix_len < MAX_BIT_WIDTH<SCALAR> - 1) {
-            for (dimension_t i = 0; i < DIM; ++i) {
-                lower_limit <<= 1;
-                //==> set to 1 if lower value should not be queried
-                lower_limit |= range_min[i] >= prefix[i];
-            }
-            for (dimension_t i = 0; i < DIM; ++i) {
-                upper_limit <<= 1;
-                // Leave 0 if higher value should not be queried.
-                upper_limit |= range_max[i] >= prefix[i];
-            }
-        } else {
-            // special treatment for signed longs
-            // The problem (difference) here is that a '1' at the leading bit does indicate a
-            // LOWER value, opposed to indicating a HIGHER value as in the remaining 63 bits.
-            // The hypercube assumes that a leading '0' indicates a lower value.
-            // Solution: We leave HC as it is.
-            for (dimension_t i = 0; i < DIM; ++i) {
-                upper_limit <<= 1;
-                // If minimum is positive, we don't need the search negative values
-                //==> set upper_limit to 0, prevent searching values starting with '1'.
-                upper_limit |= range_min[i] < 0;
-            }
-            for (dimension_t i = 0; i < DIM; ++i) {
-                lower_limit <<= 1;
-                // Leave 0 if higher value should not be queried
-                // If maximum is negative, we do not need to search positive values
-                //(starting with '0').
-                //--> lower_limit = '1'
-                lower_limit |= range_max[i] < 0;
-            }
-        }
-        mask_lower_ = lower_limit;
-        mask_upper_ = upper_limit;
-    }
-
   private:
     EntryIteratorC<DIM, EntryT> iter_;
     EntriesT* entries_;
     hc_pos_t mask_lower_;
     hc_pos_t mask_upper_;
-    bit_width_t postfix_len_;
+    detail::bit_width_t postfix_len_;
 };
 }  // namespace
 }  // namespace improbable::phtree::v20

@@ -164,6 +164,10 @@ class b_plus_tree_multimap {
         return IterT();
     }
 
+    [[nodiscard]] auto cend() const noexcept {
+        return IterT();
+    }
+
     template <typename... Args>
     auto emplace(KeyT key, Args&&... args) {
         auto leaf = lower_bound_or_last_leaf(key, root_);

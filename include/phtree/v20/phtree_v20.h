@@ -56,6 +56,7 @@ namespace improbable::phtree::v20 {
 template <dimension_t DIM, typename T, typename CONVERT = ConverterNoOp<DIM, scalar_64_t>>
 class PhTreeV20 {
     friend PhTreeDebugHelper;
+    using bit_width_t = detail::bit_width_t;
     using ScalarExternal = typename CONVERT::ScalarExternal;
     using ScalarInternal = typename CONVERT::ScalarInternal;
     using KeyT = typename CONVERT::KeyInternal;
@@ -73,7 +74,7 @@ class PhTreeV20 {
 
     explicit PhTreeV20(CONVERT* converter)
     : num_entries_{0}
-    , root_{{}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , root_{{}, NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1}
     , converter_{converter} {}
 
     PhTreeV20(const PhTreeV20& other) = delete;
@@ -143,7 +144,7 @@ class PhTreeV20 {
             }
 
             auto* parent_entry = iterator.__GetParentNodeEntry();
-            if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
+            if (detail::NumberOfDivergingBits(key, parent_entry->GetKey()) >
                 parent_entry->GetNodePostfixLen() + 1) {
                 // replace higher up in the tree
                 return try_emplace(key, std::forward<Args>(args)...);
@@ -335,7 +336,7 @@ class PhTreeV20 {
      */
     template <typename PRED>
     size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+        bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
         EntryT* current_entry = &root_;           // An entry.
         EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
@@ -534,7 +535,7 @@ class PhTreeV20 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT({}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT({}, NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*
@@ -568,16 +569,16 @@ class PhTreeV20 {
      * querying box data with QueryInclude. Unfortunately, QueryIntersect queries have +/-0 infinity
      * in their coordinates, so their never is an overlap.
      */
-    std::pair<const EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
-        const PhBox<DIM, ScalarInternal>& query_box) const {
+    auto find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& prefix = query_box.min();
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        bit_width_t max_conflicting_bits =
+            detail::NumberOfDivergingBits(query_box.min(), query_box.max());
         const EntryT* parent = &root_;
         if (max_conflicting_bits > root_.GetNodePostfixLen()) {
             // Abort early if we have no shared prefix in the query
-            return {&root_, root_.GetNode().Entries().end()};
+            return std::make_pair(&root_, root_.GetNode().Entries().cend());
         }
-        EntryIteratorC<DIM, EntryT> entry_iter =
+        auto entry_iter =
             root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
@@ -585,7 +586,7 @@ class PhTreeV20 {
             entry_iter = parent->GetNode().FindPrefix(
                 prefix, max_conflicting_bits, parent->GetNodePostfixLen());
         }
-        return {parent, entry_iter};
+        return std::make_pair(parent, entry_iter);
     }
 
     size_t num_entries_;
