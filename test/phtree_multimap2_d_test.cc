@@ -169,7 +169,7 @@ void SmokeTestBasicOps(size_t N) {
         ASSERT_NE(q, tree.end());
         for (size_t j = 0; j < NUM_DUPL; j++) {
             ASSERT_EQ(i / NUM_DUPL, (*q)._i / NUM_DUPL);
-            q++;
+            ++q;
         }
         ASSERT_EQ(q, tree.end());
     }
@@ -281,7 +281,7 @@ TEST(PhTreeMMDTest, TestInsert) {
         ASSERT_NE(q, tree.end());
         for (size_t j = 0; j < NUM_DUPL; j++) {
             ASSERT_EQ(i / NUM_DUPL, (*q)._i / NUM_DUPL);
-            q++;
+            ++q;
         }
         ASSERT_EQ(q, tree.end());
     }
@@ -331,7 +331,7 @@ TEST(PhTreeMMDTest, TestEmplace) {
         ASSERT_NE(q, tree.end());
         for (size_t j = 0; j < NUM_DUPL; j++) {
             ASSERT_EQ(i / NUM_DUPL, (*q)._i / NUM_DUPL);
-            q++;
+            ++q;
         }
         ASSERT_EQ(q, tree.end());
     }
@@ -836,7 +836,7 @@ TEST(PhTreeMMDTest, TestWindowQuery1) {
         auto& x = *q;
         for (size_t j = 0; j < NUM_DUPL; j++) {
             ASSERT_EQ(i / NUM_DUPL, x._i / NUM_DUPL);
-            q++;
+            ++q;
         }
         ASSERT_EQ(q, tree.end());
         n++;
@@ -948,9 +948,9 @@ TEST(PhTreeMMDTest, TestWindowQueryIterators) {
         ASSERT_NE(q1, tree.end());
         ASSERT_NE(q2, tree.end());
         ASSERT_EQ(q1, q2);
-        q1++;
+        ++q1;
         ASSERT_NE(q1, q2);
-        q2++;
+        ++q2;
         n++;
     }
     ASSERT_EQ(N, n);
@@ -1011,7 +1011,7 @@ TEST(PhTreeMMDTest, TestKnnQuery) {
             ASSERT_EQ(sorted_data[n]._id / NUM_DUPL, q->_i / NUM_DUPL);
             ASSERT_GE(q.distance(), prevDist);
             prevDist = q.distance();
-            q++;
+            ++q;
             n++;
         }
         ASSERT_EQ(Nq, n);
@@ -1066,7 +1066,7 @@ TEST(PhTreeMMDTest, TestKnnQueryFilterAndDistanceL1) {
 
             ASSERT_GE(q.distance(), prevDist);
             prevDist = q.distance();
-            q++;
+            ++q;
             n++;
         }
         std::sort(sorted_results.begin(), sorted_results.end(), comparePointDistanceAndId);
@@ -1099,9 +1099,9 @@ TEST(PhTreeMMDTest, TestKnnQueryIterator) {
         ASSERT_NE(q1, tree.end());
         ASSERT_NE(q2, tree.end());
         ASSERT_EQ(q1, q2);
-        q1++;
+        ++q1;
         ASSERT_NE(q1, q2);
-        q2++;
+        ++q2;
         n++;
     }
     ASSERT_EQ(Nq, n);

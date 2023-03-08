@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Improbable Worlds Limited
+ * Copyright 2023 Tilmann Zäschke
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,46 +14,88 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V20_ITERATOR_FULL_H
-#define PHTREE_V20_ITERATOR_FULL_H
+#ifndef PHTREE_V20_ITERATOR_LOWER_BOUND_H
+#define PHTREE_V20_ITERATOR_LOWER_BOUND_H
 
-#include "phtree/common/common.h"
 #include "iterator_base.h"
+#include "phtree/common/common.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v16 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
 
+/**
+ * This iterator starts at a given position defined by "key" and then iterates until end().
+ * @tparam T Value type
+ * @tparam CONVERT Converter
+ * @tparam FILTER Filter
+ */
 template <typename T, typename CONVERT, typename FILTER>
-class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
+class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
+    using KeyInternalT = typename CONVERT::KeyInternal;
     using NodeT = Node<DIM, T, SCALAR>;
     using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
 
   public:
     template <typename F>
-    IteratorFull(const EntryT& root, const CONVERT* converter, F&& filter)
+    IteratorLowerBound(
+        const EntryT* root, const KeyInternalT& key, const CONVERT* converter, F&& filter)
     : IteratorWithFilter<T, CONVERT, F>(converter, std::forward<F>(filter))
     , stack_{}
     , stack_size_{0} {
-        PrepareAndPush(root.GetNode());
-        FindNextElement();
+        FindFirstElement(root, key);
     }
 
-    IteratorFull& operator++() noexcept {
+    IteratorLowerBound& operator++() noexcept {
         FindNextElement();
         return *this;
     }
 
-    IteratorFull operator++(int) noexcept {
+    IteratorLowerBound operator++(int) noexcept {
         IteratorFull iterator(*this);
         ++(*this);
         return iterator;
     }
 
   private:
+    void FindFirstElement(const EntryT* root, const KeyInternalT& key) noexcept {
+        bool found = false;
+        auto* node = &root->GetNode();
+        auto it1 = node->LowerBoundC(key, root->GetNodePostfixLen(), found);
+        if (it1 != node->End()) {
+            Push(it1, node->End());
+        }
+        if (!found) {
+            FindNextElement();
+            return;
+        }
+
+        while (!IsEmpty()) {
+            auto& it = Peek();
+            auto& entry = it->second;
+            ++it;
+            if (entry.IsNode()) {
+                found = false;
+                auto it2 = entry.GetNode().LowerBoundC(key, entry.GetNodePostfixLen(), found);
+                if (it2 != entry.GetNode().End()) {
+                    Push(it2, entry.GetNode().End());
+                }
+                if (!found) {
+                    FindNextElement();
+                    return;
+                }
+            } else {
+                this->SetCurrentResult(&entry);
+                return;
+            }
+        }
+        // finished
+        this->SetFinished();
+    }
+
     void FindNextElement() noexcept {
         while (!IsEmpty()) {
             auto* p = &Peek();
@@ -74,6 +116,24 @@ class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
         }
         // finished
         this->SetFinished();
+    }
+
+    auto& PrepareAndPushFirst(const EntryT& entry, const KeyInternalT& key, bool& found) {
+        assert(stack_size_ < stack_.size() - 1);
+        // No '&'  because this is a temp value
+        auto& node = entry.GetNode();
+        stack_[stack_size_].first = node.LowerBound(key, entry.GetNodePostfixLen(), found);
+        stack_[stack_size_].second = node.Entries().end();
+        ++stack_size_;
+        return stack_[stack_size_ - 1].first;
+    }
+
+    auto& Push(const EntryIteratorC<DIM, EntryT>& begin, const EntryIteratorC<DIM, EntryT>& end) {
+        assert(stack_size_ < stack_.size() - 1);
+        stack_[stack_size_].first = begin;
+        stack_[stack_size_].second = end;
+        ++stack_size_;
+        return stack_[stack_size_ - 1].first;
     }
 
     auto& PrepareAndPush(const NodeT& node) {
@@ -111,6 +171,6 @@ class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
     size_t stack_size_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v16
 
-#endif  // PHTREE_V20_ITERATOR_FULL_H
+#endif  // PHTREE_V16_ITERATOR_LOWER_BOUND_H
