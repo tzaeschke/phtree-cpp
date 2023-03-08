@@ -261,6 +261,19 @@ cc_test(
 )
 
 cc_test(
+    name = "phtree_multimap2_box_d_test",
+    timeout = "long",
+    srcs = [
+        "phtree_multimap2_box_d_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "phtree_f_test",
     timeout = "long",
     srcs = [
@@ -291,6 +304,19 @@ cc_test(
     timeout = "long",
     srcs = [
         "phtree_test_issues.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "phtree_multimap2_d_test",
+    timeout = "long",
+    srcs = [
+        "phtree_multimap2_d_test.cc",
     ],
     linkstatic = True,
     deps = [

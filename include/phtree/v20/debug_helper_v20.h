@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_DEBUG_HELPER_H
-#define PHTREE_V16_DEBUG_HELPER_H
+#ifndef PHTREE_V20_DEBUG_HELPER_H
+#define PHTREE_V20_DEBUG_HELPER_H
 
-#include "node.h"
+#include "phtree/v20/node.h"
 #include "phtree/common/common.h"
 #include "phtree/common/debug_helper.h"
-#include "phtree_v16.h"
+#include "phtree_v20.h"
 #include <string>
 
-namespace improbable::phtree::v16 {
+namespace improbable::phtree::v20 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
-class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
+class DebugHelperV20 : public PhTreeDebugHelper::DebugHelper {
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
-    DebugHelperV16(const EntryT& root, size_t size) : root_{root}, size_{size} {}
+    DebugHelperV20(const EntryT& root, size_t size) : root_{root}, size_{size} {}
 
     /*
      * Depending on the detail parameter this returns:
@@ -47,13 +47,13 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
         std::ostringstream os;
         switch (detail) {
         case Enum::name:
-            os << "PH-TreeV16-C++";
+            os << "PH-TreeV20-C++";
             break;
         case Enum::entries:
             ToStringPlain(os, root_);
             break;
         case Enum::tree:
-            ToStringTree(os, 0, root_, detail::MAX_BIT_WIDTH<SCALAR>, true);
+            ToStringTree(os, 0, root_, MAX_BIT_WIDTH<SCALAR>, true);
             break;
         }
         return os.str();
@@ -93,12 +93,12 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
 
     void ToStringTree(
         std::ostringstream& sb,
-        detail::bit_width_t current_depth,
+        bit_width_t current_depth,
         const EntryT& entry,
-        const detail::bit_width_t parent_postfix_len,
+        const bit_width_t parent_postfix_len,
         bool print_value) const {
         std::string ind = "*";
-        for (detail::bit_width_t i = 0; i < current_depth; ++i) {
+        for (bit_width_t i = 0; i < current_depth; ++i) {
             ind += "-";
         }
         const auto& node = entry.GetNode();
@@ -109,11 +109,11 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
 
         // for a leaf node, the existence of a sub just indicates that the value exists.
         if (infix_len > 0) {
-            detail::bit_mask_t<SCALAR> mask = detail::MAX_MASK<SCALAR> << infix_len;
+            bit_mask_t<SCALAR> mask = MAX_MASK<SCALAR> << infix_len;
             mask = ~mask;
             mask <<= (std::uint64_t)postfix_len + 1;
             for (dimension_t i = 0; i < DIM; ++i) {
-                sb << detail::ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
+                sb << ToBinary<SCALAR>(entry.GetKey()[i] & mask) << ",";
             }
         }
         current_depth += infix_len;
@@ -130,7 +130,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
                 ToStringTree(sb, current_depth + 1, child, postfix_len, print_value);
             } else {
                 // post-fix
-                sb << ind << detail::ToBinary(child.GetKey());
+                sb << ind << ToBinary(child.GetKey());
                 sb << "  hcPos=" << hc_pos;
                 if (print_value) {
                     sb << "  v=" << (child.IsValue() ? "T" : "null");
@@ -144,6 +144,6 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
     const EntryT& root_;
     const size_t size_;
 };
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_DEBUG_HELPER_H
+#endif  // PHTREE_V20_DEBUG_HELPER_H

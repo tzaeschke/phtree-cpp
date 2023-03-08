@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ITERATOR_BASE_H
-#define PHTREE_V16_ITERATOR_BASE_H
+#ifndef PHTREE_V21_ITERATOR_BASE_H
+#define PHTREE_V21_ITERATOR_BASE_H
 
 #include "phtree/common/common.h"
 #include "phtree/filter.h"
 
-namespace improbable::phtree::v16 {
+namespace improbable::phtree::v20 {
 
 /*
  * Base class for all PH-Tree iterators.
@@ -119,6 +119,6 @@ class IteratorWithFilter
     FILTER filter_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_ITERATOR_BASE_H
+#endif  // PHTREE_V21_ITERATOR_BASE_H

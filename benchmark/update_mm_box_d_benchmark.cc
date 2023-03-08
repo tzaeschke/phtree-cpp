@@ -17,6 +17,7 @@
 #include "logging.h"
 #include "phtree/phtree.h"
 #include "phtree/phtree_multimap.h"
+#include "phtree/phtree_multimap2.h"
 #include <benchmark/benchmark.h>
 #include <random>
 
@@ -35,7 +36,7 @@ std::vector<double> MOVE_DISTANCE = {0, 1.0, 10};
 const double GLOBAL_MAX = 10000;
 const double BOX_LEN = 100;
 
-enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE };
+enum Scenario { ERASE_EMPLACE, MM_BPT_RELOCATE, MM_SET_RELOCATE, MM2 };
 
 using payload_t = scalar_64_t;
 
@@ -55,7 +56,11 @@ using TestMap = typename std::conditional_t<
             payload_t,
             CONVERTER<SCENARIO, DIM>,
             b_plus_tree_hash_set<payload_t>>,
-        PhTreeMultiMapBoxD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>>>;
+        typename std::conditional_t<
+            SCENARIO == MM_SET_RELOCATE,
+            PhTreeMultiMapBoxD<DIM, payload_t, CONVERTER<SCENARIO, DIM>, std::set<payload_t>>,
+            typename std::
+                conditional_t<SCENARIO == MM2, PhTreeMultiMap2BoxD<DIM, payload_t>, void>>>>;
 
 template <dimension_t DIM>
 struct UpdateOp {
@@ -133,6 +138,11 @@ void InsertEntry(
 template <dimension_t DIM>
 void InsertEntry(
     TestMap<Scenario::MM_SET_RELOCATE, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
+    tree.emplace(point, data);
+}
+
+template <dimension_t DIM>
+void InsertEntry(TestMap<Scenario::MM2, DIM>& tree, const PhBoxD<DIM>& point, payload_t data) {
     tree.emplace(point, data);
 }
 
@@ -241,14 +251,20 @@ void PhTreeBox3D(benchmark::State& state, Arguments&&... arguments) {
 }
 
 template <typename... Arguments>
-void PhTreeMultiMapBox3D(benchmark::State& state, Arguments&&... arguments) {
+void PhTreeMMBox3D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, Scenario::MM_BPT_RELOCATE> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
 template <typename... Arguments>
-void PhTreeMultiMapStdBox3D(benchmark::State& state, Arguments&&... arguments) {
+void PhTreeMMStdBox3D(benchmark::State& state, Arguments&&... arguments) {
     IndexBenchmark<3, Scenario::MM_SET_RELOCATE> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
+
+template <typename... Arguments>
+void PhTreeMM2Box3D(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<3, Scenario::MM2> benchmark{state, arguments...};
     benchmark.Benchmark(state);
 }
 
@@ -260,13 +276,19 @@ BENCHMARK_CAPTURE(PhTreeBox3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap
-BENCHMARK_CAPTURE(PhTreeMultiMapBox3D, UPDATE_1000, UPDATES_PER_ROUND)
+BENCHMARK_CAPTURE(PhTreeMMBox3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
 // PhTreeMultiMap with std::map
-BENCHMARK_CAPTURE(PhTreeMultiMapStdBox3D, UPDATE_1000, UPDATES_PER_ROUND)
+BENCHMARK_CAPTURE(PhTreeMMStdBox3D, UPDATE_1000, UPDATES_PER_ROUND)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+// PhTreeMultiMap2
+BENCHMARK_CAPTURE(PhTreeMM2Box3D, UPDATE_1000, UPDATES_PER_ROUND)
     ->RangeMultiplier(10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);

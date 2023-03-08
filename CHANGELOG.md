@@ -32,6 +32,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [#114](https://github.com/tzaeschke/phtree-cpp/pull/114)
 - Added float-32 variants to multimap: PhTreeMultiMapF, PhTreeMultiMapBoxF. 
   [#117](https://github.com/tzaeschke/phtree-cpp/pull/117)
+- Added New native PH-tree multimap.
+  - TODO implement/handle "ignore callback in relocate()"
+  - TODO document non-std behavior, e.g. erase(key) vs erase(key, value)
+  - Differences:
+    - emplace()/insert() will always succeed! (even with same value)
+    - Document (no difference): find()-iteratores are not (really) iterable, previouly not at all, now limited to node
+      -> However, this is kind of okay, they iterator only over entries with given key...
+      -> erase() also returns non-iterable iterators!!! This is probably wrong!
 
 ### Changed
 - Clean up array_map. [#107](https://github.com/tzaeschke/phtree-cpp/issues/107),
