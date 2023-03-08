@@ -53,6 +53,19 @@ cc_test(
 )
 
 cc_test(
+    name = "b_priority_queue_test",
+    timeout = "long",
+    srcs = [
+        "b_priority_queue_test.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "b_vector_test",
     timeout = "long",
     srcs = [

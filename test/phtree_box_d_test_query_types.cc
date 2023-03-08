@@ -52,14 +52,14 @@ TEST(PhTreeBoxDTestQueryTypes, SmokeTestQuery) {
     auto q2 = tree.begin_query({{-11, -11}, {9, 9}}, FilterNoOp(), query_type);
     ASSERT_NE(q2, tree.end());
     ASSERT_EQ(-1, (*q2));
-    q2++;
+    ++q2;
     ASSERT_EQ(q2, tree.end());
 
     // Find box11 but not box00
     auto q3 = tree.begin_query({{-9, -9}, {11, 11}}, FilterNoOp(), query_type);
     ASSERT_NE(q3, tree.end());
     ASSERT_EQ(1, (*q3));
-    q3++;
+    ++q3;
     ASSERT_EQ(q3, tree.end());
 }
 

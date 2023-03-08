@@ -174,7 +174,7 @@ void SmokeTestBasicOps_QueryAndErase(TestTree<DIM, Id>& tree, std::vector<TestPo
         ASSERT_NE(q, tree.end());
         for (size_t j = 0; j < NUM_DUPL; j++) {
             ASSERT_EQ(i / NUM_DUPL, (*q)._i / NUM_DUPL);
-            q++;
+            ++q;
         }
         ASSERT_EQ(q, tree.end());
     }

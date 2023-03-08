@@ -133,7 +133,7 @@ void SmokeTestBasicOps_QueryAndErase(TestTree<DIM, Id>& tree, std::vector<TestPo
         auto q = tree.begin_query({p, p});
         ASSERT_NE(q, tree.end());
         ASSERT_EQ(i, (*q)._i);
-        q++;
+        ++q;
         ASSERT_EQ(q, tree.end());
     }
 
@@ -142,7 +142,7 @@ void SmokeTestBasicOps_QueryAndErase(TestTree<DIM, Id>& tree, std::vector<TestPo
         auto q = tree.begin_knn_query(1, p, DistanceEuclidean<DIM>());
         ASSERT_NE(q, tree.end());
         ASSERT_EQ(i, (*q)._i);
-        q++;
+        ++q;
         ASSERT_EQ(q, tree.end());
     }
 
