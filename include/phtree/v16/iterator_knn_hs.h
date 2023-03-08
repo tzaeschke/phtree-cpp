@@ -66,8 +66,9 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     , center_{center}
     , center_post_{converter->post(center)}
     , current_distance_{std::numeric_limits<double>::max()}
-    , num_found_results_(0)
-    , num_requested_results_(min_results)
+    , remaining_{min_results}
+    , queue_n_{}
+    , queue_v_{min_results + 1}
     , distance_(std::forward<DIST>(dist)) {
         if (min_results <= 0 || root.GetNode().GetEntryCount() == 0) {
             this->SetFinished();
@@ -76,7 +77,7 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
 
         // Initialize queue, use d=0 because every imaginable point lies inside the root Node
         assert(root.IsNode());
-        queue_n_.emplace(EntryDistT{0, &const_cast<EntryT&>(root)});  // TODO remove const_casts etc
+        queue_n_.emplace(EntryDistT{0, &root});
 
         FindNextElement();
     }
@@ -90,7 +91,7 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
         return *this;
     }
 
-    [[deprecated]]  // This iterator is MUCH slower!
+    [[deprecated]]  // it++ is MUCH slower than ++it!
     IteratorKnnHS
     operator++(int) noexcept {
         IteratorKnnHS iterator(*this);
@@ -100,20 +101,17 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
 
   private:
     void FindNextElement() {
-        while (num_found_results_ < num_requested_results_ &&
-               !(queue_n_.empty() && queue_v_.empty())) {
+        while (remaining_ > 0 && !(queue_n_.empty() && queue_v_.empty())) {
             bool use_v = !queue_v_.empty();
             if (use_v && !queue_n_.empty()) {
-                use_v = queue_v_.top() < queue_n_.top();  // TODO "<=" ???
+                use_v = queue_v_.top().first <= queue_n_.top().first;
             }
             if (use_v) {
                 // data entry
                 auto& cand_v = queue_v_.top();
-                ++num_found_results_;
+                --remaining_;
                 this->SetCurrentResult(cand_v.second);
                 current_distance_ = cand_v.first;
-                // We need to pop() AFTER we processed the value, otherwise the reference is
-                // overwritten.
                 queue_v_.pop();
                 return;
             } else {
@@ -123,7 +121,7 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
                 auto d_node = top.first;
                 queue_n_.pop();
 
-                if (queue_v_.size() >= num_requested_results_ && d_node > max_node_dist_) {
+                if (d_node > max_node_dist_ && queue_v_.size() >= remaining_) {
                     // ignore this node
                     continue;
                 }
@@ -140,10 +138,8 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
                             double d = distance_(center_post_, this->post(e2.GetKey()));
                             if (d < max_node_dist_) {
                                 queue_v_.emplace(d, &e2);
-                                if (queue_v_.size() >=
-                                    num_requested_results_ - num_found_results_) {
-                                    if (queue_v_.size() >
-                                        num_requested_results_ - num_found_results_) {
+                                if (queue_v_.size() >= remaining_) {
+                                    if (queue_v_.size() > remaining_) {
                                         queue_v_.pop_max();
                                     }
                                     double d_max = queue_v_.top_max().first;
@@ -180,11 +176,9 @@ class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
     // center after post processing == the external representation
     const KeyExternal center_post_;
     double current_distance_;
-    size_t num_found_results_;
-    size_t num_requested_results_;
+    size_t remaining_;
     std::priority_queue<EntryDistT, std::vector<EntryDistT>, CompareEntryDist<EntryDistT>> queue_n_;
-    ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDist<EntryDistT>> queue_v_{
-        num_requested_results_};
+    ::phtree::bptree::detail::priority_queue<EntryDistT, CompareEntryDist<EntryDistT>> queue_v_;
     DISTANCE distance_;
     double max_node_dist_ = std::numeric_limits<double>::max();
 };
