@@ -217,7 +217,7 @@ class Node {
      * @param parent The parent node
      * @return The sub node or null.
      */
-    // TODO is this funcgtion still useful?
+    // TODO is this function still useful?
     EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         auto iter = entries_.find(hc_pos);

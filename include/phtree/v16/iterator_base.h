@@ -100,7 +100,7 @@ class IteratorWithFilter
         return converter_->post(this->current_entry_->GetKey());
     }
 
-    auto& __Filter() {
+    auto& _Filter() {
         return filter_;
     }
 
