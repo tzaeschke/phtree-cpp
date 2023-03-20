@@ -78,8 +78,8 @@ double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
-    double sum = 0;
+float distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+    float sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum += std::abs(p1[i] - p2[i]);
     }
@@ -87,7 +87,7 @@ double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+float distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     float sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum = std::max(sum, std::abs(p1[i] - p2[i]));

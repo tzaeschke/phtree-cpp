@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(phtree VERSION 1.5.0
+project(phtree VERSION 1.6.0
         DESCRIPTION "PH-Tree C++"
         HOMEPAGE_URL "https://github.com/tzaeschke/phtree-cpp"
         LANGUAGES CXX)
