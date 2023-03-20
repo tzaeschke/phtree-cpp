@@ -5,15 +5,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Nothing yet.
+
+## [1.6.0] - 2023-03-20
 ### Added
 - Added benchmark for bit operations in `common`. [#128](https://github.com/tzaeschke/phtree-cpp/pull/128)
 - Added `lower_bounds(key)` to API. [#126](https://github.com/tzaeschke/phtree-cpp/issues/126)
 - Added `bpt_fixed_vector`, a fixed size flat vector for future use. It can be dropped in for an std::vector.
   [#124](https://github.com/tzaeschke/phtree-cpp/pull/124)
-- Added Chebyshev distance metric `DIstanceChebyshev`. [#129](https://github.com/tzaeschke/phtree-cpp/pull/139)
+- Added Chebyshev distance metric `DistanceChebyshev`. [#129](https://github.com/tzaeschke/phtree-cpp/pull/139)
 
 ### Changed
-- Changed `bpt_vectot` to use `std::destroy` i.o. default dstr. [#132](https://github.com/tzaeschke/phtree-cpp/pull/132)
+- Changed `bpt_vector` to use `std::destroy` i.o. default dstr. [#132](https://github.com/tzaeschke/phtree-cpp/pull/132)
 - Moved B+trees into own namespace. [#131](https://github.com/tzaeschke/phtree-cpp/pull/131)
 - Moved some stuff in `common` into `nemaspace detail`. [#129](https://github.com/tzaeschke/phtree-cpp/issues/129)
 - Improved kNN search implementation. This also deprecates the post-increment iterator.
@@ -221,7 +224,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing.
 
 
-[Unreleased]: https://github.com/improbable-eng/phtree-cpp/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/improbable-eng/phtree-cpp/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.2.0...v1.3.0
