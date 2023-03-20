@@ -78,8 +78,8 @@ double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
-    double sum = 0;
+float distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+    float sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum += std::abs(p1[i] - p2[i]);
     }
@@ -87,7 +87,7 @@ double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+float distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     float sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum = std::max(sum, std::abs(p1[i] - p2[i]));
@@ -820,7 +820,7 @@ void test_knn_query(DIST_TEST dist_fn, DIST_REF dist_fn_reference) {
         while (q != tree.end()) {
             // just read the entry
             auto& e = *q;
-            ASSERT_DOUBLE_EQ(sorted_data[n]._distance, q.distance());
+            ASSERT_FLOAT_EQ(sorted_data[n]._distance, q.distance());
             ASSERT_EQ(sorted_data[n]._id, e._i);
             ASSERT_EQ(points[sorted_data[n]._id], q.first());
             ASSERT_EQ(sorted_data[n]._id, q.second()._i);
