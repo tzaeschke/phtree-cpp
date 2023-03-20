@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ENTRY_H
-#define PHTREE_V16_ENTRY_H
+#ifndef PHTREE_V20_ENTRY_H
+#define PHTREE_V20_ENTRY_H
 
 #include "node.h"
 #include "phtree/common/common.h"
 #include <cassert>
 #include <memory>
 
-namespace improbable::phtree::v16 {
+namespace improbable::phtree::v20 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
@@ -158,6 +158,10 @@ class Entry {
         return union_type_ == NODE;
     }
 
+    [[nodiscard]] bool IsRoot() const noexcept {
+        return postfix_len_ == detail::MAX_BIT_WIDTH<SCALAR> - 1;
+    }
+
     [[nodiscard]] T& GetValue() const {
         assert(union_type_ == VALUE);
         return const_cast<T&>(value_);
@@ -268,6 +272,6 @@ class Entry {
     std::uint16_t postfix_len_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_ENTRY_H
+#endif  // PHTREE_V20_ENTRY_H

@@ -15,20 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_NODE_H
-#define PHTREE_V16_NODE_H
+#ifndef PHTREE_V20_NODE_H
+#define PHTREE_V20_NODE_H
 
 #include "entry.h"
 #include "phtree/common/b_plus_tree_hash_map.h"
 #include "phtree/common/b_plus_tree_multimap.h"
-#include "phtree/common/b_plus_tree_map.h"
 #include "phtree/common/common.h"
-#include "phtree_v16.h"
+#include <iostream>
 #include <map>
 
-namespace improbable::phtree::v16 {
-
-//#define FLEX 1
+namespace improbable::phtree::v20 {
 
 /*
  * We provide different implementations of the node's internal entry set.
@@ -57,25 +54,32 @@ namespace improbable::phtree::v16 {
  *     a) erase entry with matching hc_pos & key
  *     [NOT REQUIRED: b) erase entry with matching hc_pos & subnode/prefix]
  *
- *   We can avoid the key/prefix matches by manually iterating over entries (which is already implemented).
- *   So we only need:
+ *   We can avoid the key/prefix matches by manually iterating over entries (which is already
+ * implemented). So we only need:
  *   - lower_bound(key)
  *   - emplace_hint(hint, key, value)
  *   - erase(hint)
+ *
+ *
+ *   TODO
+ *   MM rules:
+ *   - A quadrants contains either a subnode OR value-entries, never both.
+ *   - "over-flow" entries are added until node-size becomes MAX. After that, new entries are
+ *     only added if their quadrant is empty. If the quadrant contains an entry, a subnode is
+ * created. if it contains a subnode, the subnode is traversed (as always when subnodes are
+ * encountered).
+ *     --> This speeds up look-up and sub-node navigation. Multiple entries are only traversed in
+ * leaf-quadrants.
+ *
+ *  New concept: Leaf quadrants vs inner (=branch?) quadrants.
+ *
+ *
  */
 template <dimension_t DIM, typename Entry>
-#ifdef FLEX
-using EntryMap = typename std::conditional_t<
-     DIM < 32, b_plus_tree_multimap<std::uint32_t, Entry>, b_plus_tree_multimap<std::uint64_t, Entry>>;
-#else
-using EntryMap = typename std::conditional_t<
-    DIM <= 3,
-    detail::array_map<detail::hc_pos_dim_t<DIM>, Entry, (size_t(1) << DIM)>,
-    typename std::conditional_t<
-        DIM <= 8,
-        detail::sparse_map<detail::hc_pos_dim_t<DIM>, Entry>,
-        ::phtree::bptree::b_plus_tree_map<detail::hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
-#endif
+using EntryMap =
+    typename std::conditional_t < DIM<32,
+                                      ::phtree::bptree::b_plus_tree_multimap<std::uint32_t, Entry>,
+                                      ::phtree::bptree::b_plus_tree_multimap<std::uint64_t, Entry>>;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;
@@ -107,9 +111,14 @@ class Node {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
     using hc_pos_t = detail::hc_pos_dim_t<DIM>;
-#ifdef FLEX
-    static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(8), hc_pos_t(1) << DIM);
-#endif
+
+    static_assert(std::is_move_assignable_v<EntryMap<DIM, EntryT>>);
+    static_assert(std::is_move_constructible_v<EntryMap<DIM, EntryT>>);
+
+    // static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(8), hc_pos_t(1) << DIM);
+    // TODO test with 2D, use something like std::max(f(DIM), 8) ?
+    // TODO think about limiting this for high DIM, nodes with 2^DIM entries are not good :-D
+    static constexpr hc_pos_t NODE_MAX = (hc_pos_t(1) << DIM) + hc_pos_t(0);
 
   public:
     Node() : entries_{} {}
@@ -117,8 +126,8 @@ class Node {
     // Nodes should (almost) never be copied!
     Node(const Node&) = delete;
     Node(Node&&) noexcept = default;
-    Node& operator=(const Node&) = delete;
-    Node& operator=(Node&&) = delete;
+    Node& operator=(const Node&) noexcept = delete;
+    Node& operator=(Node&&) noexcept = default;
 
     [[nodiscard]] auto GetEntryCount() const {
         return entries_.size();
@@ -152,104 +161,57 @@ class Node {
      * @param args Constructor arguments for creating a value T that can be inserted for the key.
      */
     template <typename... Args>
-    EntryT& Emplace(bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
+    EntryT& Emplace(bool& is_inserted, const KeyT& key, EntryT* parent_entry, Args&&... args) {
+        bit_width_t postfix_len = parent_entry->GetNodePostfixLen();
         hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
-#ifdef FLEX
-
-        // TODO avoid iterations:
-        //    - if size() < X  -> just add
-        //    - if size() >= X  -> split ALL quadrants
-        //   - on remove: just merge into parent (unless size() > X???).
-        //        -> this will not be split again until others have merged
-        //        -> avoid oscillation: merge results in split -> results in merge
-        //
-        //        Optimization: Check all, but split only if quadrant-size > MIN
-
-
-        // TODO we could be VERY lazy:
-        //    - if size() < X  -> just add
-        //    - if size() >= X  -> check quadrant
-
-
-
-        size_t match_count = 0;
         // subnode? return for further traversal
         auto iter = entries_.lower_bound(hc_pos);
-        if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
-            return HandleCollision(iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
-        }
-
-        // Does entry exist? -> return as failed insertion
-        // TODO Implement as native multimap??? -> What about MAX_SIZE?
-        //   -> Skip counting with postlen=0/1 -> we are at the bottom, so no splitting is possible
-        auto start = iter;
-        while (iter != entries_.end() && iter->first == hc_pos) {
-            ++match_count;
-            if (iter->second.GetKey() == key) {
-                // Entry exists ...
-                return iter->second;
+        if (postfix_len > 0 && iter != entries_.end() && iter->first == hc_pos) {
+            if (iter->second.IsNode()) {
+                return HandleCollision(
+                    iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
             }
-            ++iter;
-        }
 
-        // split node if it is too large
-        if (match_count >= 8) {
-             return SplitQuadrantAndInsert(start, is_inserted, postfix_len, key, std::forward<Args>(args)...);
+            // TODO DO math for this splitting policy.
+            //  Node may contain 8 + 2^(d-1) entries max....
+
+            // split node if it is too large
+            if (entries_.size() >= NODE_MAX) {
+                return SplitQuadrantAndInsert(
+                    iter, is_inserted, postfix_len, key, parent_entry, std::forward<Args>(args)...);
+            }
         }
 
         // Does not exist
         is_inserted = true;
-        auto entry_iter = entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
+        auto entry_iter =
+            entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
         return entry_iter->second;
-#else
-        auto emplace_result = entries_.try_emplace(hc_pos, key, std::forward<Args>(args)...);
-        auto& entry = emplace_result.first->second;
-        // Return if emplace succeed, i.e. there was no entry.
-        if (emplace_result.second) {
-            is_inserted = true;
-            return entry;
-        }
-        return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
-#endif
     }
 
-    template <typename IterT, typename... Args>
-    EntryT& Emplace(
-        IterT iter, bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos =
-            detail::CalcPosInArray(key, postfix_len);  // TODO pass in -> should be known!
-        if (iter == entries_.end() || iter->first != hc_pos) {
-            auto emplace_result =
-                entries_.try_emplace(iter, hc_pos, key, std::forward<Args>(args)...);
-            is_inserted = true;
-            return emplace_result->second;
-        }
-        auto& entry = iter->second;
-        return HandleCollision(entry, is_inserted, key, postfix_len, std::forward<Args>(args)...);
-    }
-
-#ifdef FLEX
     /*
      * Use this when we know
      * - that there are no duplicates (skip comparing keys)
      * - and that there is going to be no overflow (skip counting quadrant)
      */
     template <typename... Args>
-    EntryT& EmplaceUnchecked(bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+    EntryT& EmplaceUnchecked(
+        bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
 
         // subnode? return for further traversal
         auto iter = entries_.lower_bound(hc_pos);
         if (iter != entries_.end() && iter->second.IsNode() && iter->first == hc_pos) {
-            return HandleCollision(iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
+            return HandleCollision(
+                iter->second, is_inserted, key, postfix_len, std::forward<Args>(args)...);
         }
 
         // Does not exist
         is_inserted = true;
-        auto entry_iter = entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
+        auto entry_iter =
+            entries_.emplace_hint(iter, hc_pos, EntryT{key, std::forward<Args>(args)...});
         return entry_iter->second;
     }
-#endif
 
     /*
      * Returns the value (T or Node) if the entry exists and matches the key. Child nodes are
@@ -258,64 +220,93 @@ class Node {
      * @param parent The parent node
      * @return The sub node or null.
      */
+    // TODO is this function still useful?
     EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
-        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
-#ifdef FLEX
-        auto iter = entries_.lower_bound(hc_pos);
-        while (iter != entries_.end() && iter->first == hc_pos) {
+        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        auto iter = entries_.find(hc_pos);
+        if (iter != entries_.end() && iter->second.IsNode()) {
             if (DoesEntryMatch(iter->second, key, postfix_len)) {
+                return &iter->second;
+            }
+            return nullptr;
+        }
+        while (iter != entries_.end() && iter->first == hc_pos) {
+            if (iter->second.GetKey() == key) {
                 return &iter->second;
             }
             ++iter;
         }
         return nullptr;
-#else
-        auto iter = entries_.find(hc_pos);
-        if (iter != entries_.end() && DoesEntryMatch(iter->second, key, postfix_len)) {
-            return &iter->second;
-        }
-        return nullptr;
-#endif
     }
-
-#ifdef FLEX
-    /*
-     * @return Pair of iterator and boolean. The boolean indicates whether an entries was found.
-     */
-//    std::pair<EntryIterator, bool> FindIter(const KeyT& key, bit_width_t postfix_len) const {
-//        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
-//        auto iter = entries_.lower_bound(hc_pos);
-//        while (iter != entries_.end() && iter->first == hc_pos) {
-//            if (DoesEntryMatch(iter->second, key, postfix_len)) {
-//                return {iter, true};
-//            }
-//            ++iter;
-//        }
-//        return {entries_.end(), false};
-//    }
-#endif
 
     const EntryT* FindC(const KeyT& key, bit_width_t postfix_len) const {
         return const_cast<Node&>(*this).Find(key, postfix_len);
     }
 
+    // TODO is this the same as LowerBound?
+    auto FindIter(const KeyT& key, bit_width_t postfix_len) {
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
+        // TODO use lower_bound?
+        auto iter = entries_.find(hc_pos);
+        if (iter != entries_.end() && iter->second.IsNode()) {
+            if (DoesEntryMatch(iter->second, key, postfix_len)) {
+                return iter;
+            }
+            return entries_.end();
+        }
+        while (iter != entries_.end() && iter->first == hc_pos) {
+            if (iter->second.GetKey() == key) {
+                return iter;
+            }
+            ++iter;
+        }
+        return entries_.end();
+    }
+
+    // TODO use this in Erase() ?!?!
     auto LowerBound(const KeyT& key, bit_width_t postfix_len, bool& found) {
         hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto iter = entries_.lower_bound(hc_pos);
-        found =
-            (iter != entries_.end() && iter->first == hc_pos &&
-             DoesEntryMatch(iter->second, key, postfix_len));
-        if (!found && iter != entries_.end() && iter->first == hc_pos &&
-            detail::KeyLess(iter->second.GetKey(), key)) {
-            // There is an entry in the same slot as key would go. However it is not equal to
-            // key. We need to figure out whether "key" goes before the existing entry or not.
+        while (iter != entries_.end() && iter->first == hc_pos) {
+            if (iter->second.IsNode()) {
+                found = DoesEntryMatch(iter->second, key, postfix_len);
+                // TODO is this okay? The client cannot tell that this is wrong...??!?
+                return iter;
+            }
+            if (iter->second.GetKey() == key) {
+                found = true;
+                return iter;
+            }
             ++iter;
         }
+        found = false;
         return iter;
     }
 
-    auto LowerBoundC(const KeyT& key, bit_width_t postfix_len, bool& found) const {
+    auto LowerBound(const KeyT& key, bit_width_t postfix_len, bool& found) const {
         return const_cast<Node&>(*this).LowerBound(key, postfix_len, found);
+    }
+
+    auto LowerBound(const KeyT& key, const T& value, bit_width_t postfix_len, bool& found) {
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
+        auto iter = entries_.lower_bound(hc_pos);
+        if (iter != entries_.end() && iter->second.IsNode()) {
+            found = DoesEntryMatch(iter->second, key, postfix_len);
+            return iter;
+        }
+        while (iter != entries_.end() && iter->first == hc_pos) {
+            if (iter->second.GetValue() == value && iter->second.GetKey() == key) {
+                found = true;
+                return iter;
+            }
+            ++iter;
+        }
+        found = false;
+        return iter;
+    }
+
+    auto LowerBound(const KeyT& key, const T& value, bit_width_t postfix_len, bool& found) const {
+        return const_cast<Node&>(*this).LowerBound(key, value, postfix_len, found);
     }
 
     auto End() {
@@ -355,48 +346,53 @@ class Node {
      * @param found This is and output parameter and will be set to 'true' if a value was removed.
      * @return A child node if the provided key leads to a child node.
      */
-    EntryT* Erase(const KeyT& key, EntryT* parent_entry, bool allow_move_into_parent, bool& found) {
+    EntryT* Erase(const KeyT& key, const T& value, EntryT* parent_entry, size_t& found) {
         auto postfix_len = parent_entry->GetNodePostfixLen();
         hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
-#ifdef FLEX
-        auto iter = entries_.lower_bound(hc_pos);
-        while (iter != entries_.end() && iter->first == hc_pos) {
-            if (DoesEntryMatch(iter->second, key, postfix_len)) {
-                if (iter->second.IsNode()) {
-                    return &iter->second;
-                }
-                entries_.erase(iter);
-
-                found = true;
-                if (allow_move_into_parent && GetEntryCount() == 1) {
-                    // We take the remaining entry from the current node and inserts it into the
-                    // parent_entry where it replaces (and implicitly deletes) the current node.
-                    parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
-                    // WARNING: (this) is deleted here, do not refer to it beyond this point.
+        auto it = entries_.find(hc_pos);
+        if (it != entries_.end()) {
+            if (it->second.IsNode()) {
+                if (DoesEntryMatch(it->second, key, postfix_len)) {
+                    return &it->second;
                 }
                 return nullptr;
             }
-            ++iter;
-        }
-        return nullptr;
-#else
-        auto it = entries_.find(hc_pos);
-        if (it != entries_.end() && DoesEntryMatch(it->second, key, postfix_len)) {
-            if (it->second.IsNode()) {
-                return &it->second;
-            }
-            entries_.erase(it);
 
-            found = true;
-            if (allow_move_into_parent && GetEntryCount() == 1) {
-                // We take the remaining entry from the current node and inserts it into the
-                // parent_entry where it replaces (and implicitly deletes) the current node.
-                parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
-                // WARNING: (this) is deleted here, do not refer to it beyond this point.
+            // TODO document or fix: we are removing only the FIRST occurrence!!!
+            //  Fix: implement std::erase_if() for b_plus_tree, see "Notes" on erase-remove idiom:
+            //    https://en.cppreference.com/w/cpp/algorithm/remove
+            while (it != entries_.end() && it->first == hc_pos) {
+                // TODO can we skip the first key comparison?
+                //    -> move DoesEntryMatch from above into if-clause with "if (IsNode)"!
+                if (it->second.GetValue() == value && it->second.GetKey() == key) {
+                    entries_.erase(it);
+                    found = 1;
+                    CheckUnderflow(parent_entry);
+                    return nullptr;
+                }
+                ++it;
             }
         }
         return nullptr;
-#endif
+    }
+
+    void Erase(
+        EntryIteratorC<DIM, EntryT> iter, EntryT* parent_entry, bool check_underflow = true) {
+        assert(iter != entries_.end());
+        assert(iter->second.IsValue());
+        entries_.erase(iter);
+        if (check_underflow) {
+            CheckUnderflow(parent_entry);
+        }
+    }
+
+    void CheckUnderflow(EntryT* parent_entry) {
+        if (GetEntryCount() == 1 && !parent_entry->IsRoot()) {
+            // We take the remaining entry from the current node and inserts it into the
+            // parent_entry where it replaces (and implicitly deletes) the current node.
+            parent_entry->ReplaceNodeWithDataFromEntry(std::move(entries_.begin()->second));
+            // WARNING: (this) is deleted here, do not refer to it beyond this point.
+        }
     }
 
     auto& Entries() {
@@ -481,29 +477,16 @@ class Node {
   private:
     template <typename... Args>
     auto& WriteValue(hc_pos_t hc_pos, const KeyT& new_key, Args&&... args) {
-#ifdef FLEX
         return entries_.emplace(hc_pos, EntryT{new_key, std::forward<Args>(args)...})->second;
-#else
-        return entries_.try_emplace(hc_pos, new_key, std::forward<Args>(args)...).first->second;
-#endif
     }
 
     void WriteEntry(hc_pos_t hc_pos, EntryT& entry) {
-#ifdef FLEX
         if (entry.IsNode()) {
             auto postfix_len = entry.GetNodePostfixLen();
             entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractNode(), postfix_len});
         } else {
             entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractValue()});
         }
-#else
-        if (entry.IsNode()) {
-            auto postfix_len = entry.GetNodePostfixLen();
-            entries_.try_emplace(hc_pos, entry.GetKey(), entry.ExtractNode(), postfix_len);
-        } else {
-            entries_.try_emplace(hc_pos, entry.GetKey(), entry.ExtractValue());
-        }
-#endif
     }
 
     /*
@@ -537,12 +520,11 @@ class Node {
         }
 
         bit_width_t max_conflicting_bits = detail::NumberOfDivergingBits(new_key, entry.GetKey());
-        auto split_len = is_node ? entry.GetNodePostfixLen() + 1 : 0;
-        if (max_conflicting_bits <= split_len) {
-            // perfect match -> return existing
+        if (is_node && max_conflicting_bits <= entry.GetNodePostfixLen() + 1) {
+            // TODO merge with condition above?
+            // TODO why is this needed for MMM?
             return entry;
         }
-
         is_inserted = true;
         return InsertSplit(entry, new_key, max_conflicting_bits, std::forward<Args>(args)...);
     }
@@ -553,7 +535,8 @@ class Node {
         const KeyT& new_key,
         bit_width_t max_conflicting_bits,
         Args&&... args) {
-        bit_width_t new_postfix_len = max_conflicting_bits - 1;
+        // TODO this is not very elegant...  -> handle identical keys
+        bit_width_t new_postfix_len = max_conflicting_bits == 0 ? 0 : max_conflicting_bits - 1;
         hc_pos_t pos_sub_1 = detail::CalcPosInArray(new_key, new_postfix_len);
         hc_pos_t pos_sub_2 = detail::CalcPosInArray(current_entry.GetKey(), new_postfix_len);
 
@@ -567,60 +550,69 @@ class Node {
         return new_entry;
     }
 
-#ifdef FLEX
-    template<typename... Args>
-    EntryT &InsertOnSplit(
-            EntryT &entry,
-            bool &is_inserted,
-            const KeyT &new_key,
-            bit_width_t postfix_len,
-            Args &&... args) {
-        EntryT *current = &HandleCollision(entry, is_inserted, new_key, postfix_len,
-                                           std::forward<Args>(args)...);
+    template <typename... Args>
+    EntryT& InsertOnSplit(
+        EntryT& entry,
+        bool& is_inserted,
+        const KeyT& new_key,
+        bit_width_t postfix_len,
+        Args&&... args) {
+        // TODO multiple forwarding....?!?!?!?
+        EntryT* current =
+            &HandleCollision(entry, is_inserted, new_key, postfix_len, std::forward<Args>(args)...);
         while (current->IsNode()) {
             current = &current->GetNode().EmplaceUnchecked(
-                    is_inserted,
-                    new_key,
-                    current->GetNodePostfixLen(),
-                    std::forward<Args>(args)...);
+                is_inserted, new_key, current->GetNodePostfixLen(), std::forward<Args>(args)...);
         }
         assert(is_inserted);
         return *current;
     }
 
-    template<typename ...Args>
-    auto& SplitQuadrantAndInsert(const EntryIterator<DIM, EntryT>& iter_start,
-                                 bool& is_inserted,
-                                 bit_width_t postfix_len,
-                                 const KeyT& new_key,
-                                 Args&&... args) {
+    template <typename... Args>
+    auto& SplitQuadrantAndInsert(
+        const EntryIterator<DIM, EntryT>& iter_start,
+        bool& is_inserted,
+        bit_width_t postfix_len,
+        const KeyT& new_key,
+        EntryT* parent_entry,
+        Args&&... args) {
         assert(iter_start != entries_.end());
         auto start = iter_start;
         hc_pos_t hc_pos = start->first;
 
-        // We turn the 'start' into a subnode. Then we move all entries between 'second' and 'end' into 'start'.
+        // We turn the 'start' into a subnode. Then we move all entries between 'second' and 'end'
+        // into 'start'.
         auto current = start;
-        ++current; // start with second entry
+        ++current;  // start with second entry
         while (current != entries_.end() && current->first == hc_pos) {
             assert(current->first == start->first);
             bool is_moved = false;
-            InsertOnSplit(start->second, is_moved, current->second.GetKey(), postfix_len,
-                          std::move(current->second.ExtractValue()));
+            InsertOnSplit(
+                start->second,
+                is_moved,
+                current->second.GetKey(),
+                postfix_len,
+                std::move(current->second.ExtractValue()));
             assert(is_moved);
             ++current;
         }
 
-        // now before erasing the entries (which may invalidate all iterators) we insert the new entry
-        EntryT *result = &InsertOnSplit(start->second, is_inserted, new_key, postfix_len,
-                                        std::forward<Args>(args)...);
+        // now before erasing the entries (which may invalidate all iterators) we insert the new
+        // entry
+        EntryT* result = &InsertOnSplit(
+            start->second, is_inserted, new_key, postfix_len, std::forward<Args>(args)...);
 
         // erase all entries that have been moved
         ++start;
-        entries_.erase(start, current);
+        // TODO check later. THis happens when we have only one entry at hc_pos and turn it
+        //   into a sub-node before adding a duplicate (or any key with same hc_pos)
+        if (start != current) {
+            entries_.erase(start, current);
+            CheckUnderflow(parent_entry);
+        }
 
         return *result;
     }
-#endif
 
     /*
      * Checks whether an entry's key matches another key. For Non-node entries this simply means
@@ -630,6 +622,7 @@ class Node {
      * @return 'true' iff the relevant part of the key matches (prefix for nodes, whole key for
      * other entries).
      */
+    // TODO is this still used for VALUEs?
     bool DoesEntryMatch(
         const EntryT& entry, const KeyT& key, const bit_width_t parent_postfix_len) const {
         if (entry.IsNode()) {
@@ -644,5 +637,5 @@ class Node {
     EntryMap<DIM, EntryT> entries_;
 };
 
-}  // namespace improbable::phtree::v16
-#endif  // PHTREE_V16_NODE_H
+}  // namespace improbable::phtree::v20
+#endif  // PHTREE_V20_NODE_H

@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_ITERATOR_SIMPLE_H
-#define PHTREE_V16_ITERATOR_SIMPLE_H
+#ifndef PHTREE_V20_ITERATOR_SIMPLE_H
+#define PHTREE_V20_ITERATOR_SIMPLE_H
 
 #include "phtree/common/common.h"
 #include "iterator_base.h"
 
-namespace improbable::phtree::v16 {
-
-// TODO .... ?!?!?
-template <dimension_t DIM, typename T, typename CONVERT>
-class PhTreeV16;
+namespace improbable::phtree::v20 {
 
 template <dimension_t DIM, typename T, typename CONVERT>
 class PhTreeV20;
@@ -35,7 +31,6 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using EntryT = typename IteratorWithFilter<T, CONVERT>::EntryT;
-    friend PhTreeV16<DIM, T, CONVERT>;
     friend PhTreeV20<DIM, T, CONVERT>; // TODO
 
   public:
@@ -85,6 +80,6 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
     const EntryT* parent_node_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_ITERATOR_SIMPLE_H
+#endif  // PHTREE_V20_ITERATOR_SIMPLE_H

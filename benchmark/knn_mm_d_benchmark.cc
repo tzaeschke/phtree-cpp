@@ -17,6 +17,7 @@
 #include "logging.h"
 #include "phtree/phtree.h"
 #include "phtree/phtree_multimap.h"
+#include "phtree/phtree_multimap2.h"
 #include <benchmark/benchmark.h>
 #include <random>
 
@@ -58,13 +59,13 @@ using TestMap = typename std::conditional_t<
     typename std::conditional_t<
         SCENARIO == PHTREE_MM,
         PhTreeMultiMap<DIM, payload_t, CONVERTER<DIM>, b_plus_tree_hash_set<payload_t>>,
-//        typename std::conditional_t<
-//            SCENARIO == PHTREE2,
-//            PhTreeMultiMap2D<DIM, payload_t>,
+        typename std::conditional_t<
+            SCENARIO == PHTREE2,
+            PhTreeMultiMap2D<DIM, payload_t>,
             typename std::conditional_t<
                 SCENARIO == PHTREE_MM_STD,
                 PhTreeMultiMap<DIM, payload_t, CONVERTER<DIM>, BucketType>,
-                void>>>;
+                void>>>>;
 
 template <dimension_t DIM, Scenario SCENARIO>
 class IndexBenchmark {
@@ -210,11 +211,11 @@ void PhTreeMM(benchmark::State& state, Arguments&&... arguments) {
     benchmark.Benchmark(state);
 }
 
-//template <typename... Arguments>
-//void PhTreeMM2(benchmark::State& state, Arguments&&... arguments) {
-//    IndexBenchmark<DIM, Scenario::PHTREE2> benchmark{state, arguments...};
-//    benchmark.Benchmark(state);
-//}
+template <typename... Arguments>
+void PhTreeMM2(benchmark::State& state, Arguments&&... arguments) {
+    IndexBenchmark<DIM, Scenario::PHTREE2> benchmark{state, arguments...};
+    benchmark.Benchmark(state);
+}
 
 template <typename... Arguments>
 void PhTreeMMStdSet(benchmark::State& state, Arguments&&... arguments) {
@@ -235,16 +236,16 @@ BENCHMARK_CAPTURE(PhTreeMM, KNN_10, 10)
     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
     ->Unit(benchmark::kMillisecond);
 
-//// Multimap 2.0
-//BENCHMARK_CAPTURE(PhTreeMM2, KNN_1, 1)
-//    ->RangeMultiplier(10)
-//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-//    ->Unit(benchmark::kMillisecond);
-//
-//BENCHMARK_CAPTURE(PhTreeMM2, KNN_10, 10)
-//    ->RangeMultiplier(10)
-//    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
-//    ->Unit(benchmark::kMillisecond);
+// Multimap 2.0
+BENCHMARK_CAPTURE(PhTreeMM2, KNN_1, 1)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_CAPTURE(PhTreeMM2, KNN_10, 10)
+    ->RangeMultiplier(10)
+    ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
+    ->Unit(benchmark::kMillisecond);
 
 //// KD-tree
 // BENCHMARK_CAPTURE(TinspinKDTree, KNN_1, 1)
@@ -267,7 +268,7 @@ BENCHMARK_CAPTURE(PhTreeMM, KNN_10, 10)
 //     ->RangeMultiplier(10)
 //     ->Ranges({{1000, 1000 * 1000}, {TestGenerator::CUBE, TestGenerator::CLUSTER}})
 //     ->Unit(benchmark::kMillisecond);
-
+//
 //  PhTree 3D with set
 BENCHMARK_CAPTURE(PhTree3D, KNN_1, 1)
     ->RangeMultiplier(10)
