@@ -297,8 +297,11 @@ class b_plus_tree_multimap {
             auto it = this->lower_bound(key);
             ++entry_count;
             auto full_it = this->template check_split_and_adjust_iterator<IterT>(it, key, root);
-            auto it_result =
-                full_it.node_->data_.emplace(full_it.iter_, key, std::forward<Args>(args)...);
+            auto it_result = full_it.node_->data_.emplace(
+                full_it.iter_,
+                std::piecewise_construct,
+                std::forward_as_tuple(key),
+                std::forward_as_tuple(std::forward<Args>(args)...));
             return IterT(full_it.node_, it_result);
         }
 

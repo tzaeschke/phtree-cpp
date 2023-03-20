@@ -20,7 +20,7 @@
 #include "phtree/common/common.h"
 #include "phtree/filter.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 /*
  * Base class for all PH-Tree iterators.
@@ -100,7 +100,7 @@ class IteratorWithFilter
         return converter_->post(this->current_entry_->GetKey());
     }
 
-    auto& __Filter() {
+    auto& _Filter() {
         return filter_;
     }
 
@@ -119,6 +119,6 @@ class IteratorWithFilter
     FILTER filter_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 
 #endif  // PHTREE_V21_ITERATOR_BASE_H

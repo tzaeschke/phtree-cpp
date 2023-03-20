@@ -111,7 +111,10 @@ class Node {
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
     using hc_pos_t = detail::hc_pos_dim_t<DIM>;
-    ;
+
+    static_assert(std::is_move_assignable_v<EntryMap<DIM, EntryT>>);
+    static_assert(std::is_move_constructible_v<EntryMap<DIM, EntryT>>);
+
     // static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(8), hc_pos_t(1) << DIM);
     // TODO test with 2D, use something like std::max(f(DIM), 8) ?
     // TODO think about limiting this for high DIM, nodes with 2^DIM entries are not good :-D
@@ -123,8 +126,8 @@ class Node {
     // Nodes should (almost) never be copied!
     Node(const Node&) = delete;
     Node(Node&&) noexcept = default;
-    Node& operator=(const Node&) = delete;
-    Node& operator=(Node&&) = delete;
+    Node& operator=(const Node&) noexcept = delete;
+    Node& operator=(Node&&) noexcept = default;
 
     [[nodiscard]] auto GetEntryCount() const {
         return entries_.size();

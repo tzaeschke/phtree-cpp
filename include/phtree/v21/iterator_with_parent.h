@@ -20,7 +20,7 @@
 #include "phtree/common/common.h"
 #include "iterator_base.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 template <dimension_t DIM, typename T, typename CONVERT>
 class PhTreeV21;
@@ -80,6 +80,6 @@ class IteratorWithParent : public IteratorWithFilter<T, CONVERT> {
     const EntryT* parent_node_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 
 #endif  // PHTREE_V21_ITERATOR_SIMPLE_H

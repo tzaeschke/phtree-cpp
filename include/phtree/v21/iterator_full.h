@@ -20,7 +20,7 @@
 #include "phtree/common/common.h"
 #include "iterator_base.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
@@ -106,11 +106,11 @@ class IteratorFull : public IteratorWithFilter<T, CONVERT, FILTER> {
 
     std::array<
         std::pair<EntryIteratorC<DIM, EntryT>, EntryIteratorC<DIM, EntryT>>,
-        MAX_BIT_WIDTH<SCALAR>>
+        detail::MAX_BIT_WIDTH<SCALAR>>
         stack_;
     size_t stack_size_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 
 #endif  // PHTREE_V21_ITERATOR_FULL_H

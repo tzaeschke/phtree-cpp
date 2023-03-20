@@ -99,5 +99,6 @@ cc_library(
         "//include/phtree/common",
         "//include/phtree/v16",
         "//include/phtree/v20",
+        "//include/phtree/v21",
     ],
 )

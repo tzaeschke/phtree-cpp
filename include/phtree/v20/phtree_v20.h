@@ -24,6 +24,7 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
+#include "iterator_lower_bound.h"
 #include "iterator_with_key.h"
 #include "iterator_with_parent.h"
 #include "node.h"
@@ -62,6 +63,15 @@ class PhTreeV20 {
     using KeyT = typename CONVERT::KeyInternal;
     using EntryT = Entry<DIM, T, ScalarInternal>;
     using NodeT = Node<DIM, T, ScalarInternal>;
+
+    static_assert(std::is_move_assignable_v<KeyT>);
+    static_assert(std::is_move_constructible_v<KeyT>);
+    static_assert(std::is_move_assignable_v<T>);  // Not strictly required, or is it?
+    static_assert(std::is_move_constructible_v<T>);  // Not strictly required, or is it?
+    static_assert(std::is_move_assignable_v<NodeT>);
+    static_assert(std::is_move_constructible_v<NodeT>);
+    static_assert(std::is_move_assignable_v<EntryT>);
+    static_assert(std::is_move_constructible_v<EntryT>);
 
   public:
     static_assert(!std::is_reference<T>::value, "Reference type value are not supported.");
@@ -255,6 +265,21 @@ class PhTreeV20 {
             return IteratorWithParent<T, CONVERT>(&iter->second, current_node, nullptr, converter_);
         }
         return IteratorWithParent<T, CONVERT>(nullptr, nullptr, nullptr, converter_);
+    }
+
+    /*
+     * Analogous to map:lower_bound().
+     *
+     * Get an entry associated with a k dimensional key or the next key.
+     * This follows roughly Z-ordering (Morton order), except that negative value come AFTER
+     * positive values.
+     *
+     * @param key the key to look up
+     * @return an iterator that points either to the associated value or,
+     * if there is no entry with the given key, to the following entry.
+     */
+    auto lower_bound(const KeyT& key) const {
+        return IteratorLowerBound<T, CONVERT, FilterNoOp>(&root_, key, converter_, FilterNoOp{});
     }
 
     /*

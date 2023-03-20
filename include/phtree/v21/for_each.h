@@ -20,7 +20,7 @@
 #include "phtree/common/common.h"
 #include "iterator_with_parent.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 /*
  * Iterates over the whole tree. Entries and child nodes that are rejected by the Filter are not
@@ -65,6 +65,6 @@ class ForEach {
     CALLBACK callback_;
     FILTER filter_;
 };
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 
 #endif  // PHTREE_V21_FOR_EACH_H
