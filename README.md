@@ -250,8 +250,8 @@ struct FilterMultiMapByValueId {
 
 ##### Distance function
 
-Nearest neighbor queries can also use custom distance metrics, such as L1 distance. Note that this returns a special
-iterator that provides a function to get the distance of the current entry:
+Nearest neighbor queries can also use other distance metrics, such as L1 or Chebyshev distance. Note that the query 
+returns a special iterator that provides a function to get the distance of the current entry:
 
 ```C++
 #include "phtree/phtree.h"

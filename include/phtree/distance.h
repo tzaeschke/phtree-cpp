@@ -38,7 +38,7 @@ namespace improbable::phtree {
 
 template <dimension_t DIM>
 struct DistanceEuclidean {
-    double operator()(const PhPoint<DIM>& v1, const PhPoint<DIM>& v2) const {
+    double operator()(const PhPoint<DIM>& v1, const PhPoint<DIM>& v2) const noexcept {
         double sum2 = 0;
         for (dimension_t i = 0; i < DIM; ++i) {
             assert(
@@ -51,7 +51,7 @@ struct DistanceEuclidean {
         return sqrt(sum2);
     };
 
-    double operator()(const PhPointD<DIM>& p1, const PhPointD<DIM>& p2) const {
+    double operator()(const PhPointD<DIM>& p1, const PhPointD<DIM>& p2) const noexcept {
         double sum2 = 0;
         for (dimension_t i = 0; i < DIM; ++i) {
             double d2 = p1[i] - p2[i];
@@ -60,7 +60,7 @@ struct DistanceEuclidean {
         return sqrt(sum2);
     };
 
-    double operator()(const PhPointF<DIM>& v1, const PhPointF<DIM>& v2) const {
+    double operator()(const PhPointF<DIM>& v1, const PhPointF<DIM>& v2) const noexcept {
         double sum2 = 0;
         for (dimension_t i = 0; i < DIM; i++) {
             double d2 = double(v1[i] - v2[i]);
@@ -72,7 +72,7 @@ struct DistanceEuclidean {
 
 template <dimension_t DIM>
 struct DistanceL1 {
-    double operator()(const PhPoint<DIM>& v1, const PhPoint<DIM>& v2) const {
+    double operator()(const PhPoint<DIM>& v1, const PhPoint<DIM>& v2) const noexcept {
         double sum = 0;
         for (dimension_t i = 0; i < DIM; ++i) {
             assert(
@@ -84,10 +84,49 @@ struct DistanceL1 {
         return sum;
     };
 
-    double operator()(const PhPointD<DIM>& v1, const PhPointD<DIM>& v2) const {
+    double operator()(const PhPointD<DIM>& v1, const PhPointD<DIM>& v2) const noexcept {
         double sum = 0;
         for (dimension_t i = 0; i < DIM; ++i) {
             sum += std::abs(v1[i] - v2[i]);
+        }
+        return sum;
+    };
+
+    float operator()(const PhPointF<DIM>& v1, const PhPointF<DIM>& v2) const noexcept {
+        float sum = 0;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            sum += std::abs(v1[i] - v2[i]);
+        }
+        return sum;
+    };
+};
+
+template <dimension_t DIM>
+struct DistanceChebyshev {
+    double operator()(const PhPoint<DIM>& v1, const PhPoint<DIM>& v2) const noexcept {
+        double sum = 0;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            assert(
+                (v1[i] >= 0) != (v2[i] >= 0) ||
+                double(v1[i]) - double(v2[i]) <
+                    double(std::numeric_limits<decltype(v1[i] - v2[i])>::max()));
+            sum = std::max(sum, std::abs(double(v1[i] - v2[i])));
+        }
+        return sum;
+    };
+
+    double operator()(const PhPointD<DIM>& v1, const PhPointD<DIM>& v2) const noexcept {
+        double sum = 0;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            sum = std::max(sum, std::abs(v1[i] - v2[i]));
+        }
+        return sum;
+    };
+
+    float operator()(const PhPointF<DIM>& v1, const PhPointF<DIM>& v2) const noexcept {
+        float sum = 0;
+        for (dimension_t i = 0; i < DIM; ++i) {
+            sum = std::max(sum, std::abs(v1[i] - v2[i]));
         }
         return sum;
     };

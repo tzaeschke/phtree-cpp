@@ -94,10 +94,19 @@ double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distanceL1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     double sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum += std::abs(p1[i] - p2[i]);
+    }
+    return sum;
+}
+
+template <dimension_t DIM>
+double distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+    double sum = 0;
+    for (dimension_t i = 0; i < DIM; i++) {
+        sum = std::max(sum, std::abs(p1[i] - p2[i]));
     }
     return sum;
 }
@@ -1068,7 +1077,8 @@ TEST(PhTreeMMDTest, TestWindowQueryFilter) {
     ASSERT_GE(50, num_e);
 }
 
-TEST(PhTreeMMDTest, TestKnnQuery) {
+template <typename DIST_TEST, typename DIST_REF>
+void test_knn_query(DIST_TEST dist_fn, DIST_REF dist_fn_reference) {
     // deliberately allowing outside of main points range
     DoubleRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -1085,14 +1095,14 @@ TEST(PhTreeMMDTest, TestKnnQuery) {
         // sort points manually
         std::vector<PointDistance> sorted_data;
         for (size_t i = 0; i < points.size(); i++) {
-            double dist = distance(center, points[i]);
+            double dist = dist_fn_reference(center, points[i]);
             sorted_data.emplace_back(dist, i);
         }
         std::sort(sorted_data.begin(), sorted_data.end(), comparePointDistanceAndId);
 
         size_t n = 0;
         double prevDist = -1;
-        auto q = tree.begin_knn_query(Nq, center, DistanceEuclidean<3>());
+        auto q = tree.begin_knn_query(Nq, center, dist_fn);
         while (q != tree.end()) {
             // just read the entry
             auto& e = *q;
@@ -1109,18 +1119,35 @@ TEST(PhTreeMMDTest, TestKnnQuery) {
     }
 }
 
+TEST(PhTreeDTest, TestKnnQuery_Euclidean) {
+    const dimension_t DIM = 3;
+    test_knn_query(DistanceEuclidean<3>(), [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) {
+        return distance(v1, v2);
+    });
+}
+
+TEST(PhTreeDTest, TestKnnQuery_L1) {
+    const dimension_t DIM = 3;
+    test_knn_query(DistanceL1<3>(), [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) {
+        return distance_L1(v1, v2);
+    });
+}
+
+TEST(PhTreeDTest, TestKnnQuery_Chebyshev) {
+    const dimension_t DIM = 3;
+    test_knn_query(DistanceChebyshev<3>(), [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) {
+        return distance_chebyshev(v1, v2);
+    });
+}
+
 template <dimension_t DIM>
-struct PhDistanceLongL1 {
+struct MyDistance {
     double operator()(const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) const {
-        double sum = 0;
-        for (dimension_t i = 0; i < DIM; i++) {
-            sum += std::abs(v1[i] - v2[i]);
-        }
-        return sum;
+        return distance_L1(v1, v2);
     };
 };
 
-TEST(PhTreeMMDTest, TestKnnQueryFilterAndDistanceL1) {
+TEST(PhTreeMMDTest, TestKnnQueryFilterAndCustomDistance) {
     // deliberately allowing outside of main points range
     DoubleRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -1137,7 +1164,7 @@ TEST(PhTreeMMDTest, TestKnnQueryFilterAndDistanceL1) {
         // sort points manually by L1; skip every 2nd point
         std::vector<PointDistance> sorted_data;
         for (size_t i = 0; i < points.size(); i += 2) {
-            double dist = distanceL1(center, points[i]);
+            double dist = MyDistance<dim>{}(center, points[i]);
             sorted_data.emplace_back(dist, i);
         }
         std::sort(sorted_data.begin(), sorted_data.end(), comparePointDistanceAndId);
@@ -1145,7 +1172,7 @@ TEST(PhTreeMMDTest, TestKnnQueryFilterAndDistanceL1) {
         std::vector<PointDistance> sorted_results;
         size_t n = 0;
         double prevDist = -1;
-        auto q = tree.begin_knn_query(Nq, center, PhDistanceLongL1<dim>(), FilterEvenId<dim, Id>());
+        auto q = tree.begin_knn_query(Nq, center, MyDistance<dim>(), FilterEvenId<dim, Id>());
         while (q != tree.end()) {
             // just read the entry
             auto& e = *q;
