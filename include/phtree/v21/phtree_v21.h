@@ -24,10 +24,12 @@
 #include "iterator_full.h"
 #include "iterator_hc.h"
 #include "iterator_knn_hs.h"
+#include "iterator_lower_bound.h"
+#include "iterator_with_key.h"
 #include "iterator_with_parent.h"
 #include "node.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 /*
  * The PH-Tree is an ordered index on an n-dimensional space (quad-/oct-/2^n-tree) where each
@@ -55,6 +57,7 @@ namespace improbable::phtree::v20 {
 template <dimension_t DIM, typename T, typename CONVERT = ConverterNoOp<DIM, scalar_64_t>>
 class PhTreeV21 {
     friend PhTreeDebugHelper;
+    using bit_width_t = detail::bit_width_t;
     using ScalarExternal = typename CONVERT::ScalarExternal;
     using ScalarInternal = typename CONVERT::ScalarInternal;
     using KeyT = typename CONVERT::KeyInternal;
@@ -72,7 +75,7 @@ class PhTreeV21 {
 
     explicit PhTreeV21(CONVERT* converter)
     : num_entries_{0}
-    , root_{{}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1}
+    , root_{{}, new NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1}
     , converter_{converter} {}
 
     PhTreeV21(const PhTreeV21& other) = delete;
@@ -142,7 +145,7 @@ class PhTreeV21 {
             }
 
             auto* parent_entry = iterator.__GetParentNodeEntry();
-            if (NumberOfDivergingBits(key, parent_entry->GetKey()) >
+            if (detail::NumberOfDivergingBits(key, parent_entry->GetKey()) >
                 parent_entry->GetNodePostfixLen() + 1) {
                 // replace higher up in the tree
                 return try_emplace(key, std::forward<Args>(args)...);
@@ -222,16 +225,20 @@ class PhTreeV21 {
      * was found
      */
     auto find(const KeyT& key) const {
-        const EntryT* current_entry = &root_;
-        const EntryT* current_node = nullptr;
-        const EntryT* parent_node = nullptr;
-        while (current_entry && current_entry->IsNode()) {
-            parent_node = current_node;
-            current_node = current_entry;
-            current_entry = current_entry->GetNode().FindC(key, current_entry->GetNodePostfixLen());
+        auto* current_node = &root_;
+        bool is_found = true;
+        EntryIteratorC<DIM, EntryT> iter =
+            root_.GetNode().LowerBound(key, root_.GetNodePostfixLen(), is_found);
+        ;
+        while (is_found && iter->second.IsNode()) {
+            current_node = &iter->second;
+            iter =
+                iter->second.GetNode().LowerBound(key, iter->second.GetNodePostfixLen(), is_found);
         }
-
-        return IteratorWithParent<T, CONVERT>(current_entry, current_node, parent_node, converter_);
+        if (is_found) {  // iter != current_node->GetNode().End()
+            return IteratorWithKey<T, CONVERT>(key, iter, &iter->second, current_node, converter_);
+        }
+        return IteratorWithKey<T, CONVERT>(key, {}, nullptr, nullptr, converter_);
     }
 
     auto find(const KeyT& key, const T& value) const {
@@ -239,9 +246,6 @@ class PhTreeV21 {
         bool is_found = true;
         EntryIteratorC<DIM, EntryT> iter =
             root_.GetNode().LowerBound(key, value, root_.GetNodePostfixLen(), is_found);
-        ;
-        // TODO return ParentIterator directly from Node.LowerBound()? -> avoid is_found...
-        //   Or use Node.Find(key, value, ...)....
         while (is_found && iter->second.IsNode()) {
             current_node = &iter->second;
             iter = iter->second.GetNode().LowerBound(
@@ -255,22 +259,37 @@ class PhTreeV21 {
     }
 
     /*
+     * Analogous to map:lower_bound().
+     *
+     * Get an entry associated with a k dimensional key or the next key.
+     * This follows roughly Z-ordering (Morton order), except that negative value come AFTER
+     * positive values.
+     *
+     * @param key the key to look up
+     * @return an iterator that points either to the associated value or,
+     * if there is no entry with the given key, to the following entry.
+     */
+    auto lower_bound(const KeyT& key) const {
+        return IteratorLowerBound<T, CONVERT, FilterNoOp>(&root_, key, converter_, FilterNoOp{});
+    }
+
+    /*
      * See std::map::erase(). Removes any value associated with the provided key.
      *
      * @return '1' if a value was found, otherwise '0'.
      */
     // TODO is this method still needed (i.e. without "value") ???
-//    size_t erase2(const KeyT& key) {
-//        auto* entry = &root_;
-//        // We do not want the root entry to be modified. The reason is simply that a lot of the
-//        // code in this class becomes simpler if we can assume the root entry to contain a node.
-//        bool found = false;
-//        while (entry) {
-//            entry = entry->GetNode().Erase(key, entry, found);
-//        }
-//        num_entries_ -= found;
-//        return found;
-//    }
+    //    size_t erase2(const KeyT& key) {
+    //        auto* entry = &root_;
+    //        // We do not want the root entry to be modified. The reason is simply that a lot of
+    //        the
+    //        // code in this class becomes simpler if we can assume the root entry to contain a
+    //        node. bool found = false; while (entry) {
+    //            entry = entry->GetNode().Erase(key, entry, found);
+    //        }
+    //        num_entries_ -= found;
+    //        return found;
+    //    }
 
     size_t erase(const KeyT& key, const T& value) {
         auto* entry = &root_;
@@ -300,6 +319,7 @@ class PhTreeV21 {
             return 0;
         }
         // TODO this needs cleaning up...?!?!? -> Add node-iterator to IteratorWithParent
+        //   We should return an iterable iterator here. IterWIthParent is _not_ iterable!
         if constexpr (std::is_same_v<ITERATOR, IteratorWithParent<T, CONVERT>>) {
             const auto& iter_rich = static_cast<const IteratorWithParent<T, CONVERT>&>(iterator);
             if (!iter_rich.__GetNodeEntry() || iter_rich.__GetNodeEntry() == &root_) {
@@ -332,7 +352,7 @@ class PhTreeV21 {
      */
     template <typename PRED>
     size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
+        bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
         EntryT* current_entry = &root_;           // An entry.
         EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
@@ -531,7 +551,7 @@ class PhTreeV21 {
      */
     void clear() {
         num_entries_ = 0;
-        root_ = EntryT({}, NodeT{}, MAX_BIT_WIDTH<ScalarInternal> - 1);
+        root_ = EntryT({}, new NodeT{}, detail::MAX_BIT_WIDTH<ScalarInternal> - 1);
     }
 
     /*
@@ -565,16 +585,16 @@ class PhTreeV21 {
      * querying box data with QueryInclude. Unfortunately, QueryIntersect queries have +/-0 infinity
      * in their coordinates, so their never is an overlap.
      */
-    std::pair<const EntryT*, EntryIteratorC<DIM, EntryT>> find_starting_node(
-        const PhBox<DIM, ScalarInternal>& query_box) const {
+    auto find_starting_node(const PhBox<DIM, ScalarInternal>& query_box) const {
         auto& prefix = query_box.min();
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(query_box.min(), query_box.max());
+        bit_width_t max_conflicting_bits =
+            detail::NumberOfDivergingBits(query_box.min(), query_box.max());
         const EntryT* parent = &root_;
         if (max_conflicting_bits > root_.GetNodePostfixLen()) {
             // Abort early if we have no shared prefix in the query
-            return {&root_, root_.GetNode().Entries().end()};
+            return std::make_pair(&root_, root_.GetNode().Entries().cend());
         }
-        EntryIteratorC<DIM, EntryT> entry_iter =
+        auto entry_iter =
             root_.GetNode().FindPrefix(prefix, max_conflicting_bits, root_.GetNodePostfixLen());
         while (entry_iter != parent->GetNode().Entries().end() && entry_iter->second.IsNode() &&
                entry_iter->second.GetNodePostfixLen() >= max_conflicting_bits) {
@@ -582,7 +602,7 @@ class PhTreeV21 {
             entry_iter = parent->GetNode().FindPrefix(
                 prefix, max_conflicting_bits, parent->GetNodePostfixLen());
         }
-        return {parent, entry_iter};
+        return std::make_pair(parent, entry_iter);
     }
 
     size_t num_entries_;
@@ -592,6 +612,6 @@ class PhTreeV21 {
     CONVERT* converter_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 
 #endif  // PHTREE_V21_PHTREE_V21_H

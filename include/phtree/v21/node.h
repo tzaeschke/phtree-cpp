@@ -25,7 +25,7 @@
 #include <iostream>
 #include <map>
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 /*
  * We provide different implementations of the node's internal entry set.
@@ -76,8 +76,10 @@ namespace improbable::phtree::v20 {
  *
  */
 template <dimension_t DIM, typename Entry>
-using EntryMap = typename std::conditional_t <
-    DIM<32, b_plus_tree_multimap<std::uint32_t, Entry>, b_plus_tree_multimap<std::uint64_t, Entry>>;
+using EntryMap =
+    typename std::conditional_t < DIM<32,
+                                      ::phtree::bptree::b_plus_tree_multimap<std::uint32_t, Entry>,
+                                      ::phtree::bptree::b_plus_tree_multimap<std::uint64_t, Entry>>;
 
 template <dimension_t DIM, typename Entry>
 using EntryIterator = typename std::remove_const_t<decltype(EntryMap<DIM, Entry>().begin())>;
@@ -105,9 +107,11 @@ using EntryIteratorC = decltype(EntryMap<DIM, Entry>().cbegin());
  */
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node {
+    using bit_width_t = detail::bit_width_t;
     using KeyT = PhPoint<DIM, SCALAR>;
     using EntryT = Entry<DIM, T, SCALAR>;
-    using hc_pos_t = hc_pos_64_t;
+    using hc_pos_t = detail::hc_pos_dim_t<DIM>;
+
     // static constexpr hc_pos_t MAX_SIZE = std::max(hc_pos_t(8), hc_pos_t(1) << DIM);
     // TODO test with 2D, use something like std::max(f(DIM), 8) ?
     // TODO think about limiting this for high DIM, nodes with 2^DIM entries are not good :-D
@@ -117,10 +121,10 @@ class Node {
     Node() : entries_{} {}
 
     // Nodes should (almost) never be copied!
-    Node(const Node&) = delete;
+    Node(const Node&) noexcept = delete;
     Node(Node&&) noexcept = default;
-    Node& operator=(const Node&) = delete;
-    Node& operator=(Node&&) = delete;
+    Node& operator=(const Node&) noexcept = delete;
+    Node& operator=(Node&&) noexcept = default;
 
     [[nodiscard]] auto GetEntryCount() const {
         return entries_.size();
@@ -156,7 +160,7 @@ class Node {
     template <typename... Args>
     EntryT& Emplace(bool& is_inserted, const KeyT& key, EntryT* parent_entry, Args&&... args) {
         bit_width_t postfix_len = parent_entry->GetNodePostfixLen();
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         // subnode? return for further traversal
         auto iter = entries_.lower_bound(hc_pos);
         if (postfix_len > 0 && iter != entries_.end() && iter->first == hc_pos) {
@@ -190,7 +194,7 @@ class Node {
     template <typename... Args>
     EntryT& EmplaceUnchecked(
         bool& is_inserted, const KeyT& key, bit_width_t postfix_len, Args&&... args) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
 
         // subnode? return for further traversal
         auto iter = entries_.lower_bound(hc_pos);
@@ -213,7 +217,7 @@ class Node {
      * @param parent The parent node
      * @return The sub node or null.
      */
-    // TODO is this funcgtion still useful?
+    // TODO is this function still useful?
     EntryT* Find(const KeyT& key, bit_width_t postfix_len) {
         hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
         auto iter = entries_.find(hc_pos);
@@ -238,7 +242,7 @@ class Node {
 
     // TODO is this the same as LowerBound?
     auto FindIter(const KeyT& key, bit_width_t postfix_len) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         // TODO use lower_bound?
         auto iter = entries_.find(hc_pos);
         if (iter != entries_.end() && iter->second.IsNode()) {
@@ -258,7 +262,7 @@ class Node {
 
     // TODO use this in Erase() ?!?!
     auto LowerBound(const KeyT& key, bit_width_t postfix_len, bool& found) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto iter = entries_.lower_bound(hc_pos);
         while (iter != entries_.end() && iter->first == hc_pos) {
             if (iter->second.IsNode()) {
@@ -281,7 +285,7 @@ class Node {
     }
 
     auto LowerBound(const KeyT& key, const T& value, bit_width_t postfix_len, bool& found) {
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto iter = entries_.lower_bound(hc_pos);
         if (iter != entries_.end() && iter->second.IsNode()) {
             found = DoesEntryMatch(iter->second, key, postfix_len);
@@ -310,10 +314,10 @@ class Node {
         return entries_.end();
     }
 
-    EntryIteratorC<DIM, EntryT> FindPrefix(
+    auto FindPrefix(
         const KeyT& prefix, bit_width_t prefix_post_len, bit_width_t node_postfix_len) const {
         assert(prefix_post_len <= node_postfix_len);
-        hc_pos_t hc_pos = CalcPosInArray(prefix, node_postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(prefix, node_postfix_len);
         const auto iter = entries_.find(hc_pos);
         if (iter == entries_.end() || iter->second.IsValue() ||
             iter->second.GetNodePostfixLen() < prefix_post_len) {
@@ -322,7 +326,7 @@ class Node {
         }
 
         if (DoesEntryMatch(iter->second, prefix, node_postfix_len)) {
-            return {iter};
+            return EntryIteratorC<DIM, EntryT>{iter};
         }
         return entries_.end();
     }
@@ -341,7 +345,7 @@ class Node {
      */
     EntryT* Erase(const KeyT& key, const T& value, EntryT* parent_entry, size_t& found) {
         auto postfix_len = parent_entry->GetNodePostfixLen();
-        hc_pos_t hc_pos = CalcPosInArray(key, postfix_len);
+        hc_pos_t hc_pos = detail::CalcPosInArray(key, postfix_len);
         auto it = entries_.find(hc_pos);
         if (it != entries_.end()) {
             if (it->second.IsNode()) {
@@ -402,7 +406,7 @@ class Node {
 
         ++stats.n_nodes_;
         ++stats.node_depth_hist_[current_depth];
-        ++stats.node_size_log_hist_[32 - CountLeadingZeros(std::uint32_t(num_children))];
+        ++stats.node_size_log_hist_[32 - detail::CountLeadingZeros(std::uint32_t(num_children))];
         stats.n_total_children_ += num_children;
         stats.q_total_depth_ += current_depth;
 
@@ -451,14 +455,16 @@ class Node {
 
         // Check node center
         auto post_len = current_entry.GetNodePostfixLen();
-        if (post_len == MAX_BIT_WIDTH<SCALAR> - 1) {
+        if (post_len == detail::MAX_BIT_WIDTH<SCALAR> - 1) {
             for (auto d : current_entry.GetKey()) {
                 assert(d == 0);
             }
         } else {
             for (auto d : current_entry.GetKey()) {
                 assert(((d >> post_len) & 0x1) == 1 && "Last bit of node center must be `1`");
-                assert(((d >> post_len) << post_len) == d && "postlen bits must all be `0`");
+                using us_t = std::make_unsigned_t<decltype(d)>;
+                us_t d2 = static_cast<us_t>(d);
+                assert(((d2 >> post_len) << post_len) == d2 && "postlen bits must all be `0`");
             }
         }
 
@@ -468,15 +474,15 @@ class Node {
   private:
     template <typename... Args>
     auto& WriteValue(hc_pos_t hc_pos, const KeyT& new_key, Args&&... args) {
-        return entries_.emplace(hc_pos, EntryT{new_key, std::forward<Args>(args)...})->second;
+        return entries_.emplace(hc_pos, new_key, std::forward<Args>(args)...)->second;
     }
 
     void WriteEntry(hc_pos_t hc_pos, EntryT& entry) {
         if (entry.IsNode()) {
             auto postfix_len = entry.GetNodePostfixLen();
-            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractNode(), postfix_len});
+            entries_.emplace(hc_pos, entry.GetKey(), entry.ExtractNode(), postfix_len);
         } else {
-            entries_.emplace(hc_pos, EntryT{entry.GetKey(), entry.ExtractValue()});
+            entries_.emplace(hc_pos, entry.GetKey(), entry.ExtractValue());
         }
     }
 
@@ -510,7 +516,7 @@ class Node {
             return entry;
         }
 
-        bit_width_t max_conflicting_bits = NumberOfDivergingBits(new_key, entry.GetKey());
+        bit_width_t max_conflicting_bits = detail::NumberOfDivergingBits(new_key, entry.GetKey());
         if (is_node && max_conflicting_bits <= entry.GetNodePostfixLen() + 1) {
             // TODO merge with condition above?
             // TODO why is this needed for MMM?
@@ -528,16 +534,16 @@ class Node {
         Args&&... args) {
         // TODO this is not very elegant...  -> handle identical keys
         bit_width_t new_postfix_len = max_conflicting_bits == 0 ? 0 : max_conflicting_bits - 1;
-        hc_pos_t pos_sub_1 = CalcPosInArray(new_key, new_postfix_len);
-        hc_pos_t pos_sub_2 = CalcPosInArray(current_entry.GetKey(), new_postfix_len);
+        hc_pos_t pos_sub_1 = detail::CalcPosInArray(new_key, new_postfix_len);
+        hc_pos_t pos_sub_2 = detail::CalcPosInArray(current_entry.GetKey(), new_postfix_len);
 
         // Move key/value into subnode
-        Node new_sub_node{};
-        new_sub_node.WriteEntry(pos_sub_2, current_entry);
-        auto& new_entry = new_sub_node.WriteValue(pos_sub_1, new_key, std::forward<Args>(args)...);
+        auto* new_sub_node = new Node{};
+        new_sub_node->WriteEntry(pos_sub_2, current_entry);
+        auto& new_entry = new_sub_node->WriteValue(pos_sub_1, new_key, std::forward<Args>(args)...);
 
         // Insert new node into local node
-        current_entry.SetNode(std::move(new_sub_node), new_postfix_len);
+        current_entry.SetNode(new_sub_node, new_postfix_len);
         return new_entry;
     }
 
@@ -618,7 +624,7 @@ class Node {
         const EntryT& entry, const KeyT& key, const bit_width_t parent_postfix_len) const {
         if (entry.IsNode()) {
             if (entry.HasNodeInfix(parent_postfix_len)) {
-                return KeyEquals(entry.GetKey(), key, entry.GetNodePostfixLen() + 1);
+                return detail::KeyEquals(entry.GetKey(), key, entry.GetNodePostfixLen() + 1);
             }
             return true;
         }
@@ -628,5 +634,5 @@ class Node {
     EntryMap<DIM, EntryT> entries_;
 };
 
-}  // namespace improbable::phtree::v20
+}  // namespace improbable::phtree::v21
 #endif  // PHTREE_V21_NODE_H

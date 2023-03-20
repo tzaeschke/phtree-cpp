@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V20_ITERATOR_LOWER_BOUND_H
-#define PHTREE_V20_ITERATOR_LOWER_BOUND_H
+#ifndef PHTREE_V21_ITERATOR_LOWER_BOUND_H
+#define PHTREE_V21_ITERATOR_LOWER_BOUND_H
 
 #include "iterator_base.h"
 #include "phtree/common/common.h"
 
-namespace improbable::phtree::v20 {
+namespace improbable::phtree::v21 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
 class Node;
@@ -171,6 +171,6 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
     size_t stack_size_;
 };
 
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v21
 
-#endif  // PHTREE_V16_ITERATOR_LOWER_BOUND_H
+#endif  // PHTREE_V21_ITERATOR_LOWER_BOUND_H

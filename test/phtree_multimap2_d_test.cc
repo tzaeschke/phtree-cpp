@@ -132,6 +132,8 @@ void generateCube(std::vector<TestPoint<DIM>>& points, size_t N, size_t dupl_per
 
 template <dimension_t DIM>
 void SmokeTestBasicOps(size_t N) {
+    static_assert(std::is_move_assignable_v<Id>);
+    static_assert(std::is_move_constructible_v<Id>);
     TestTree<DIM, Id> tree;
     std::vector<TestPoint<DIM>> points;
     generateCube(points, N);
@@ -1268,7 +1270,6 @@ TEST(PhTreeMMDTest, TestMoveConstruct) {
 
     TestTree<3, Id> tree{std::move(tree1)};
     test_tree(tree);
-    tree.~PhTreeMultiMap2();
 }
 
 TEST(PhTreeMMDTest, TestMoveAssign) {
@@ -1280,7 +1281,6 @@ TEST(PhTreeMMDTest, TestMoveAssign) {
     TestTree<3, Id> tree{};
     tree = std::move(tree1);
     test_tree(tree);
-    tree.~PhTreeMultiMap2();
 }
 
 TEST(PhTreeMMDTest, TestMovableIterators) {

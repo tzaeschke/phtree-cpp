@@ -57,12 +57,12 @@ class PhTreeMultiMap2 {
     using KeyInternal = typename CONVERTER::KeyInternal;
     using Key = typename CONVERTER::KeyExternal;
     static constexpr dimension_t DimInternal = CONVERTER::DimInternal;
-    using PHTREE = PhTreeMultiMap2<DIM, T, CONVERTER, POINT_KEYS, DEFAULT_QUERY_TYPE>;
     using ValueType = T;
     // using IterType = decltype(std::declval<T>().begin());
     //  TODO use auto instead...?
-    using IterType = decltype(std::declval<v20::PhTreeV20<DimInternal, T, CONVERTER>>().begin());
-    using EndType = decltype(std::declval<v20::PhTreeV20<DimInternal, T, CONVERTER>>().end());
+    using InternalTreeT = v20::PhTreeV20<DimInternal, T, CONVERTER>;
+    using IterType = decltype(std::declval<InternalTreeT>().begin());
+    using EndType = decltype(std::declval<InternalTreeT>().end());
 
     friend PhTreeDebugHelper;
 
@@ -232,8 +232,8 @@ class PhTreeMultiMap2 {
     size_t erase(const ITERATOR& iterator) {
         // TODO backport to v20
         // std::is_convertible_v<ITERATOR*, IterType*>,
-        using IterT1 = decltype(std::declval<v20::PhTreeV20<DimInternal, T, CONVERTER>>().find({}));
-        using IterT2 = decltype(std::declval<v20::PhTreeV20<DimInternal, T, CONVERTER>>().end());
+        using IterT1 = decltype(std::declval<InternalTreeT>().find({}));
+        using IterT2 = decltype(std::declval<InternalTreeT>().end());
         static_assert(
             // std::is_convertible_v<ITERATOR*, v20::IteratorBase<v20::Entry<DIM, T,
             // ScalarInternal>*>>,
@@ -488,7 +488,7 @@ class PhTreeMultiMap2 {
         assert(n == size());
     }
 
-    v20::PhTreeV20<DimInternal, T, CONVERTER> tree_;
+    InternalTreeT tree_;
     CONVERTER converter_;
 };
 
