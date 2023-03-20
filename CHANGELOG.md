@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added `lower_bounds(key)` to API. [#126](https://github.com/tzaeschke/phtree-cpp/issues/126)
 - Added `bpt_fixed_vector`, a fixed size flat vector for future use. It can be dropped in for an std::vector.
   [#124](https://github.com/tzaeschke/phtree-cpp/pull/124)
+- Added Chebyshev distance metric `DIstanceChebyshev`. [#129](https://github.com/tzaeschke/phtree-cpp/pull/139)
 
 ### Changed
 - Changed `bpt_vectot` to use `std::destroy` i.o. default dstr. [#132](https://github.com/tzaeschke/phtree-cpp/pull/132)

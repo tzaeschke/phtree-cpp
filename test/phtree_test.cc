@@ -129,10 +129,19 @@ double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
 }
 
 template <dimension_t DIM>
-double distanceL1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+double distance_L1(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
     double sum = 0;
     for (dimension_t i = 0; i < DIM; i++) {
         sum += std::abs(p1[i] - p2[i]);
+    }
+    return sum;
+}
+
+template <dimension_t DIM>
+double distance_chebyshev(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+    double sum = 0;
+    for (dimension_t i = 0; i < DIM; i++) {
+        sum = std::max(sum, (double)std::abs(p1[i] - p2[i]));
     }
     return sum;
 }
@@ -1178,7 +1187,8 @@ TEST(PhTreeTest, TestWindowQueryFilter) {
     ASSERT_GE(50, num_e);
 }
 
-TEST(PhTreeTest, TestKnnQuery) {
+template <typename DIST_TEST, typename DIST_REF>
+void test_knn_query(DIST_TEST dist_fn, DIST_REF dist_fn_reference, bool check_id = false) {
     // deliberately allowing outside of main points range
     IntRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -1195,21 +1205,23 @@ TEST(PhTreeTest, TestKnnQuery) {
         // sort points manually
         std::vector<PointDistance> sorted_data;
         for (size_t i = 0; i < points.size(); i++) {
-            double dist = distance(center, points[i]);
+            double dist = dist_fn_reference(center, points[i]);
             sorted_data.emplace_back(dist, i);
         }
         std::sort(sorted_data.begin(), sorted_data.end(), comparePointDistance);
 
         size_t n = 0;
         double prevDist = -1;
-        auto q = tree.begin_knn_query(Nq, center, DistanceEuclidean<3>());
+        auto q = tree.begin_knn_query(Nq, center, dist_fn);
         while (q != tree.end()) {
-            // just read the entry
-            auto& e = *q;
             ASSERT_EQ(sorted_data[n]._distance, q.distance());
-            ASSERT_EQ(sorted_data[n]._id, e._i);
-            ASSERT_EQ(points[sorted_data[n]._id], q.first());
-            ASSERT_EQ(sorted_data[n]._id, q.second()._i);
+            if (check_id) {
+                // With L1 and Chebyshev distances are not unique and IDs may be reordered
+                auto& e = *q;
+                ASSERT_EQ(sorted_data[n]._id, e._i);
+                ASSERT_EQ(points[sorted_data[n]._id], q.first());
+                ASSERT_EQ(sorted_data[n]._id, q.second()._i);
+            }
             ASSERT_GE(q.distance(), prevDist);
             prevDist = q.distance();
             ++q;
@@ -1219,18 +1231,36 @@ TEST(PhTreeTest, TestKnnQuery) {
     }
 }
 
+TEST(PhTreeTest, TestKnnQuery_Euclidean) {
+    const dimension_t DIM = 3;
+    test_knn_query(
+        DistanceEuclidean<3>(),
+        [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) { return distance(v1, v2); },
+        true);
+}
+
+TEST(PhTreeTest, TestKnnQuery_L1) {
+    const dimension_t DIM = 3;
+    test_knn_query(DistanceL1<3>(), [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) {
+        return distance_L1(v1, v2);
+    });
+}
+
+TEST(PhTreeTest, TestKnnQuery_Chebyshev) {
+    const dimension_t DIM = 3;
+    test_knn_query(DistanceChebyshev<3>(), [](const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) {
+        return distance_chebyshev(v1, v2);
+    });
+}
+
 template <dimension_t DIM>
-struct PhDistanceLongL1 {
+struct MyDistance {
     double operator()(const TestPoint<DIM>& v1, const TestPoint<DIM>& v2) const {
-        double sum = 0;
-        for (dimension_t i = 0; i < DIM; i++) {
-            sum += std::abs(v1[i] - v2[i]);
-        }
-        return sum;
+        return distance_L1(v1, v2);
     };
 };
 
-TEST(PhTreeTest, TestKnnQueryFilterAndDistanceL1) {
+TEST(PhTreeTest, TestKnnQueryFilterAndCustomDistance) {
     // deliberately allowing outside of main points range
     IntRng rng(-1500, 1500);
     const dimension_t dim = 3;
@@ -1247,14 +1277,14 @@ TEST(PhTreeTest, TestKnnQueryFilterAndDistanceL1) {
         // sort points manually by L1; skip every 2nd point
         std::vector<PointDistance> sorted_data;
         for (size_t i = 0; i < points.size(); i += 2) {
-            double dist = distanceL1(center, points[i]);
+            double dist = MyDistance<dim>{}(center, points[i]);
             sorted_data.emplace_back(dist, i);
         }
         std::sort(sorted_data.begin(), sorted_data.end(), comparePointDistance);
 
         size_t n = 0;
         double prevDist = -1;
-        auto q = tree.begin_knn_query(Nq, center, PhDistanceLongL1<dim>(), FilterEvenId<dim, Id>());
+        auto q = tree.begin_knn_query(Nq, center, MyDistance<dim>(), FilterEvenId<dim, Id>());
         while (q != tree.end()) {
             // just read the entry
             ASSERT_EQ(sorted_data[n]._distance, q.distance());
