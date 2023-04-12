@@ -67,12 +67,12 @@ TEST(PhTreeFilterTest, FilterNoOpSmokeTest) {
     ASSERT_TRUE(filter.IsEntryValid<PhPoint<3>>({3, 7, 2}, 10));
 }
 
-template <typename FILTER>
+template <typename FILTER_FN>
 void TestAssignability() {
-    ASSERT_TRUE(std::is_copy_constructible_v<FILTER>);
-    ASSERT_TRUE(std::is_copy_assignable_v<FILTER>);
-    ASSERT_TRUE(std::is_move_constructible_v<FILTER>);
-    ASSERT_TRUE(std::is_move_assignable_v<FILTER>);
+    ASSERT_TRUE(std::is_copy_constructible_v<FILTER_FN>);
+    ASSERT_TRUE(std::is_copy_assignable_v<FILTER_FN>);
+    ASSERT_TRUE(std::is_move_constructible_v<FILTER_FN>);
+    ASSERT_TRUE(std::is_move_assignable_v<FILTER_FN>);
 }
 
 TEST(PhTreeFilterTest, FilterAssignableTest) {

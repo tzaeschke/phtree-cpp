@@ -80,7 +80,7 @@ class IteratorBase {
 template <typename EntryT>
 using IteratorEnd = IteratorBase<EntryT>;
 
-template <typename T, typename CONVERT, typename FILTER = FilterNoOp>
+template <typename T, typename CONVERT, typename FILTER_FN = FilterNoOp>
 class IteratorWithFilter
 : public IteratorBase<Entry<CONVERT::DimInternal, T, typename CONVERT::ScalarInternal>> {
   protected:
@@ -95,7 +95,7 @@ class IteratorWithFilter
     : IteratorBase<EntryT>(nullptr), converter_{converter}, filter_{std::forward<F>(filter)} {}
 
     explicit IteratorWithFilter(const EntryT* current_entry, const CONVERT* converter) noexcept
-    : IteratorBase<EntryT>(current_entry), converter_{converter}, filter_{FILTER()} {}
+    : IteratorBase<EntryT>(current_entry), converter_{converter}, filter_{FILTER_FN()} {}
 
     auto first() const {
         return converter_->post(this->current_entry_->GetKey());
@@ -117,7 +117,7 @@ class IteratorWithFilter
 
   private:
     const CONVERT* converter_;
-    FILTER filter_;
+    FILTER_FN filter_;
 };
 
 }  // namespace improbable::phtree::v16

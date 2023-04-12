@@ -34,7 +34,7 @@ namespace improbable::phtree::v16 {
  * For details see  "Efficient Z-Ordered Traversal of Hypercube Indexes" by T. Zäschke, M.C. Norrie,
  * 2017.
  */
-template <typename T, typename CONVERT, typename CALLBACK, typename FILTER>
+template <typename T, typename CONVERT, typename CALLBACK_FN, typename FILTER_FN>
 class ForEachHC {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
@@ -110,8 +110,8 @@ class ForEachHC {
     const KeyInternal min_;
     const KeyInternal max_;
     const CONVERT* converter_;
-    CALLBACK callback_;
-    FILTER filter_;
+    CALLBACK_FN callback_;
+    FILTER_FN filter_;
 };
 }  // namespace improbable::phtree::v16
 

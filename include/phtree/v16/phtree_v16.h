@@ -540,17 +540,17 @@ class PhTreeV16 {
      * sub-nodes before they are returned or traversed. Any filter function must follow the
      * signature of the default 'FilterNoOp`.
      */
-    template <typename CALLBACK, typename FILTER = FilterNoOp>
-    void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) {
-        ForEach<T, CONVERT, CALLBACK, FILTER>(
-            converter_, std::forward<CALLBACK>(callback), std::forward<FILTER>(filter))
+    template <typename CALLBACK_FN, typename FILTER_FN = FilterNoOp>
+    void for_each(CALLBACK_FN&& callback, FILTER_FN&& filter = FILTER_FN()) {
+        ForEach<T, CONVERT, CALLBACK_FN, FILTER_FN>(
+            converter_, std::forward<CALLBACK_FN>(callback), std::forward<FILTER_FN>(filter))
             .Traverse(root_);
     }
 
-    template <typename CALLBACK, typename FILTER = FilterNoOp>
-    void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
-        ForEach<T, CONVERT, CALLBACK, FILTER>(
-            converter_, std::forward<CALLBACK>(callback), std::forward<FILTER>(filter))
+    template <typename CALLBACK_FN, typename FILTER_FN = FilterNoOp>
+    void for_each(CALLBACK_FN&& callback, FILTER_FN&& filter = FILTER_FN()) const {
+        ForEach<T, CONVERT, CALLBACK_FN, FILTER_FN>(
+            converter_, std::forward<CALLBACK_FN>(callback), std::forward<FILTER_FN>(filter))
             .Traverse(root_);
     }
 
@@ -564,19 +564,19 @@ class PhTreeV16 {
      * sub-nodes before they are returned or traversed. Any filter function must follow the
      * signature of the default 'FilterNoOp`.
      */
-    template <typename CALLBACK, typename FILTER = FilterNoOp>
+    template <typename CALLBACK_FN, typename FILTER_FN = FilterNoOp>
     void for_each(
         // TODO check copy elision
         const PhBox<DIM, ScalarInternal> query_box,
-        CALLBACK&& callback,
-        FILTER&& filter = FILTER()) const {
+        CALLBACK_FN&& callback,
+        FILTER_FN&& filter = FILTER_FN()) const {
         auto pair = find_starting_node(query_box);
-        ForEachHC<T, CONVERT, CALLBACK, FILTER>(
+        ForEachHC<T, CONVERT, CALLBACK_FN, FILTER_FN>(
             query_box.min(),
             query_box.max(),
             converter_,
-            std::forward<CALLBACK>(callback),
-            std::forward<FILTER>(filter))
+            std::forward<CALLBACK_FN>(callback),
+            std::forward<FILTER_FN>(filter))
             .Traverse(*pair.first, &pair.second);
     }
 
@@ -587,9 +587,9 @@ class PhTreeV16 {
      *
      * @return an iterator over all (filtered) entries in the tree,
      */
-    template <typename FILTER = FilterNoOp>
-    auto begin(FILTER&& filter = FILTER()) const {
-        return IteratorFull<T, CONVERT, FILTER>(root_, converter_, std::forward<FILTER>(filter));
+    template <typename FILTER_FN = FilterNoOp>
+    auto begin(FILTER_FN&& filter = FILTER_FN()) const {
+        return IteratorFull<T, CONVERT, FILTER_FN>(root_, converter_, std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -601,16 +601,16 @@ class PhTreeV16 {
      * signature of the default 'FilterNoOp`.
      * @return Result iterator.
      */
-    template <typename FILTER = FilterNoOp>
+    template <typename FILTER_FN = FilterNoOp>
     auto begin_query(
-        const PhBox<DIM, ScalarInternal>& query_box, FILTER&& filter = FILTER()) const {
+        const PhBox<DIM, ScalarInternal>& query_box, FILTER_FN&& filter = FILTER_FN()) const {
         auto pair = find_starting_node(query_box);
-        return IteratorHC<T, CONVERT, FILTER>(
+        return IteratorHC<T, CONVERT, FILTER_FN>(
             *pair.first,
             query_box.min(),
             query_box.max(),
             converter_,
-            std::forward<FILTER>(filter));
+            std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -627,19 +627,19 @@ class PhTreeV16 {
      * calculated.
      * @return Result iterator.
      */
-    template <typename DISTANCE, typename FILTER = FilterNoOp>
+    template <typename DISTANCE, typename FILTER_FN = FilterNoOp>
     auto begin_knn_query(
         size_t min_results,
         const KeyT& center,
         DISTANCE&& distance_function = DISTANCE(),
-        FILTER&& filter = FILTER()) const {
-        return IteratorKnnHS<T, CONVERT, DISTANCE, FILTER>(
+        FILTER_FN&& filter = FILTER_FN()) const {
+        return IteratorKnnHS<T, CONVERT, DISTANCE, FILTER_FN>(
             root_,
             min_results,
             center,
             converter_,
             std::forward<DISTANCE>(distance_function),
-            std::forward<FILTER>(filter));
+            std::forward<FILTER_FN>(filter));
     }
 
     /*

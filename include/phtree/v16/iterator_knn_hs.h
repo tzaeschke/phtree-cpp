@@ -44,13 +44,13 @@ struct CompareEntryDist {
 };
 }  // namespace
 
-template <typename T, typename CONVERT, typename DISTANCE, typename FILTER>
-class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER> {
+template <typename T, typename CONVERT, typename DISTANCE, typename FILTER_FN>
+class IteratorKnnHS : public IteratorWithFilter<T, CONVERT, FILTER_FN> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyExternal = typename CONVERT::KeyExternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
-    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER_FN>::EntryT;
     using EntryDistT = EntryDist<DIM, T, SCALAR>;
 
   public:
