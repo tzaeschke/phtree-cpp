@@ -299,54 +299,6 @@ class PhTreeV16 {
      *          whose second element is a bool that is true if the value was actually relocated.
      */
     template <typename PRED>
-    [[deprecated]] size_t relocate_if2(const KeyT& old_key, const KeyT& new_key, PRED pred) {
-        auto pair = _find_two(old_key, new_key);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd() || !pred(*iter_old)) {
-            return 0;
-        }
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            iter_old.GetEntry()->SetKey(new_key);
-            return 1;
-        }
-
-        bool is_inserted = false;
-        auto* new_parent = iter_new.GetNodeEntry();
-        new_parent->GetNode().Emplace(
-            is_inserted, new_key, new_parent->GetNodePostfixLen(), std::move(*iter_old));
-        if (!is_inserted) {
-            return 0;
-        }
-
-        // Erase old value. See comments in try_emplace(iterator) for details.
-        EntryT* old_node_entry = iter_old.GetNodeEntry();
-        if (iter_old.GetParentNodeEntry() == iter_new.GetNodeEntry()) {
-            // In this case the old_node_entry may have been invalidated by the previous insertion.
-            old_node_entry = iter_old.GetParentNodeEntry();
-        }
-        bool found = false;
-        while (old_node_entry) {
-            old_node_entry = old_node_entry->GetNode().Erase(
-                old_key, old_node_entry, old_node_entry != &root_, found);
-        }
-        assert(found);
-        return 1;
-    }
-
-    /*
-     * Relocate (move) an entry from one position to another, subject to a predicate.
-     *
-     * @param old_key
-     * @param new_key
-     * @param predicate
-     *
-     * @return  A pair, whose first element points to the possibly relocated value, and
-     *          whose second element is a bool that is true if the value was actually relocated.
-     */
-    template <typename PRED>
     size_t relocate_if(const KeyT& old_key, const KeyT& new_key, PRED&& pred) {
         bit_width_t n_diverging_bits = detail::NumberOfDivergingBits(old_key, new_key);
 
@@ -413,59 +365,6 @@ class PhTreeV16 {
         return 1;
     }
 
-  private:
-    /*
-     * Tries to locate two entries that are 'close' to each other.
-     *
-     * Special behavior:
-     * - returns end() if old_key does not exist;
-     */
-    auto _find_two(const KeyT& old_key, const KeyT& new_key) {
-        using Iter = IteratorWithParent<T, CONVERT>;
-        bit_width_t n_diverging_bits = NumberOfDivergingBits(old_key, new_key);
-
-        EntryT* current_entry = &root_;           // An entry.
-        EntryT* old_node_entry = nullptr;         // Node that contains entry to be removed
-        EntryT* old_node_entry_parent = nullptr;  // Parent of the old_node_entry
-        EntryT* new_node_entry = nullptr;         // Node that will contain  new entry
-        // Find node for removal
-        while (current_entry && current_entry->IsNode()) {
-            old_node_entry_parent = old_node_entry;
-            old_node_entry = current_entry;
-            auto postfix_len = old_node_entry->GetNodePostfixLen();
-            if (postfix_len + 1 >= n_diverging_bits) {
-                new_node_entry = old_node_entry;
-            }
-            current_entry = current_entry->GetNode().Find(old_key, postfix_len);
-        }
-        EntryT* old_entry = current_entry;  // Entry to be removed
-
-        // Can we stop already?
-        if (old_entry == nullptr) {
-            auto iter = Iter(nullptr, nullptr, nullptr, converter_);
-            return std::make_pair(iter, iter);  // old_key not found!
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        assert(old_node_entry != nullptr);
-        if (n_diverging_bits == 0 || old_node_entry->GetNodePostfixLen() >= n_diverging_bits) {
-            auto iter = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-            return std::make_pair(iter, iter);
-        }
-
-        // Find node for insertion
-        auto new_entry = new_node_entry;
-        while (new_entry && new_entry->IsNode()) {
-            new_node_entry = new_entry;
-            new_entry = new_entry->GetNode().Find(new_key, new_entry->GetNodePostfixLen());
-        }
-
-        auto iter1 = Iter(old_entry, old_node_entry, old_node_entry_parent, converter_);
-        auto iter2 = Iter(new_entry, new_node_entry, nullptr, converter_);
-        return std::make_pair(iter1, iter2);
-    }
-
-  public:
     /*
      * This function is used (internally) by the PH-tree multimap.
      *

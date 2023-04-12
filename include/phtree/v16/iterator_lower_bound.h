@@ -118,16 +118,6 @@ class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
         this->SetFinished();
     }
 
-    auto& PrepareAndPushFirst(const EntryT& entry, const KeyInternalT& key, bool& found) {
-        assert(stack_size_ < stack_.size() - 1);
-        // No '&'  because this is a temp value
-        auto& node = entry.GetNode();
-        stack_[stack_size_].first = node.LowerBound(key, entry.GetNodePostfixLen(), found);
-        stack_[stack_size_].second = node.Entries().end();
-        ++stack_size_;
-        return stack_[stack_size_ - 1].first;
-    }
-
     auto& Push(const EntryIteratorC<DIM, EntryT>& begin, const EntryIteratorC<DIM, EntryT>& end) {
         assert(stack_size_ < stack_.size() - 1);
         stack_[stack_size_].first = begin;
