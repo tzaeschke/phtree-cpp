@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Dead code cleanup.[#144](https://github.com/tzaeschke/phtree-cpp/pull/144
 
+### Removed
+- Removed copy constructor/assignment from bplus-maps. Added some fringe case tests.
+  [#145](https://github.com/tzaeschke/phtree-cpp/pull/145
+
 ## [1.6.0] - 2023-03-20
 ### Added
 - Added benchmark for bit operations in `common`. [#128](https://github.com/tzaeschke/phtree-cpp/pull/128)

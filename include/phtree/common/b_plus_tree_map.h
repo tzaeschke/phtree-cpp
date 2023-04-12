@@ -96,23 +96,12 @@ class b_plus_tree_map {
   public:
     explicit b_plus_tree_map() : root_{new NLeafT(nullptr, nullptr, nullptr)}, size_{0} {};
 
-    b_plus_tree_map(const b_plus_tree_map& other) : size_{other.size_} {
-        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
-                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
-    }
+    b_plus_tree_map(const b_plus_tree_map& other) = delete;
+    b_plus_tree_map& operator=(const b_plus_tree_map& other) = delete;
 
     b_plus_tree_map(b_plus_tree_map&& other) noexcept : root_{other.root_}, size_{other.size_} {
         other.root_ = nullptr;
         other.size_ = 0;
-    }
-
-    b_plus_tree_map& operator=(const b_plus_tree_map& other) {
-        assert(this != &other);
-        delete root_;
-        root_ = other.root_->is_leaf() ? (NodeT*)new NLeafT(*other.root_->as_leaf())
-                                       : (NodeT*)new NInnerT(*other.root_->as_inner());
-        size_ = other.size_;
-        return *this;
     }
 
     b_plus_tree_map& operator=(b_plus_tree_map&& other) noexcept {

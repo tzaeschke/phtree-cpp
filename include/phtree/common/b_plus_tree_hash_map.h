@@ -361,9 +361,9 @@ class b_plus_tree_hash_map {
     using value_compare = PredT;
     b_plus_tree_hash_map() : map_{} {};
 
-    b_plus_tree_hash_map(const b_plus_tree_hash_map&) = default;
+    b_plus_tree_hash_map(const b_plus_tree_hash_map&) = delete;
     b_plus_tree_hash_map(b_plus_tree_hash_map&&) noexcept = default;
-    b_plus_tree_hash_map& operator=(const b_plus_tree_hash_map&) = default;
+    b_plus_tree_hash_map& operator=(const b_plus_tree_hash_map&) = delete;
     b_plus_tree_hash_map& operator=(b_plus_tree_hash_map&&) noexcept = default;
     ~b_plus_tree_hash_map() = default;
 

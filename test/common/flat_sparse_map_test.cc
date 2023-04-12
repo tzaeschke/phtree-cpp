@@ -87,3 +87,25 @@ TEST(PhTreeFlatSparseMapTest, SmokeTestWithTryEmplace) {
         }
     }
 }
+
+TEST(PhTreeFlatSparseMapTest, EmptyTest) {
+    detail::sparse_map<size_t, size_t> test_map;
+    ASSERT_EQ(test_map.size(), 0);
+    ASSERT_EQ(test_map.begin(), test_map.end());
+    ASSERT_EQ(test_map.find(0), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(0), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(7), test_map.end());
+    test_map.erase(0);
+}
+
+TEST(PhTreeFlatSparseMapTest, FailTest) {
+    detail::sparse_map<size_t, size_t> test_map;
+    test_map.emplace(1);
+    test_map.emplace(2);
+    test_map.emplace(3);
+    ASSERT_EQ(test_map.find(0), test_map.end());
+    ASSERT_EQ(test_map.find(4), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(7), test_map.end());
+    test_map.erase(0);
+    test_map.erase(4);
+}

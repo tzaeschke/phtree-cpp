@@ -127,3 +127,25 @@ TEST(PhTreeFlatArrayMapTest, IteratorPostIncrementTest) {
     }
     ASSERT_EQ(num_entries, n_pre);
 }
+
+TEST(PhTreeFlatArrayMapTest, EmptyTest) {
+    detail::array_map<size_t, size_t, 8> test_map;
+    ASSERT_EQ(test_map.size(), 0);
+    ASSERT_EQ(test_map.begin(), test_map.end());
+    ASSERT_EQ(test_map.find(0), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(0), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(7), test_map.end());
+    ASSERT_FALSE(test_map.erase(0));
+}
+
+TEST(PhTreeFlatArrayMapTest, FailTest) {
+    detail::array_map<size_t, size_t, 8> test_map;
+    test_map.emplace(1);
+    test_map.emplace(2);
+    test_map.emplace(3);
+    ASSERT_EQ(test_map.find(0), test_map.end());
+    ASSERT_EQ(test_map.find(4), test_map.end());
+    ASSERT_EQ(test_map.lower_bound(7), test_map.end());
+    ASSERT_FALSE(test_map.erase(0));
+    ASSERT_FALSE(test_map.erase(4));
+}
