@@ -552,46 +552,6 @@ class PhTreeMultiMap {
             converter_.pre(old_key), converter_.pre(new_key), verify_exists, fn, count_fn);
     }
 
-    template <typename PREDICATE>
-    [[deprecated]] size_t relocate_if2(
-        const Key& old_key, const Key& new_key, PREDICATE&& predicate, bool count_equals = true) {
-        auto pair = tree_._find_or_create_two_mm(
-            converter_.pre(old_key), converter_.pre(new_key), count_equals);
-        auto& iter_old = pair.first;
-        auto& iter_new = pair.second;
-
-        if (iter_old.IsEnd()) {
-            assert(iter_new.IsEnd() || !iter_new->empty());  // Otherwise remove iter_new
-            return 0;
-        }
-
-        // Are we inserting in same node and same quadrant? Or are the keys equal?
-        if (iter_old == iter_new) {
-            assert(old_key == new_key);
-            return 1;
-        }
-
-        size_t n = 0;
-        auto it = iter_old->begin();
-        while (it != iter_old->end()) {
-            if (predicate(*it) && iter_new->emplace(std::move(*it)).second) {
-                it = iter_old->erase(it);
-                ++n;
-            } else {
-                ++it;
-            }
-        }
-
-        if (iter_old->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_old);
-            assert(found);
-        } else if (iter_new->empty()) {
-            [[maybe_unused]] auto found = tree_.erase(iter_new);
-            assert(found);
-        }
-        return n;
-    }
-
     /*
      * Relocates all values from one coordinate to another.
      * Returns an iterator pointing to the relocated data (or end(), if the relocation failed).
