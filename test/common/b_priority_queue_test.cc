@@ -194,7 +194,7 @@ void SmokeTest() {
     }
 }
 
-TEST(PhTreeBptHeapTest, SmokeTest) {
+TEST(PhTreeBptPriorityQueueTest, SmokeTest) {
     SmokeTest();
 }
 
@@ -260,11 +260,11 @@ void SmokeTestTop() {
     }
 }
 
-TEST(PhTreeBptHeapTest, SmokeTestTop) {
+TEST(PhTreeBptPriorityQueueTest, SmokeTestTop) {
     SmokeTestTop();
 }
 
-TEST(PhTreeBptHeapTest, DestructionTest) {
+TEST(PhTreeBptPriorityQueueTest, DestructionTest) {
     const size_t N = 1000;
     std::default_random_engine random_engine{0};
     std::uniform_int_distribution<> cube_distribution(0, N / 2);
@@ -307,7 +307,7 @@ void test_tree(TREE& tree) {
     ASSERT_TRUE(tree.empty());
 }
 
-TEST(PhTreeBptMulitmapTest, TestCopyConstruct) {
+TEST(PhTreeBptPriorityQueueTest, TestCopyConstruct) {
     using TestTree = detail::priority_queue<Id, IdComparator>;
     TestTree tree1;
     tree1.emplace(Id(42, 1));
@@ -318,7 +318,7 @@ TEST(PhTreeBptMulitmapTest, TestCopyConstruct) {
     test_tree(tree1);
 }
 
-TEST(PhTreeBptMulitmapTest, TestCopyAssign) {
+TEST(PhTreeBptPriorityQueueTest, TestCopyAssign) {
     using TestTree = detail::priority_queue<Id, IdComparator>;
     TestTree tree1;
     tree1.emplace(Id(42, 1));
@@ -330,7 +330,7 @@ TEST(PhTreeBptMulitmapTest, TestCopyAssign) {
     test_tree(tree1);
 }
 
-TEST(PhTreeBptMulitmapTest, TestMoveConstruct) {
+TEST(PhTreeBptPriorityQueueTest, TestMoveConstruct) {
     using TestTree = detail::priority_queue<Id, IdComparator>;
     TestTree tree1;
     tree1.emplace(Id(42, 1));
@@ -339,7 +339,7 @@ TEST(PhTreeBptMulitmapTest, TestMoveConstruct) {
     test_tree(tree);
 }
 
-TEST(PhTreeBptMulitmapTest, TestMoveAssign) {
+TEST(PhTreeBptPriorityQueueTest, TestMoveAssign) {
     using TestTree = detail::priority_queue<Id, IdComparator>;
     TestTree tree1;
     tree1.emplace(Id(42, 1));
