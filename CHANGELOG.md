@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Renamed `CALLBACK` to `CALLBACK_FN` to avoid conflicts with Windows SDK.
+  [#142](https://github.com/tzaeschke/phtree-cpp/issues/142)
 - Dead code cleanup.[#144](https://github.com/tzaeschke/phtree-cpp/pull/144
 
 ### Removed

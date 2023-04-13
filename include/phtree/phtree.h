@@ -240,9 +240,9 @@ class PhTree {
      * sub-nodes before they are returned or traversed. Any filter function must follow the
      * signature of the default 'FilterNoOp`.
      */
-    template <typename CALLBACK, typename FILTER = FilterNoOp>
-    void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
-        tree_.for_each(std::forward<CALLBACK>(callback), std::forward<FILTER>(filter));
+    template <typename CALLBACK_FN, typename FILTER_FN = FilterNoOp>
+    void for_each(CALLBACK_FN&& callback, FILTER_FN&& filter = FILTER_FN()) const {
+        tree_.for_each(std::forward<CALLBACK_FN>(callback), std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -257,18 +257,18 @@ class PhTree {
      * signature of the default 'FilterNoOp`.
      */
     template <
-        typename CALLBACK,
-        typename FILTER = FilterNoOp,
+        typename CALLBACK_FN,
+        typename FILTER_FN = FilterNoOp,
         typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     void for_each(
         QueryBox query_box,
-        CALLBACK&& callback,
-        FILTER&& filter = FILTER(),
+        CALLBACK_FN&& callback,
+        FILTER_FN&& filter = FILTER_FN(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
         tree_.for_each(
             query_type(converter_.pre_query(query_box)),
-            std::forward<CALLBACK>(callback),
-            std::forward<FILTER>(filter));
+            std::forward<CALLBACK_FN>(callback),
+            std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -278,9 +278,9 @@ class PhTree {
      *
      * @return an iterator over all (filtered) entries in the tree,
      */
-    template <typename FILTER = FilterNoOp>
-    auto begin(FILTER&& filter = FILTER()) const {
-        return tree_.begin(std::forward<FILTER>(filter));
+    template <typename FILTER_FN = FilterNoOp>
+    auto begin(FILTER_FN&& filter = FILTER_FN()) const {
+        return tree_.begin(std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -293,13 +293,13 @@ class PhTree {
      * signature of the default 'FilterNoOp`.
      * @return Result iterator.
      */
-    template <typename FILTER = FilterNoOp, typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
+    template <typename FILTER_FN = FilterNoOp, typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     auto begin_query(
         const QueryBox& query_box,
-        FILTER&& filter = FILTER(),
+        FILTER_FN&& filter = FILTER_FN(),
         QUERY_TYPE query_type = DEFAULT_QUERY_TYPE()) const {
         return tree_.begin_query(
-            query_type(converter_.pre_query(query_box)), std::forward<FILTER>(filter));
+            query_type(converter_.pre_query(query_box)), std::forward<FILTER_FN>(filter));
     }
 
     /*
@@ -317,7 +317,7 @@ class PhTree {
      */
     template <
         typename DISTANCE,
-        typename FILTER = FilterNoOp,
+        typename FILTER_FN = FilterNoOp,
         // Some magic to disable this in case of box keys, i.e. if DIM != DimInternal
         dimension_t DUMMY = DIM,
         typename std::enable_if<(DUMMY == DimInternal), int>::type = 0>
@@ -325,14 +325,14 @@ class PhTree {
         size_t min_results,
         const Key& center,
         DISTANCE&& distance_function = DISTANCE(),
-        FILTER&& filter = FILTER()) const {
+        FILTER_FN&& filter = FILTER_FN()) const {
         // We use pre() instead of pre_query() here because, strictly speaking, we want to
         // find the nearest neighbors of a (fictional) key, which may as well be a box.
         return tree_.begin_knn_query(
             min_results,
             converter_.pre(center),
             std::forward<DISTANCE>(distance_function),
-            std::forward<FILTER>(filter));
+            std::forward<FILTER_FN>(filter));
     }
 
     /*

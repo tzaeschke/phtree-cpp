@@ -560,6 +560,10 @@ clang/gcc are:
 -O3 -mavx -mbmi2
 ```
 
+For Windows, when using the Windows SDK, you may need to define `NOMINMAX` either using the preprocessor `/D` or 
+with `#define NOMINMAX` before importing any windows files. Alternatively, you can import PH-tree dependencies
+__before__ importing any Windows SDK dependencies. 
+
 
 <a id="bazel"></a>
 

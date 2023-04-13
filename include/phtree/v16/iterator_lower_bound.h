@@ -29,15 +29,15 @@ class Node;
  * This iterator starts at a given position defined by "key" and then iterates until end().
  * @tparam T Value type
  * @tparam CONVERT Converter
- * @tparam FILTER Filter
+ * @tparam FILTER_FN Filter
  */
-template <typename T, typename CONVERT, typename FILTER>
-class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER> {
+template <typename T, typename CONVERT, typename FILTER_FN>
+class IteratorLowerBound : public IteratorWithFilter<T, CONVERT, FILTER_FN> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
     using KeyInternalT = typename CONVERT::KeyInternal;
     using NodeT = Node<DIM, T, SCALAR>;
-    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER_FN>::EntryT;
 
   public:
     template <typename F>

@@ -42,12 +42,12 @@ class NodeIterator;
  * For details see  "Efficient Z-Ordered Traversal of Hypercube Indexes" by T. Zäschke, M.C. Norrie,
  * 2017.
  */
-template <typename T, typename CONVERT, typename FILTER>
-class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER> {
+template <typename T, typename CONVERT, typename FILTER_FN>
+class IteratorHC : public IteratorWithFilter<T, CONVERT, FILTER_FN> {
     static constexpr dimension_t DIM = CONVERT::DimInternal;
     using KeyInternal = typename CONVERT::KeyInternal;
     using SCALAR = typename CONVERT::ScalarInternal;
-    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER>::EntryT;
+    using EntryT = typename IteratorWithFilter<T, CONVERT, FILTER_FN>::EntryT;
 
   public:
     template <typename F>

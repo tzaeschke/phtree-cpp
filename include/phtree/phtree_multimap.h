@@ -572,12 +572,12 @@ class PhTreeMultiMap {
      * follow the signature of the default 'FilterNoOp`.
      * The default 'FilterNoOp` filter matches all entries.
      */
-    template <typename CALLBACK, typename FILTER = FilterNoOp>
-    void for_each(CALLBACK&& callback, FILTER&& filter = FILTER()) const {
+    template <typename CALLBACK_FN, typename FILTER_FN = FilterNoOp>
+    void for_each(CALLBACK_FN&& callback, FILTER_FN&& filter = FILTER_FN()) const {
         tree_.for_each(
             NoOpCallback{},
-            WrapCallbackFilter<CALLBACK, FILTER>{
-                std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
+            WrapCallbackFilter<CALLBACK_FN, FILTER_FN>{
+                std::forward<CALLBACK_FN>(callback), std::forward<FILTER_FN>(filter), converter_});
     }
 
     /*
@@ -594,18 +594,18 @@ class PhTreeMultiMap {
      * The default 'FilterNoOp` filter matches all entries.
      */
     template <
-        typename CALLBACK,
-        typename FILTER = FilterNoOp,
+        typename CALLBACK_FN,
+        typename FILTER_FN = FilterNoOp,
         typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     void for_each(
         QueryBox query_box,
-        CALLBACK&& callback,
-        FILTER&& filter = FILTER(),
+        CALLBACK_FN&& callback,
+        FILTER_FN&& filter = FILTER_FN(),
         QUERY_TYPE query_type = QUERY_TYPE()) const {
-        tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK, FILTER>>(
+        tree_.template for_each<NoOpCallback, WrapCallbackFilter<CALLBACK_FN, FILTER_FN>>(
             query_type(converter_.pre_query(query_box)),
             {},
-            {std::forward<CALLBACK>(callback), std::forward<FILTER>(filter), converter_});
+            {std::forward<CALLBACK_FN>(callback), std::forward<FILTER_FN>(filter), converter_});
     }
 
     /*
@@ -615,9 +615,9 @@ class PhTreeMultiMap {
      *
      * @return an iterator over all (filtered) entries in the tree,
      */
-    template <typename FILTER = FilterNoOp>
-    auto begin(FILTER&& filter = FILTER()) const {
-        return CreateIterator(tree_.begin(std::forward<FILTER>(filter)));
+    template <typename FILTER_FN = FilterNoOp>
+    auto begin(FILTER_FN&& filter = FILTER_FN()) const {
+        return CreateIterator(tree_.begin(std::forward<FILTER_FN>(filter)));
     }
 
     /*
@@ -630,13 +630,13 @@ class PhTreeMultiMap {
      * signature of the default 'FilterNoOp`.
      * @return Result iterator.
      */
-    template <typename FILTER = FilterNoOp, typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
+    template <typename FILTER_FN = FilterNoOp, typename QUERY_TYPE = DEFAULT_QUERY_TYPE>
     auto begin_query(
         const QueryBox& query_box,
-        FILTER&& filter = FILTER(),
+        FILTER_FN&& filter = FILTER_FN(),
         QUERY_TYPE&& query_type = QUERY_TYPE()) const {
         return CreateIterator(tree_.begin_query(
-            query_type(converter_.pre_query(query_box)), std::forward<FILTER>(filter)));
+            query_type(converter_.pre_query(query_box)), std::forward<FILTER_FN>(filter)));
     }
 
     /*
@@ -654,7 +654,7 @@ class PhTreeMultiMap {
      */
     template <
         typename DISTANCE,
-        typename FILTER = FilterNoOp,
+        typename FILTER_FN = FilterNoOp,
         // Some magic to disable this in case of box keys
         bool DUMMY = POINT_KEYS,
         typename std::enable_if<DUMMY, int>::type = 0>
@@ -662,14 +662,14 @@ class PhTreeMultiMap {
         size_t min_results,
         const Key& center,
         DISTANCE&& distance_function = DISTANCE(),
-        FILTER&& filter = FILTER()) const {
+        FILTER_FN&& filter = FILTER_FN()) const {
         // We use pre() instead of pre_query() here because, strictly speaking, we want to
         // find the nearest neighbors of a (fictional) key, which may as well be a box.
         return CreateIteratorKnn(tree_.begin_knn_query(
             min_results,
             converter_.pre(center),
             std::forward<DISTANCE>(distance_function),
-            std::forward<FILTER>(filter)));
+            std::forward<FILTER_FN>(filter)));
     }
 
     /*
@@ -751,7 +751,7 @@ class PhTreeMultiMap {
      * This wrapper wraps the Filter and Callback such that the callback is called for every
      * entry in any bucket that matches the user defined IsEntryValid().
      */
-    template <typename CALLBACK, typename FILTER>
+    template <typename CALLBACK_FN, typename FILTER_FN>
     class WrapCallbackFilter {
       public:
         /*
@@ -784,8 +784,8 @@ class PhTreeMultiMap {
         }
 
       private:
-        CALLBACK callback_;
-        FILTER filter_;
+        CALLBACK_FN callback_;
+        FILTER_FN filter_;
         const CONVERTER& converter_;
     };
 
