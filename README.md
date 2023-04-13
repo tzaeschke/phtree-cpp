@@ -572,7 +572,7 @@ __before__ importing any Windows SDK dependencies.
 ```
 http_archive(
     name = "phtree",
-    strip_prefix = "phtree-cpp-v1.6.0",
+    strip_prefix = "phtree-cpp-v1.6.1",
     url = "https://github.com/tzaeschke/phtree-cpp",
 )
 ```
@@ -614,7 +614,7 @@ include(FetchContent)
 FetchContent_Declare(
         phtree
         GIT_REPOSITORY https://github.com/tzaeschke/phtree-cpp.git
-        GIT_TAG v1.6.0
+        GIT_TAG v1.6.1
 )
 FetchContent_MakeAvailable(phtree)
 ```

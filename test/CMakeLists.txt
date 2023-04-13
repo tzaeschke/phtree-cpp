@@ -57,6 +57,10 @@ if (PHTREE_CODE_COVERAGE)
             phtree_multimap_box_d_test.cc
             common/b_plus_tree_hash_map_test.cc
             common/b_plus_tree_map_test.cc
+            common/b_plus_tree_multimap_test.cc
+            # Disabled, see issue #147
+            # common/b_priority_queue_test.cc
+            # common/b_vector_test.cc
             common/base_types_test.cc
             common/bits_test.cc
             common/common_test.cc
