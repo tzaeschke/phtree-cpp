@@ -58,7 +58,7 @@ if (PHTREE_CODE_COVERAGE)
             common/b_plus_tree_hash_map_test.cc
             common/b_plus_tree_map_test.cc
             common/b_plus_tree_multimap_test.cc
-            commonb_priority_queue_test.cc
+            common/b_priority_queue_test.cc
             common/b_vector_test.cc
             common/base_types_test.cc
             common/bits_test.cc
