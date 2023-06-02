@@ -14,19 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: hendrikmuhs/ccache-action@v1.2
+#      - uses: hendrikmuhs/ccache-action@v1.2
 
       - name: Build Version
-        run: clang --version
-
-#      - name: CC
-#        run: export CC=clang
-#
-#      - name: CXX
-#        run: export CXX=clang
-
-      - name: CC
-        run: echo $CC
+        run: $CC --version
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/out
