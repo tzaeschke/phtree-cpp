@@ -4,6 +4,8 @@ on: [ push ]
 
 env:
   BUILD_TYPE: Release
+  CC: clang
+  CXX: clang++
 
 jobs:
   build:
@@ -17,11 +19,11 @@ jobs:
       - name: Build Version
         run: clang --version
 
-      - name: CC
-        run: export CC=clang
-
-      - name: CXX
-        run: export CXX=clang
+#      - name: CC
+#        run: export CC=clang
+#
+#      - name: CXX
+#        run: export CXX=clang
 
       - name: CC
         run: echo $CC
@@ -31,11 +33,11 @@ jobs:
 
       - name: Configure CMake
         working-directory: ${{github.workspace}}/out
-        run: CC=clang CXX=clang cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
+        run: CC=clang CXX=clang++ cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}/out
-        run: CC=clang CXX=clang cmake --build . --config $BUILD_TYPE -j2
+        run: CC=clang CXX=clang++ cmake --build . --config $BUILD_TYPE -j2
 
       - name: Test
         working-directory: ${{github.workspace}}/out
