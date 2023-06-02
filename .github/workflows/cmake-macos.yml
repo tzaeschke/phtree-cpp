@@ -1,4 +1,4 @@
-name: CMake MacOS build
+name: CMake MacOS Clang build
 
 on: [ push ]
 
@@ -18,6 +18,15 @@ jobs:
 
       - name: Build Version
         run: clang --version
+
+      - name: CC
+        run: export CC=clang-14
+
+      - name: CXX
+        run: export CXX=clang-14
+
+      - name: CC
+        run: echo $CC
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/out
