@@ -19,9 +19,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      #      - name: Setup bazel
-      #        uses: bazelbuild/setup-bazelisk@v2
-
       # This causes build failures
       #      - name: Mount bazel cache  # Optional
       #        uses: actions/cache@v3
