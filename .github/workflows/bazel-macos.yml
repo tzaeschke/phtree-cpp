@@ -1,4 +1,4 @@
-name: Bazel MacOS clang build
+name: Bazel MacOS AppleClang build
 
 on: [ push ]
 
@@ -9,7 +9,7 @@ env:
 jobs:
   build:
     name: Run bazel
-    runs-on: macos-12
+    runs-on: macos-latest
 
     defaults:
       run:
