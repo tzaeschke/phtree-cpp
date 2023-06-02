@@ -3,7 +3,6 @@ name: CMake MacOS Clang build
 on: [ push ]
 
 env:
-  BUILD_TYPE: Release
   CC: clang
   CXX: clang++
 
@@ -24,7 +23,7 @@ jobs:
 
       - name: Configure CMake
         working-directory: ${{github.workspace}}/out
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
+        run: cmake $GITHUB_WORKSPACE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}/out
