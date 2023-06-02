@@ -36,7 +36,7 @@ namespace improbable::phtree::detail {
 
 #if defined(__clang__) || defined(__GNUC__)
 // See https://en.cppreference.com/w/cpp/language/types
-inline bit_width_t CountLeadingZeros(std::uint64_t bit_string) {
+inline bit_width_t CountLeadingZeros64(std::uint64_t bit_string) {
     return bit_string == 0 ? 64U : __builtin_clzll(bit_string);
 }
 
@@ -44,7 +44,7 @@ inline bit_width_t CountLeadingZeros(std::uint32_t bit_string) {
     return bit_string == 0 ? 32U : __builtin_clz(bit_string);
 }
 
-inline bit_width_t CountTrailingZeros(std::uint64_t bit_string) {
+inline bit_width_t CountTrailingZeros64(std::uint64_t bit_string) {
     return bit_string == 0 ? 64U : __builtin_ctzll(bit_string);
 }
 
@@ -54,7 +54,7 @@ inline bit_width_t CountTrailingZeros(std::uint32_t bit_string) {
 
 #elif defined(_MSC_VER)
 // https://docs.microsoft.com/en-us/cpp/intrinsics/x64-amd64-intrinsics-list?view=vs-2019
-inline bit_width_t CountLeadingZeros(std::uint64_t bit_string) {
+inline bit_width_t CountLeadingZeros64(std::uint64_t bit_string) {
     unsigned long leading_zero = 0;
     return _BitScanReverse64(&leading_zero, bit_string) ? 63 - leading_zero : 64U;
 }
@@ -64,7 +64,7 @@ inline bit_width_t CountLeadingZeros(std::uint32_t bit_string) {
     return _BitScanReverse(&leading_zero, bit_string) ? 31 - leading_zero : 32U;
 }
 
-inline bit_width_t CountTrailingZeros(std::uint64_t bit_string) {
+inline bit_width_t CountTrailingZeros64(std::uint64_t bit_string) {
     unsigned long trailing_zero = 0;
     return _BitScanForward64(&trailing_zero, bit_string) ? trailing_zero : 64U;
 }

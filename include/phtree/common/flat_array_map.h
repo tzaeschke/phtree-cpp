@@ -184,7 +184,7 @@ class flat_array_map {
 
     [[nodiscard]] Key lower_bound_index(Key index) const noexcept {
         assert(index < SIZE);
-        Key num_zeros = CountTrailingZeros((Key)(occupancy >> index));
+        Key num_zeros = CountTrailingZeros64(occupancy >> index);
         // num_zeros may be equal to SIZE if no bits remain
         return std::min(SIZE, index + num_zeros);
     }
