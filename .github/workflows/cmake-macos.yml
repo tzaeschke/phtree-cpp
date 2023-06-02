@@ -32,7 +32,7 @@ jobs:
         run: cmake -E make_directory ${{github.workspace}}/out
 
       - name: Configure CMake
-        working-directory: ${{github.workspace}}\out
+        working-directory: ${{github.workspace}}/out
         run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
 
       - name: Build
