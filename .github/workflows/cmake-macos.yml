@@ -14,8 +14,6 @@ jobs:
 
       - uses: hendrikmuhs/ccache-action@v1.2
 
-      - uses: ilammy/msvc-dev-cmd@v1
-
       - name: Build Version
         run: clang --version
 
@@ -33,11 +31,11 @@ jobs:
 
       - name: Configure CMake
         working-directory: ${{github.workspace}}/out
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
+        run: CC=clang CXX=clang cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S ${{github.workspace}} -B ${{github.workspace}}/out -DPHTREE_BUILD_EXAMPLES=ON -DPHTREE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}/out
-        run: cmake --build . --config $BUILD_TYPE -j2
+        run: CC=clang CXX=clang cmake --build . --config $BUILD_TYPE -j2
 
       - name: Test
         working-directory: ${{github.workspace}}/out
