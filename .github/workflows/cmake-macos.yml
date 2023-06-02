@@ -28,7 +28,7 @@ jobs:
 
       - name: Build
         working-directory: ${{github.workspace}}/out
-        run: cmake --build . --config $BUILD_TYPE -j2
+        run: cmake --build .
 
       - name: Test
         working-directory: ${{github.workspace}}/out
