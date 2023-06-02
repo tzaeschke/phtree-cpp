@@ -40,17 +40,17 @@ inline bit_width_t CountLeadingZeros(std::uint64_t bit_string) {
     return bit_string == 0 ? 64U : __builtin_clzll(bit_string);
 }
 
-inline bit_width_t CountLeadingZeros(std::uint32_t bit_string) {
-    return bit_string == 0 ? 32U : __builtin_clz(bit_string);
-}
+// inline bit_width_t CountLeadingZeros(std::uint32_t bit_string) {
+//     return bit_string == 0 ? 32U : __builtin_clz(bit_string);
+// }
 
 inline bit_width_t CountTrailingZeros(std::uint64_t bit_string) {
     return bit_string == 0 ? 64U : __builtin_ctzll(bit_string);
 }
 
-inline bit_width_t CountTrailingZeros(std::uint32_t bit_string) {
-    return bit_string == 0 ? 32U : __builtin_ctz(bit_string);
-}
+// inline bit_width_t CountTrailingZeros(std::uint32_t bit_string) {
+//     return bit_string == 0 ? 32U : __builtin_ctz(bit_string);
+// }
 
 #elif defined(_MSC_VER)
 // https://docs.microsoft.com/en-us/cpp/intrinsics/x64-amd64-intrinsics-list?view=vs-2019
