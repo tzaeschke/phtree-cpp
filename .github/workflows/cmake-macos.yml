@@ -20,10 +20,10 @@ jobs:
         run: clang --version
 
       - name: CC
-        run: export CC=clang-14
+        run: export CC=clang
 
       - name: CXX
-        run: export CXX=clang-14
+        run: export CXX=clang
 
       - name: CC
         run: echo $CC
