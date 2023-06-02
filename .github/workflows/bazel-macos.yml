@@ -29,9 +29,10 @@ jobs:
       #          path: "~/.cache/bazel"
       #          key: bazel
 
-      - name: Clang format
-        shell: bash
-        run: ./ci/linting/clang-format.sh
+      # This is (sometimes?!?!) extremely slow on MacOS
+      #      - name: Clang format
+      #        shell: bash
+      #        run: ./ci/linting/clang-format.sh
 
       - name: Bazel format
         shell: bash
