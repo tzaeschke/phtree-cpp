@@ -17,15 +17,12 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Build1
-        working-directory: ${{github.workspace}}\out
         run: clang --version
 
       - name: Build2
-        working-directory: ${{github.workspace}}\out
         run: swift --version
 
       - name: Build3
-        working-directory: ${{github.workspace}}\out
         run: swift -version
 
       - name: Create Build Environment
