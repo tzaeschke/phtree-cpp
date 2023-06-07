@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Fixed
-- Fixed links in CHANGELOG and README. [#151](https://github.com/tzaeschke/phtree-cpp/issues/151)
+- Fixed links in CHANGELOG and README. [#152](https://github.com/tzaeschke/phtree-cpp/issues/152)
 - Compiler errors with AppleClang 14. [#149](https://github.com/tzaeschke/phtree-cpp/issues/149)
 
 ## [1.6.1] - 2023-04-13
