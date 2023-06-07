@@ -17,6 +17,7 @@
 #include "phtree/common/b_plus_tree_multimap.h"
 #include <include/gtest/gtest.h>
 #include <random>
+#include <unordered_map>
 
 using namespace phtree::bptree;
 

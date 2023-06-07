@@ -25,7 +25,7 @@ TEST(PhTreeBitsTest, CountLeadingZeros64) {
     std::uint64_t x = 1;
     x <<= 63;
     for (int i = 0; i < 64; i++) {
-        int ctz = CountLeadingZeros(x);
+        int ctz = CountLeadingZeros64(x);
         ASSERT_EQ(i, ctz);
         x >>= 1;
     }
@@ -34,7 +34,7 @@ TEST(PhTreeBitsTest, CountLeadingZeros64) {
 TEST(PhTreeBitsTest, CountTrailingZeros64) {
     std::uint64_t x = 1;
     for (int i = 0; i < 64; i++) {
-        int ctz = CountTrailingZeros(x);
+        int ctz = CountTrailingZeros64(x);
         ASSERT_EQ(i, ctz);
         x <<= 1;
     }

@@ -71,10 +71,10 @@ class b_plus_tree_map {
 
     // COUNT_MAX indicates that a tree will never have to hold more than COUNT_MAX entries.
     // We can use this to optimize node sizes for small trees.
-    constexpr static size_t LEAF_MAX = std::min(std::uint64_t(16), COUNT_MAX);
+    constexpr static size_t LEAF_MAX = std::min(size_t(16), COUNT_MAX);
     // Special case for small COUNT with smaller inner leaf or
     // trees with a single inner leaf. '*2' is added because leaf filling is not compact.
-    constexpr static size_t INNER_MAX = std::min(std::uint64_t(16), COUNT_MAX / LEAF_MAX * 2);
+    constexpr static size_t INNER_MAX = std::min(size_t(16), COUNT_MAX / LEAF_MAX * 2);
     static_assert(LEAF_MAX > 2 && LEAF_MAX < 1000);
     static_assert(COUNT_MAX <= (16 * 16) || (INNER_MAX > 2 && INNER_MAX < 1000));
     // TODO This could be improved but requires a code change to move > 1 entry when merging.

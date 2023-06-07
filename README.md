@@ -6,6 +6,7 @@ This library is C++ / header only.
 ![Bazel Linux build](https://github.com/tzaeschke/phtree-cpp/actions/workflows/bazel.yml/badge.svg)
 ![CMake Linux build](https://github.com/tzaeschke/phtree-cpp/actions/workflows/cmake.yml/badge.svg)
 ![CMake MSBuild 17.3.1](https://github.com/tzaeschke/phtree-cpp/actions/workflows/cmake-windows.yml/badge.svg)
+![Bazel MacOS AppleClang 14](https://github.com/tzaeschke/phtree-cpp/actions/workflows/bazel-macos.yml/badge.svg)
 [![codecov](https://codecov.io/gh/tzaeschke/phtree-cpp/branch/master/graph/badge.svg?token=V5XVRQG754)](https://codecov.io/gh/tzaeschke/phtree-cpp)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -549,11 +550,13 @@ The examples, tests and benchmarks can be build with bazel or cmake.
 
 ### Build system & dependencies
 
-PH-Tree can be built with [Bazel](https://bazel.build) (primary build system) or with 
+PH-tree can be built with [Bazel](https://bazel.build) (primary build system) or with 
 [cmake](https://cmake.org/) *3.14*. 
 All code is written in C++ targeting the C++17 standard. 
-The code has been verified to compile on Linux with Clang 11 and GCC 9, and on Windows with Visual Studio 2019
-(except benchmarks, which don't work with VS).
+The code has been verified to compile on Ubuntu Linux with Clang 14 and GCC 12, 
+on Windows with Visual Studio 2022 (cmake only, and except benchmarks, which don't work with VS) 
+and on MacOS with AppleClang 14 (bazel only).  
+
 The PH-tree makes use of vectorization and CountTrailingZeros/CTZ/TZCNT, so suggested compilation options for 
 clang/gcc are:
 ```

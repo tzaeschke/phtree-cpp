@@ -17,7 +17,7 @@
 #include "phtree/phtree.h"
 #include <include/gtest/gtest.h>
 #include <random>
-#include <unordered_set>
+#include <unordered_map>
 
 using namespace improbable::phtree;
 

@@ -1,0 +1,48 @@
+name: Bazel MacOS AppleClang build
+
+on: [ push ]
+
+env:
+  CC: clang
+  CXX: clang++
+
+jobs:
+  build:
+    name: Run bazel
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # This causes build failures
+      #      - name: Mount bazel cache  # Optional
+      #        uses: actions/cache@v3
+      #        with:
+      #          path: "~/.cache/bazel"
+      #          key: bazel
+
+      # This is (sometimes?!?!) extremely slow on MacOS
+      #      - name: Clang format
+      #        shell: bash
+      #        run: ./ci/linting/clang-format.sh
+
+      #      - name: Bazel format
+      #        shell: bash
+      #        run: ./ci/linting/buildifier.sh
+
+      - name: Build
+        shell: bash
+        run: bazel build ...
+
+      - name: Test
+        shell: bash
+        run: bazel test ...
+
+      - name: Test
+        shell: bash
+        run: bazel test //test:phtree_test --config=asan

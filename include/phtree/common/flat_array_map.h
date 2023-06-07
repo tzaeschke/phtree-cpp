@@ -84,7 +84,7 @@ class flat_map_iterator {
     Key first;
     const flat_array_map<Key, Value, SIZE>* map_;
 };
-}  // namespace detail
+}  // namespace
 
 /*
  * The array_map is a flat map implementation that uses an array of SIZE=2^DIM. The key is
@@ -184,7 +184,7 @@ class flat_array_map {
 
     [[nodiscard]] Key lower_bound_index(Key index) const noexcept {
         assert(index < SIZE);
-        Key num_zeros = CountTrailingZeros(occupancy >> index);
+        Key num_zeros = CountTrailingZeros64(occupancy >> index);
         // num_zeros may be equal to SIZE if no bits remain
         return std::min(SIZE, index + num_zeros);
     }
@@ -305,6 +305,6 @@ class array_map {
     flat_array_map<Key, Value, SIZE>* data_;
 };
 
-}  // namespace improbable::phtree
+}  // namespace improbable::phtree::detail
 
 #endif  // PHTREE_COMMON_FLAT_ARRAY_MAP_H

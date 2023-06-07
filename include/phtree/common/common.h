@@ -98,7 +98,9 @@ static bit_width_t NumberOfDivergingBits(
         diff |= (v1[i] ^ v2[i]);
     }
     auto diff2 = reinterpret_cast<bit_mask_t<SCALAR>&>(diff);
-    assert(CountLeadingZeros(diff2) <= MAX_BIT_WIDTH<SCALAR>);
+    if constexpr (MAX_BIT_WIDTH<SCALAR> > 32) {
+        return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros64(diff2);
+    }
     return MAX_BIT_WIDTH<SCALAR> - CountLeadingZeros(diff2);
 }
 
