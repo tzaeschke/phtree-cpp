@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Fixed
+- Fixed links in CHANGELOG and README. [#151](https://github.com/tzaeschke/phtree-cpp/issues/151)
 - Compiler errors with AppleClang 14. [#149](https://github.com/tzaeschke/phtree-cpp/issues/149)
 
 ## [1.6.1] - 2023-04-13
@@ -235,13 +236,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing.
 
 
-[Unreleased]: https://github.com/improbable-eng/phtree-cpp/compare/v1.6.1...HEAD
-[1.6.1]: https://github.com/improbable-eng/phtree-cpp/compare/v1.6.0...v1.6.1
-[1.6.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.5.0...v1.6.0
-[1.5.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.4.0...v1.5.0
-[1.4.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.3.0...v1.4.0
-[1.3.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.2.0...v1.3.0
-[1.2.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.1.0...v1.2.0
+[Unreleased]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.1.0...tzaeschke:phtree-cpp:v1.2.0
 [1.1.1]: https://github.com/improbable-eng/phtree-cpp/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/improbable-eng/phtree-cpp/compare/v1.0.0...v1.1.0
 [1.0.1]: https://github.com/improbable-eng/phtree-cpp/compare/v1.0.0...v1.0.1
