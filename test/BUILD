@@ -311,3 +311,16 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "phtree_test_issue_153",
+    timeout = "long",
+    srcs = [
+        "phtree_test_issue_153.cc",
+    ],
+    linkstatic = True,
+    deps = [
+        "//:phtree",
+        "@gtest//:gtest_main",
+    ],
+)

@@ -464,7 +464,7 @@ class PhTreeV16 {
         // It may happen that node_entry is not the immediate parent, but that is okay!
         if (entry != nullptr && entry->GetValue().empty()) {
             bool found = false;
-            while (node_entry != nullptr && node_entry->IsNode()) {
+            while (node_entry != nullptr) {
                 found = false;
                 node_entry =
                     node_entry->GetNode().Erase(key, node_entry, node_entry != &root_, found);
