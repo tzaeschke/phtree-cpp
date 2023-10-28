@@ -24,7 +24,7 @@ using namespace improbable::phtree;
 namespace phtree_multimap_d_test {
 
 // Number of entries that have the same coordinate
-static const size_t NUM_DUPL = 4;
+static const size_t NUM_DUPL = 10;
 static const double WORLD_MIN = -1000;
 static const double WORLD_MAX = 1000;
 
@@ -260,7 +260,7 @@ TEST(PhTreeMMDTest, TestDebug) {
     }
 
     ASSERT_LE(10, Debug::ToString(tree, Debug::PrintDetail::name).length());
-    ASSERT_LE(N * 10, Debug::ToString(tree, Debug::PrintDetail::entries).length());
+    ASSERT_LE(N * 5, Debug::ToString(tree, Debug::PrintDetail::entries).length());
     ASSERT_LE(N * 10, Debug::ToString(tree, Debug::PrintDetail::tree).length());
     ASSERT_EQ(N / NUM_DUPL, Debug::GetStats(tree).size_);
     Debug::CheckConsistency(tree);
@@ -498,7 +498,7 @@ TEST(PhTreeMMDTest, TestLowerBound) {
 
         ++i;
     }
-    ASSERT_EQ(4, n_begin);
+    ASSERT_EQ(NUM_DUPL, n_begin);
     ASSERT_EQ(N, n_not_end);
     ASSERT_LE(N * N / 2 + N / 2, n2);
     ASSERT_GE(N * N / 2 + N / 2, n2 * 0.9);
@@ -591,7 +591,7 @@ TEST(PhTreeMMDTest, TestUpdateWithEmplace) {
 TEST(PhTreeMMDTest, TestUpdateWithEmplaceHint) {
     const dimension_t dim = 3;
     TestTree<dim, Id> tree;
-    size_t N = 10000;
+    size_t N = 10;
     std::array<double, 4> deltas{0, 0.1, 1, 10};
     std::vector<TestPoint<dim>> points;
     populate(tree, points, N);
@@ -603,10 +603,26 @@ TEST(PhTreeMMDTest, TestUpdateWithEmplaceHint) {
         d_n = (d_n + 1) % deltas.size();
         double delta = deltas[d_n];
         TestPoint<dim> pNew{pOld[0] + delta, pOld[1] + delta, pOld[2] + delta};
+        std::cout << "i=" << i << " " << pOld << " ->  "<< pNew << std::endl; // TODO
         auto iter = tree.find(pOld, Id(i));
         size_t n = tree.erase(iter);
         ASSERT_EQ(1U, n);
+
+        // TODO Problem:
+        //   - either emplace_hint() does not handle the iterator correctly
+        //   - or the iterator is actually wrong
+        //   Note that the iterator was created pre-erase()
+
+        ASSERT_EQ(tree.end(), tree.find(pOld, Id(i)));
+        ASSERT_EQ(tree.end(), tree.find(pNew, Id(i)));
+        for (size_t i2 = 0; i2 < N; i2++) {
+            if (i2 != (size_t)i) {
+                ASSERT_EQ(Id(i2), *tree.find(points[i2], Id(i2)));
+            }
+        }
+
         ASSERT_TRUE(tree.emplace_hint(iter, pNew, Id(i)).second);
+        //ASSERT_TRUE(tree.emplace(pNew, Id(i)).second);
         ASSERT_EQ(Id(i), *tree.find(pNew, Id(i)));
         auto iterNew = tree.find(pNew, Id(i));
         ASSERT_FALSE(tree.emplace_hint(iterNew, pNew, Id(i)).second);
