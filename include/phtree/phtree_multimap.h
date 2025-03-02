@@ -829,8 +829,7 @@ using PhTreeMultiMapF = PhTreeMultiMap<DIM, T, CONVERTER, BUCKET>;
 template <
     dimension_t DIM,
     typename T,
-    //typename CONVERTER_BOX = ConverterBoxBase<DIM, long, long>,
-    typename CONVERTER_BOX = SimpleBoxConverter<DIM, scalar_64_t, scalar_64_t, ScalarConverterNoOp<scalar_64_t>>,
+    typename CONVERTER_BOX,
     typename BUCKET = b_plus_tree_hash_set<T>>
 using PhTreeMultiMapBox = PhTreeMultiMap<DIM, T, CONVERTER_BOX, BUCKET, false, QueryIntersect>;
 

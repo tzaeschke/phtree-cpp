@@ -71,18 +71,6 @@ class ScalarConverterIEEE {
     }
 };
 
-template <typename SCALAR = scalar_64_t>
-class ScalarConverterNoOp {
-  public:
-    static SCALAR pre(SCALAR value) noexcept {
-        return value;
-    }
-
-    static SCALAR post(SCALAR value) {
-        return value;
-    }
-};
-
 /*
  * The ScalarMultiplyConverter converts floating point scalars 'f' (double or float) to integral
  * scalars 'i' and back.

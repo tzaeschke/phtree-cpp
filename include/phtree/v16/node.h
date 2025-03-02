@@ -47,8 +47,7 @@ using EntryMap = typename std::conditional_t<
     detail::array_map<detail::hc_pos_dim_t<DIM>, Entry, (size_t(1) << DIM)>,
     typename std::conditional_t<
         DIM <= 8,
-        //detail::sparse_map<detail::hc_pos_dim_t<DIM>, Entry>,
-        std::map<detail::hc_pos_dim_t<DIM>, Entry>,
+        detail::sparse_map<detail::hc_pos_dim_t<DIM>, Entry>,
         ::phtree::bptree::b_plus_tree_map<detail::hc_pos_dim_t<DIM>, Entry, (uint64_t(1) << DIM)>>>;
 
 template <dimension_t DIM, typename Entry>
