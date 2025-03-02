@@ -3,7 +3,7 @@ licenses(["notice"])
 cc_library(
     name = "spdlog",
     hdrs = glob([
-#        "include/**/*.cc",
+        "include/**/*.cc",
         "include/**/*.h",
     ]),
     includes = ["include"],
