@@ -19,7 +19,7 @@
 #include <include/gtest/gtest.h>
 #include <random>
 #include <vector>
-
+#include<iostream>
 using namespace improbable::phtree;
 
 namespace phtree_test_issue_153 {
@@ -241,6 +241,7 @@ TEST(PhTreeTestIssue153, TestIssue153_New2025) {
         {{-4294'967296, -8589'934592}, {4294'967296, 0}},
         4);
     PhTreeDebugHelper::CheckConsistency(tree);  // This line passes fine.
+    std::cout<<"last op" << std::endl;
     tree.relocate(
         {{-4294'967296, -8589'934592}, {4294'967296, 0}},
         {{-4294'967296, -10737'418240}, {4294'967296, -2147'483648}},
