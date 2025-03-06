@@ -396,8 +396,10 @@ class PhTreeV16 {
         EntryT* current_entry = &root_;    // An entry.
         EntryT* old_node_entry = nullptr;  // Node that contains entry to be removed
         EntryT* new_node_entry = nullptr;  // Node that will contain the new entry
+        EntryT* old_node_parent_entry = nullptr;  // Node that contains entry to be removed
         // Find node or entry for removal
         while (current_entry && current_entry->IsNode()) {
+            old_node_parent_entry = old_node_entry;
             old_node_entry = current_entry;
             auto postfix_len = old_node_entry->GetNodePostfixLen();
             if (postfix_len + 1 >= n_diverging_bits) {
@@ -431,7 +433,12 @@ class PhTreeV16 {
         auto new_entry = new_node_entry;
         bool same_node = old_node_entry == new_node_entry;
         bool is_inserted = false;
+        bool old_node_entry_valid = true;
         while (new_entry && new_entry->IsNode()) {
+            if (old_node_entry_valid && old_node_parent_entry == new_node_entry) {
+                // modifying old_node_entry's parent node invalidates old_node_entry
+                old_node_entry_valid = false;
+            }
             new_node_entry = new_entry;
             is_inserted = false;
             new_entry =
@@ -454,6 +461,9 @@ class PhTreeV16 {
         if (result == 0) {
             clean_up(new_key, new_entry, new_node_entry);
         } else {
+            if (!old_node_entry_valid) {
+                old_node_entry = old_node_parent_entry->GetNode().Find(old_key, old_node_parent_entry->GetNodePostfixLen());
+            }
             clean_up(old_key, old_entry, old_node_entry);
         }
         return result;

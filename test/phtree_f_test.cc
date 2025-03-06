@@ -68,10 +68,10 @@ bool comparePointDistance(PointDistance& i1, PointDistance& i2) {
 }
 
 template <dimension_t DIM>
-double distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
-    double sum2 = 0;
+float distance(const TestPoint<DIM>& p1, const TestPoint<DIM>& p2) {
+    float sum2 = 0;
     for (dimension_t i = 0; i < DIM; i++) {
-        double d = (double)(p1[i]) - (double)p2[i];
+        float d = (float)(p1[i]) - (float)p2[i];
         sum2 += d * d;
     }
     return sqrt(sum2);
