@@ -31,7 +31,7 @@ using TestTree = PhTreeF<DIM, T>;
 class FloatRng {
   public:
     FloatRng(double minIncl, double maxExcl)
-    : eng(42), rnd{static_cast<float>(minIncl), static_cast<float>(maxExcl)} {}
+    : eng(), rnd{static_cast<float>(minIncl), static_cast<float>(maxExcl)} {}
 
     float next() {
         return rnd(eng);
