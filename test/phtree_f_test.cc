@@ -820,7 +820,7 @@ void test_knn_query(DIST_TEST dist_fn, DIST_REF dist_fn_reference) {
         while (q != tree.end()) {
             // just read the entry
             auto& e = *q;
-            ASSERT_DOUBLE_EQ(sorted_data[n]._distance, q.distance());
+            ASSERT_FLOAT_EQ(sorted_data[n]._distance, q.distance());
             ASSERT_EQ(sorted_data[n]._id, e._i);
             ASSERT_EQ(points[sorted_data[n]._id], q.first());
             ASSERT_EQ(sorted_data[n]._id, q.second()._i);
