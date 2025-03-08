@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Nothing yet
+
+## [1.6.2] - 2025-03-08
 ### Fixed
 - Fixed links in CHANGELOG and README. [#152](https://github.com/tzaeschke/phtree-cpp/issues/152)
 - Compiler errors with AppleClang 14. [#149](https://github.com/tzaeschke/phtree-cpp/issues/149)
@@ -238,7 +241,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing.
 
 
-[Unreleased]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.4.0...v1.5.0
