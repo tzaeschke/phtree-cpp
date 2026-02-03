@@ -1,3 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
@@ -11,7 +13,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
     alwayslink = 1,
@@ -28,7 +30,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -44,7 +46,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -60,7 +62,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -76,7 +78,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -92,7 +94,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -108,7 +110,7 @@ cc_binary(
         ":benchmark",
         "//:phtree",
         "//include/phtree/common",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -123,7 +125,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -138,7 +140,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -153,7 +155,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -168,7 +170,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -183,7 +185,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -198,7 +200,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -213,7 +215,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -228,7 +230,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -243,7 +245,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -258,7 +260,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -273,7 +275,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -288,7 +290,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -303,7 +305,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -318,7 +320,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -333,7 +335,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -348,7 +350,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -363,7 +365,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -378,7 +380,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -393,7 +395,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -408,7 +410,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -423,7 +425,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -438,7 +440,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -453,7 +455,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )
@@ -468,7 +470,7 @@ cc_binary(
     deps = [
         ":benchmark",
         "//:phtree",
-        "@gbenchmark//:benchmark",
+        "@google_benchmark//:benchmark",
         "@spdlog",
     ],
 )

@@ -1,3 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:private"])
 
 cc_test(
@@ -9,7 +11,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -22,7 +24,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -35,7 +37,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -48,7 +50,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -61,7 +63,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -74,7 +76,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -87,7 +89,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -100,7 +102,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -113,7 +115,7 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -126,6 +128,6 @@ cc_test(
     linkstatic = True,
     deps = [
         "//:phtree",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
