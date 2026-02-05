@@ -1,39 +1,21 @@
-# Bazel bootstrapping
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
-
-# NOTE: We make third_party/ its own bazel workspace because it allows to run `bazel build ...` without
-# having all targets defined in third-party BUILD files in that directory buildable.
-local_repository(
-    name = "third_party",
-    path = "third_party",
+module(
+    name = "phtree-cpp",
+    version = "1.6.2",
 )
 
-# External PH-Tree dependencies
+# Bazel rules repositories.
+bazel_dep(name = "rules_shell", version = "0.6.1")
+bazel_dep(name = "rules_cc", version = "0.2.16")
+bazel_dep(name = "platforms", version = "1.0.0")
 
-http_archive(
-    name = "spdlog",
-    build_file = "@third_party//spdlog:BUILD",
-    sha256 = "b38e0bbef7faac2b82fed550a0c19b0d4e7f6737d5321d4fd8f216b80f8aee8a",
-    strip_prefix = "spdlog-1.5.0",
-    url = "https://github.com/gabime/spdlog/archive/v1.5.0.tar.gz",
-)
-
-http_archive(
-    name = "gbenchmark",
-    sha256 = "6132883bc8c9b0df5375b16ab520fac1a85dc9e4cf5be59480448ece74b278d4",
-    strip_prefix = "benchmark-1.6.1",
-    url = "https://github.com/google/benchmark/archive/v1.6.1.tar.gz",
-)
-
-http_archive(
-    name = "gtest",
-    sha256 = "ad7fdba11ea011c1d925b3289cf4af2c66a352e18d4c7264392fead75e919363",
-    strip_prefix = "googletest-1.13.0",
-    url = "https://github.com/google/googletest/archive/v1.13.0.tar.gz",
-)
+# Dependencies.
+bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
+bazel_dep(name = "spdlog", version = "1.17.0")
+bazel_dep(name = "google_benchmark", version = "1.9.5")
 
 # Development environment tooling
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 BUILDIFIER_VERSION = "0.29.0"
 

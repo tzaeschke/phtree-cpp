@@ -2,8 +2,6 @@
 build --compilation_mode=dbg
 build --host_compilation_mode=fastbuild
 build --verbose_failures
-build --experimental_strict_action_env
-build --experimental_guard_against_concurrent_changes
 # This causes bazel to pass --config=windows/macos/linux automatically for us.
 build --enable_platform_specific_config
 # We enable the nocopts flag because it's used in the OpenSSL rules
@@ -23,6 +21,9 @@ build:release --host_compilation_mode=opt
 
 build:ci --keep_going
 build:ci --announce_rc
+
+# Use -isystem for third-party libs to get warning suppressions.
+common --features=external_include_paths --host_features=external_include_paths
 
 #build:linux --copt="-O1"
 #build:linux --copt="-march=skylake"
