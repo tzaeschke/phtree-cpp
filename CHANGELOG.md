@@ -5,7 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Nothing yet
+
+### Changed
+- Added support for bazel 8 and 9, thanks to @polasek
+  [#161](https://github.com/tzaeschke/phtree-cpp/issues/161)
 
 ## [1.6.2] - 2025-03-08
 ### Fixed
