@@ -43,7 +43,7 @@ jobs:
         run: |
           cd test/CMakeFiles/all_tests.dir/
           lcov --directory . --capture -o coverage.info --ignore-errors mismatch
-          lcov -r coverage.info */build/* */test/* */c++/* */gtest/* -o coverageFiltered.info --ignore-errors mismatch
+          lcov -r coverage.info */build/* */test/* */c++/* -o coverageFiltered.info --ignore-errors mismatch
           lcov --list coverageFiltered.info --ignore-errors mismatch
           bash <(curl -s https://codecov.io/bash) -f coverageFiltered.info || echo "Upload failed"
 
