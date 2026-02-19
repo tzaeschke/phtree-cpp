@@ -102,7 +102,7 @@ cc_test(
 #    linkstatic = True,
 #    deps = [
 #        "//:phtree",
-#        "@gtest//:gtest_main",
+#        "@googletest//:gtest_main",
 #    ],
 #)
 
