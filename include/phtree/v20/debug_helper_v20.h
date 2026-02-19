@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
-#ifndef PHTREE_V16_DEBUG_HELPER_H
-#define PHTREE_V16_DEBUG_HELPER_H
+#ifndef PHTREE_V20_DEBUG_HELPER_H
+#define PHTREE_V20_DEBUG_HELPER_H
 
-#include "node.h"
+#include "phtree/v20/node.h"
 #include "phtree/common/common.h"
 #include "phtree/common/debug_helper.h"
-#include "phtree_v16.h"
+#include "phtree_v20.h"
 #include <string>
 
-namespace improbable::phtree::v16 {
+namespace improbable::phtree::v20 {
 
 template <dimension_t DIM, typename T, typename SCALAR>
-class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
+class DebugHelperV20 : public PhTreeDebugHelper::DebugHelper {
     using EntryT = Entry<DIM, T, SCALAR>;
 
   public:
-    DebugHelperV16(const EntryT& root, size_t size) : root_{root}, size_{size} {}
+    DebugHelperV20(const EntryT& root, size_t size) : root_{root}, size_{size} {}
 
     /*
      * Depending on the detail parameter this returns:
@@ -47,7 +47,7 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
         std::ostringstream os;
         switch (detail) {
         case Enum::name:
-            os << "PH-TreeV16-C++";
+            os << "PH-TreeV20-C++";
             break;
         case Enum::entries:
             ToStringPlain(os, root_);
@@ -144,6 +144,6 @@ class DebugHelperV16 : public PhTreeDebugHelper::DebugHelper {
     const EntryT& root_;
     const size_t size_;
 };
-}  // namespace improbable::phtree::v16
+}  // namespace improbable::phtree::v20
 
-#endif  // PHTREE_V16_DEBUG_HELPER_H
+#endif  // PHTREE_V20_DEBUG_HELPER_H
