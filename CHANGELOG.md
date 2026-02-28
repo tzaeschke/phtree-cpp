@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Migration to bazel 9.0.0 (7 should still work). Thanks to @polasek
   [#142](https://github.com/tzaeschke/phtree-cpp/issues/142)
   [#161](https://github.com/tzaeschke/phtree-cpp/pull/161)
-- Release How-To, including support for bazel central registry (BCR)
+- Updated build files, new Release How-To with support for bazel central registry (BCR)
   [#163](https://github.com/tzaeschke/phtree-cpp/pull/163)
 
 ## [1.6.2] - 2025-03-08
