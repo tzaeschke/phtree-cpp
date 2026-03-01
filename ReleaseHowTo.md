@@ -3,6 +3,14 @@
 
 ## Verify code
 
+### Run tests
+CC=gcc bazel test ... --config=asan
+CC=clang bazel test ... --config=asan
+CC=clang bazel test ... --config=msan
+CC=clang bazel test ... --config=ubsan
+
+Record versions: e.g. gcc 13.3, clang 18.1.3
+
 ### Run examples
 ```shell
 bazel run //examples:example
@@ -66,6 +74,11 @@ bazel build //:phtree
 Checkout personal fork of bazel-central-registry.
 Create branch `phtree-cpp@1.7.0`.
 
+#### Initially
+Only for first upload: `bazel run //tools:add_module`
+Test target: `//...`
+
+
 #### After modifying any file
 
 Recreate hashes for `source.json`
@@ -92,9 +105,8 @@ https://github.com/bazel-contrib/publish-to-bcr
 
 #### Test with Test repos
 
-Check out `test-phtree-cpp-bazel` and run:
+Check out `test-phtree-cpp-bazel` and run (**replace path with actual path**):
 
 ```shell
-bazel shutdown && bazel build --enable_bzlmod --registry="file:///home/.../bazel-central-registry" --lockfile_mode=off @phtree-cpp//:phtree-cpp
---> Target might be incorrect
+bazel shutdown && bazel build --enable_bzlmod --registry="file:///home/ FIX PATH /bazel-central-registry" --lockfile_mode=off ...
 ```
