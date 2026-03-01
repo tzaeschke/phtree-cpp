@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   [#163](https://github.com/tzaeschke/phtree-cpp/pull/163)
 
 ### Fixed
-- Test failure in `b_priority_queue_test`: `"invalid comparator"` while operating on a `std::priority_queue`.
+- Test failure in `b_priority_queue_test`: `"invalid comparator"` while calling on a `std::priority_queue.pop()`.
   [#164](https://github.com/tzaeschke/phtree-cpp/issues/164)
 
 ## [1.6.2] - 2025-03-08
