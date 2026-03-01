@@ -128,7 +128,7 @@ struct SwapComp {
     Compare comp;
     template <class Key>
     bool operator()(const Key& x, const Key& y) const {
-        return !comp(x, y);
+        return comp(y, x);
     }
 };
 
