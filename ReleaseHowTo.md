@@ -1,12 +1,5 @@
 
-
-
-
-https://github.com/tzaeschke/phtree-cpp/releases/v1.6.2/download/v1.6.2.tar.gz
-
-
 # Create Release (document WIP)
-
 
 ## Verify code
 
@@ -25,17 +18,35 @@ bazel run //examples:example
 - Test with VisualStudio on Windows
 - Update references of tested compilers in README.md
 
+## Release Prep
+
+* Create branch/PR `release/1.7.0`
+* Update version in 
+  * MODULE.bazel
+  * CMakeLists.txt
+  * README.md
+  * CHANGELOG.md (don't forget links at the bottom)
+* Commit, push, merge
+
+## Create GitHub release 
+
+...
+
 ## Create Archive
 
 ```bash
-git archive --format=zip v1.6.2 > phtree-cpp-v1.6.2.zip
+git archive --format=zip v1.7.0 > phtree-cpp-v1.7.0.zip
 ```
 
 Upload to GitHub release.
 
 Resulting link:
 ```
-https://github.com/tzaeschke/phtree-cpp/releases/download/v1.6.2/phtree-cpp-v1.6.2.zip
+https://github.com/tzaeschke/phtree-cpp/releases/download/v1.7.0/phtree-cpp-v1.7.0.zip
+```
+or 
+```
+https://github.com/tzaeschke/phtree-cpp/releases/v1.7.0/download/v1.7.0.tar.gz
 ```
 
 
@@ -53,7 +64,7 @@ bazel build //:phtree
 #### Start
 
 Checkout personal fork of bazel-central-registry.
-Create branch `phtree-cpp@1.6.2`.
+Create branch `phtree-cpp@1.7.0`.
 
 #### After modifying any file
 
@@ -66,13 +77,13 @@ bazel run -- //tools:update_integrity phtree-cpp
 #### Validate 
 
 ```shell
-bazel run -- //tools:bcr_validation --check=phtree-cpp@1.6.2
+bazel run -- //tools:bcr_validation --check=phtree-cpp@1.7.0
 ```
 
 #### Test locally
 
 ```bash
-bazel run //tools:setup_presubmit_repos -- --module phtree-cpp@1.6.2
+bazel run //tools:setup_presubmit_repos -- --module phtree-cpp@1.7.0
 ```
 
 There is also a GitHub action for release automation:

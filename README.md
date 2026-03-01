@@ -571,11 +571,11 @@ __before__ importing any Windows SDK dependencies.
 <a id="bazel"></a>
 
 ### Bazel
-`WORKSPACE` file:
+`MODULE.bazel` file:
 ```
 http_archive(
     name = "phtree",
-    strip_prefix = "phtree-cpp-v1.6.2",
+    strip_prefix = "phtree-cpp-v1.7.0",
     url = "https://github.com/tzaeschke/phtree-cpp",
 )
 ```
@@ -617,7 +617,7 @@ include(FetchContent)
 FetchContent_Declare(
         phtree
         GIT_REPOSITORY https://github.com/tzaeschke/phtree-cpp.git
-        GIT_TAG v1.6.2
+        GIT_TAG v1.7.0
 )
 FetchContent_MakeAvailable(phtree)
 ```

@@ -1,6 +1,6 @@
 module(
     name = "phtree-cpp",
-    version = "1.6.2",
+    version = "1.7.0",
 )
 
 # Bazel rules repositories.

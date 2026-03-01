@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - Nothing yet
 
+## [1.7.0] - 2025-03-01
 ### Changed
 - Added support for bazel 8 and 9, thanks to @polasek
   [#142](https://github.com/tzaeschke/phtree-cpp/issues/142)
@@ -252,7 +253,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing.
 
 
-[Unreleased]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/tzaeschke/phtree-cpp/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.2...v1.7.0
 [1.6.2]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/tzaeschke/phtree-cpp/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/tzaeschke/phtree-cpp/compare/v1.5.0...v1.6.0
