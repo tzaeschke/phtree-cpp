@@ -94,6 +94,7 @@ build:tsan --linkopt="-fsanitize=thread"
 #test:tsan --test_env="TSAN_SYMBOLIZER_PATH=/usr/lib/llvm-9/bin/llvm-symbolizer"
 test:tsan --run_under=//tools/runners/sanitizers/tsan
 
+# ubsan requires CLANG: `CC=clang bazel test ... --config=ubsan`
 build:ubsan --config=base-sanitizer
 build:ubsan --copt="-O1"
 build:ubsan --copt="-fsanitize=undefined"
@@ -105,6 +106,7 @@ build:ubsan --linkopt="-fsanitize=undefined"
 build:ubsan --linkopt="-lubsan"
 test:ubsan --run_under=//tools/runners/sanitizers/ubsan
 
+# ubsan requires CLANG: `CC=clang bazel test ... --config=msan`
 # MSAN is disabled for now, as there are false positives and we can't suppress them easily.
 build:msan --config=base-sanitizer
 build:msan --copt="-fsanitize=memory"

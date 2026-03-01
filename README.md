@@ -573,11 +573,7 @@ __before__ importing any Windows SDK dependencies.
 ### Bazel
 `MODULE.bazel` file:
 ```
-http_archive(
-    name = "phtree",
-    strip_prefix = "phtree-cpp-v1.7.0",
-    url = "https://github.com/tzaeschke/phtree-cpp",
-)
+bazel_dep(name = "phtree-cpp", version = "1.7.0")
 ```
 `BUILD` file:
 ```
