@@ -53,10 +53,13 @@ config_setting(
     constraint_values = ["@platforms//os:windows"],
 )
 
-# Buildifier
 buildifier(
     name = "buildifier.fix",
-    exclude_patterns = ["./.git/*"],
+    diff_command = "diff",
+    exclude_patterns = [
+        "./.git/*",
+        "./.clwb/*",
+    ],
     lint_mode = "fix",
     mode = "fix",
 )
@@ -65,7 +68,9 @@ buildifier(
     name = "buildifier.check",
     exclude_patterns = [
         "./.git/*",
+        "./.clwb/*",
     ],
+    diff_command = "diff",
     lint_mode = "warn",
     mode = "diff",
 )

@@ -38,7 +38,7 @@ jobs:
 
       - name: Bazel format
         shell: bash
-        run: ./ci/linting/buildifier.sh
+        run: bazel run //:buildifier.check
 
       - name: Build
         shell: bash
