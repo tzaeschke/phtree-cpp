@@ -24,7 +24,7 @@
  * PLEASE do not include this file directly, it is included via common.h.
  *
  * This file contains conversion/transformation functions for converting user coordinates and
- * shapes, such as PhPointD and PhBoxD, into PH-Tree native coordinates (PhPoint)
+ * shapes, such as PhPointD and PhBoxD, into PH-Tree native coordinates (PhPoint).
  */
 namespace improbable::phtree {
 
