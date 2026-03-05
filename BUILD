@@ -66,11 +66,11 @@ buildifier(
 
 buildifier(
     name = "buildifier.check",
+    diff_command = "diff",
     exclude_patterns = [
         "./.git/*",
         "./.clwb/*",
     ],
-    diff_command = "diff",
     lint_mode = "warn",
     mode = "diff",
 )
