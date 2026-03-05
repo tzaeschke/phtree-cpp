@@ -4,12 +4,19 @@
 ## Verify code
 
 ### Run tests
+```shell
 CC=gcc bazel test ... --config=asan
 CC=clang bazel test ... --config=asan
 CC=clang bazel test ... --config=msan
 CC=clang bazel test ... --config=ubsan
+```
 
 Record versions: e.g. gcc 13.3, clang 18.1.3
+
+```shell
+bazel run //:buildifier.check
+bazel run //:buildifier.fix
+```
 
 ### Run examples
 ```shell
