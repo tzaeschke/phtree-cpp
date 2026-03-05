@@ -1,4 +1,4 @@
-load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("@buildifier_prebuilt//:rules.bzl", "buildifier")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -54,16 +54,20 @@ config_setting(
 )
 
 # Buildifier
+buildifier(
+    name = "buildifier.fix",
+    exclude_patterns = ["./.git/*"],
+    lint_mode = "fix",
+    mode = "fix",
+)
 
-sh_binary(
-    name = "buildifier",
-    srcs = select(
-        {
-            ":linux": ["@buildifier_linux//file"],
-            ":macos": ["@buildifier_macos//file"],
-            ":windows": ["@buildifier_windows//file"],
-        },
-    ),
+buildifier(
+    name = "buildifier.check",
+    exclude_patterns = [
+        "./.git/*",
+    ],
+    lint_mode = "warn",
+    mode = "diff",
 )
 
 # Aspect-based clang-format
