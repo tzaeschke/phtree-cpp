@@ -6,16 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-- Upgraded buildifier
-  [#168](https://github.com/tzaeschke/phtree-cpp/pull/168)
+### Added
+
+- ReleaseHowTo.md
+  [#170](https://github.com/tzaeschke/phtree-cpp/pull/170)
 
 ## [1.7.0] - 2025-03-01
+
 ### Changed
 - Added support for bazel 8 and 9, thanks to @polasek
   [#142](https://github.com/tzaeschke/phtree-cpp/issues/142)
   [#161](https://github.com/tzaeschke/phtree-cpp/pull/161)
 - Updated build files, new Release How-To with support for bazel central registry (BCR)
   [#163](https://github.com/tzaeschke/phtree-cpp/pull/163)
+- Upgraded buildifier
+  [#168](https://github.com/tzaeschke/phtree-cpp/pull/168)
 
 ### Fixed
 - Test failure in `b_priority_queue_test`: `"invalid comparator"` while calling on a `std::priority_queue.pop()`.
